@@ -8,10 +8,10 @@ __kernel void transform_array_index(
 
     int pair[2] = { 0, 0 };
     // CHECK: pair[(i + 0) % 2UL] = 0;
-    pair[(i + 0)] = 0;
+    pair[i + 0] = 0;
     // CHECK: pair[(i + 1) % 2UL] = 1;
     (i + 1)[pair] = 1;
 
     // CHECK: array[i] = pair[(i + 0) % 2UL] + pair[(i + 1) % 2UL];
-    array[i] = pair[(i + 0)] + (i + 1)[pair];
+    array[i] = pair[i + 0] + (i + 1)[pair];
 }
