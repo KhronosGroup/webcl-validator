@@ -22,4 +22,21 @@ public:
     void addArrayIndexCheck(clang::ArraySubscriptExpr *expr, llvm::APInt &bound);
 };
 
+/// \brief Mixin class for making AST transformations available after
+/// construction.
+class WebCLTransformerClient
+{
+public:
+
+    WebCLTransformerClient();
+    ~WebCLTransformerClient();
+
+    WebCLTransformer& getTransformer();
+    void setTransformer(WebCLTransformer &transformer);
+
+private:
+
+    WebCLTransformer *transformer_;
+};
+
 #endif // WEBCLVALIDATOR_WEBCLTRANSFORMER

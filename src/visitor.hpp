@@ -2,6 +2,7 @@
 #define WEBCLVALIDATOR_WEBCLVISITOR
 
 #include "reporter.hpp"
+#include "transformer.hpp"
 
 #include "clang/AST/RecursiveASTVisitor.h"
 
@@ -34,9 +35,9 @@ private:
         clang::SourceLocation typeLocation, const clang::Type *type);
 };
 
-class WebCLTransformer;
 /// \brief Finds array subscriptions and pointer dereferences.
 class WebCLAccessor : public WebCLReporter
+                    , public WebCLTransformerClient
                     , public clang::RecursiveASTVisitor<WebCLAccessor>
 {
 public:
@@ -50,8 +51,6 @@ public:
     /// \see clang::RecursiveASTVisitor::VisitUnaryOperator
     bool VisitUnaryOperator(clang::UnaryOperator *expr);
 
-    void setTransformer(WebCLTransformer &transformer);
-
 private:
 
     bool getIndexedArraySize(const clang::Expr *base, llvm::APSInt &size);
@@ -59,8 +58,6 @@ private:
     bool getArrayIndexValue(const clang::Expr *index, llvm::APSInt &value);
 
     bool isPointerCheckNeeded(const clang::Expr *expr);
-
-    WebCLTransformer *transformer_;
 };
 
 /// \brief Prints an AST of WebCL C code.

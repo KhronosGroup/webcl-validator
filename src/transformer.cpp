@@ -77,3 +77,23 @@ void WebCLTransformer::addArrayIndexCheck(
     expr->setLHS(baseClone.get());
     expr->setRHS(clampedIndex.get());
 }
+
+WebCLTransformerClient::WebCLTransformerClient()
+    : transformer_(0)
+{
+}
+
+WebCLTransformerClient::~WebCLTransformerClient()
+{
+}
+
+WebCLTransformer& WebCLTransformerClient::getTransformer()
+{
+    assert(transformer_);
+    return *transformer_;
+}
+
+void WebCLTransformerClient::setTransformer(WebCLTransformer &transformer)
+{
+    transformer_ = &transformer;
+}

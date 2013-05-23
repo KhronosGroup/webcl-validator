@@ -1,4 +1,3 @@
-#include "transformer.hpp"
 #include "visitor.hpp"
 
 #include "clang/AST/ASTContext.h"
@@ -94,8 +93,8 @@ void WebCLRestrictor::check3dImageParameter(
 WebCLAccessor::WebCLAccessor(
     clang::CompilerInstance &instance)
     : WebCLReporter(instance)
+    , WebCLTransformerClient()
     , clang::RecursiveASTVisitor<WebCLAccessor>()
-    , transformer_(0)
 {
 }
 
@@ -154,7 +153,7 @@ bool WebCLAccessor::VisitArraySubscriptExpr(clang::ArraySubscriptExpr *expr)
     }
 
     if (isArraySizeValid && !isIndexValueValid) {
-        transformer_->addArrayIndexCheck(expr, arraySize);
+        getTransformer().addArrayIndexCheck(expr, arraySize);
     }
 
     return true;
@@ -217,11 +216,6 @@ bool WebCLAccessor::isPointerCheckNeeded(const clang::Expr *expr)
     }
 
     return type->isPointerType();
-}
-
-void WebCLAccessor::setTransformer(WebCLTransformer &transformer)
-{
-    transformer_ = &transformer;
 }
 
 WebCLPrinter::WebCLPrinter()
