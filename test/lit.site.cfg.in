@@ -1,0 +1,9 @@
+config.substitutions.append(
+    ('%webcl-validator', "@LLVM_BINARY_DIR@/bin/webcl-validator"))
+config.substitutions.append(
+    ('%opencl-validator', "@LLVM_BINARY_DIR@/bin/opencl-validator"))
+config.substitutions.append(
+    ('%FileCheck', "@LLVM_BINARY_DIR@/bin/FileCheck"))
+config.substitutions.append(
+    ('%include', "@WEBCL_VALIDATOR_TEST_DIR@/include"))
+lit.load_config(config, "@WEBCL_VALIDATOR_TEST_DIR@/lit.cfg")

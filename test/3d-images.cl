@@ -1,0 +1,27 @@
+// RUN: cat %s | %opencl-validator
+// RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>&1 | %FileCheck %s
+
+// We don't want complaints from builtin function declarations.
+// CHECK-NOT: error: WebCL doesn't support 3D images.
+
+typedef image3d_t typedef_image;
+
+int function_with_3d_image_parameters(
+// CHECK: error: WebCL doesn't support 3D images.
+    image3d_t m,
+// CHECK: error: WebCL doesn't support 3D images.
+    typedef_image t)
+{
+    return get_image_width(m) + get_image_height(t);
+}
+
+__kernel void kernel_with_3d_image_parameters(
+    __global int *array,
+// CHECK: error: WebCL doesn't support 3D images.
+    image3d_t m,
+// CHECK: error: WebCL doesn't support 3D images.
+    typedef_image t)
+{
+    const int i = get_global_id(0);
+    array[i] = function_with_3d_image_parameters(m, t);
+}

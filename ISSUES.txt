@@ -1,0 +1,63 @@
+This document describes limitations of Clang regarding OpenCL C
+code. We should try to upstream relevant fixes at some point.
+
+-------------
+Builtin Types
+-------------
+
+Not yet fixed locally:
+Trunk of Clang supports OpenCL image and event types. Support isn't
+present in 3.2. We should import these changes from upstream.
+
+-----------------------
+Image Access Qualifiers
+-----------------------
+
+Fixed locally, but not in upstream:
+Clang parser supports __read_only, __write_only and __read_write image
+access qualifiers. However, these qualifiers aren't associated with
+types of parameter variable declarations and they are thrown away when
+AST is built.
+
+----------------------------
+Optional Function Qualifiers
+----------------------------
+
+Not yet fixed locally:
+The __attribute__((vec_type_hint(<type>))) has been defined but isn't
+currently handled properly.
+
+---------------
+Printing of AST
+---------------
+
+Fixed locally, not in upstream:
+Image access qualifiers aren't printed, because they are missing from
+the AST.
+
+Not yet fixed locally:
+The __attribute__((vec_type_hint(<type>))) qualifier isn't printed
+because it's missing from the AST.
+
+Fixed locally, not in upstream:
+Function qualifiers are printed after function parameters instead of
+printing them before the return type.
+
+Fixed locally, not in upstream:
+The __kernel qualifier is printed as
+__attribute__((opencl_kernel_function)).
+
+-------------
+Preprocessing
+-------------
+Fixed locally, not in upstream:
+Clang supports a bunch of preprosessor callbacks. This mechanism needs
+to be extended with OpenCL extension pragmas.
+
+--------------
+Array Indexing
+--------------
+
+Fixed in validator tool, not in upstream:
+Clang doesn't handle indexing of arrays with large integer constant
+expressions (>= 2^63) properly.
