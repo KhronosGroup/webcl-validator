@@ -1,4 +1,8 @@
+#ifdef __APPLE__
+#include <OpenCL/opencl.h>
+#else
 #include <CL/cl.h>
+#endif
 
 #include <iostream>
 #include <iterator>
@@ -53,7 +57,7 @@ public:
 
     bool createProgram() {
         std::cin >> std::noskipws;
-        std::string code(std::istream_iterator<char>(std::cin), std::istream_iterator<char>());
+        std::string code((std::istream_iterator<char>(std::cin)), std::istream_iterator<char>());
         const char *source = code.c_str();
         program_ = clCreateProgramWithSource(context_, 1, &source, NULL, NULL);
         return program_ != 0;
