@@ -3,6 +3,8 @@ config.substitutions.append(
 config.substitutions.append(
     ('%opencl-validator', "@LLVM_BINARY_DIR@/bin/opencl-validator"))
 config.substitutions.append(
+    ('%radix-sort', "@LLVM_BINARY_DIR@/bin/radix-sort"))
+config.substitutions.append(
     ('%FileCheck', "@LLVM_BINARY_DIR@/bin/FileCheck"))
 config.substitutions.append(
     ('%include', "@WEBCL_VALIDATOR_TEST_DIR@/include"))
