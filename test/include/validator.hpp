@@ -14,7 +14,9 @@ class OpenCLValidator
 {
 public:
 
-    OpenCLValidator() : context_(0), queue_(0), program_(0) {
+    OpenCLValidator()
+        : numPlatforms_(0), platform_(0), numDevices_(0), device_(0)
+        , context_(0), queue_(0), program_(0) {
     }
 
     virtual ~OpenCLValidator() {
@@ -31,17 +33,58 @@ public:
             clReleaseContext(context_);
     }
 
-    virtual bool createPlatform() {
-        cl_uint platforms;
-        return clGetPlatformIDs(1, &platform_, &platforms) == CL_SUCCESS;
+    virtual unsigned int getNumPlatforms() {
+        if (clGetPlatformIDs(0, NULL, &numPlatforms_) != CL_SUCCESS)
+            return 0;
+        return numPlatforms_;
     }
-        
-    virtual bool createDevice() {
-        cl_uint devices;
-        return clGetDeviceIDs(platform_, CL_DEVICE_TYPE_ALL, 1, &device_, &devices) == CL_SUCCESS;
+
+    virtual bool createPlatform(unsigned int platform) {
+        if (platform >= numPlatforms_)
+            return false;
+
+        const unsigned int maxPlatforms = 10;
+        if (platform >= maxPlatforms)
+            return false;
+
+        cl_platform_id platforms[maxPlatforms];
+        if (clGetPlatformIDs(numPlatforms_, platforms, NULL) != CL_SUCCESS)
+            return false;
+        platform_ = platforms[platform];
+        return true;
+    }
+
+    virtual unsigned int getNumDevices() {
+        if (clGetDeviceIDs(platform_, CL_DEVICE_TYPE_ALL,
+                           0, NULL, &numDevices_) != CL_SUCCESS) {
+            return 0;
+        }
+        return numDevices_;
+    }
+
+    virtual bool createDevice(unsigned int device) {
+        if (device >= numDevices_)
+            return false;
+
+        const unsigned int maxDevices = 10;
+        if (device >= maxDevices)
+            return false;
+
+        cl_device_id devices[maxDevices];
+        if (clGetDeviceIDs(platform_, CL_DEVICE_TYPE_ALL,
+                           numDevices_, devices, NULL) != CL_SUCCESS) {
+            return false;
+        }
+        device_ = devices[device];
+        return true;
     }
 
     virtual bool createContext() {
+        if (context_) {
+            clReleaseContext(context_);
+            context_ = 0;
+        }
+
         cl_context_properties properties[3] = {
             CL_CONTEXT_PLATFORM,
             (cl_context_properties)platform_,
@@ -52,11 +95,20 @@ public:
     }
 
     virtual bool createQueue() {
-       queue_ =  clCreateCommandQueue(context_, device_, 0, NULL);
-       return queue_ != 0;
+        if (queue_) {
+            clReleaseCommandQueue(queue_);
+            queue_ = 0;
+        }
+        queue_ =  clCreateCommandQueue(context_, device_, 0, NULL);
+        return queue_ != 0;
     }
 
     virtual bool createProgram() {
+        if (program_) {
+            clReleaseProgram(program_);
+            program_ = 0;
+        }
+
         std::cin >> std::noskipws;
         std::string code((std::istream_iterator<char>(std::cin)), std::istream_iterator<char>());
         const char *source = code.c_str();
@@ -69,6 +121,20 @@ public:
         return clBuildProgram(program_, 1, &device_, options.c_str(), NULL, NULL) == CL_SUCCESS;
     }
 
+    std::string getPlatformName() {
+        char name[100];
+        if (clGetPlatformInfo(platform_, CL_PLATFORM_NAME, sizeof(name), &name, NULL) != CL_SUCCESS)
+            return "?";
+        return name;
+    }
+
+    std::string getDeviceName() {
+        char name[100];
+        if (clGetDeviceInfo(device_, CL_DEVICE_NAME, sizeof(name), &name, NULL) != CL_SUCCESS)
+            return "?";
+        return name;
+    }
+
     virtual void printProgramLog() {
         char log[10 * 1024];
         if (clGetProgramBuildInfo(program_, device_, CL_PROGRAM_BUILD_LOG, sizeof(log), log, NULL) == CL_SUCCESS) {
@@ -78,7 +144,9 @@ public:
 
 protected:
 
+    cl_uint numPlatforms_;
     cl_platform_id platform_;
+    cl_uint numDevices_;
     cl_device_id device_;
 
     cl_context context_;

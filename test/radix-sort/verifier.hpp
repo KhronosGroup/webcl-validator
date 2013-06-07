@@ -5,7 +5,7 @@
 
 class RadixSorter;
 
-class RadixSortVerifier : public OpenCLBuilder
+class RadixSortVerifier : public OpenCLBuilderForOnePlatformAndDevice
 {
 public:
 

@@ -27,7 +27,7 @@ int main(int argc, char const* argv[])
         options.append(" ");
     }
 
-    OpenCLBuilder builder(argv[0]);
+    OpenCLBuilderForAllPlatformsAndDevices builder(argv[0]);
     if (!builder.compileInput(validator, options))
         return EXIT_FAILURE;
     return EXIT_SUCCESS;

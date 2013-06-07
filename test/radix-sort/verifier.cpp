@@ -2,7 +2,7 @@
 #include "verifier.hpp"
 
 RadixSortVerifier::RadixSortVerifier(const std::string &name)
-  : OpenCLBuilder(name)
+    : OpenCLBuilderForOnePlatformAndDevice(name, "Portable OpenCL", "pthread")
 {
 }
 
