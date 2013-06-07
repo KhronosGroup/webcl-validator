@@ -1,7 +1,54 @@
-This document describes limitations of Clang regarding OpenCL C
+This document describes issues in Clang and OpenCL drivers that we
+have encountered while developing the WebCL Validator.
+
+
+
+OpenCL Drivers
+==============
+
+This section describes OpenCL driver related issues.
+
+OpenCL Driver Differences
+-------------------------
+
+We have seen some differences in OpenCL drivers. These are not bugs,
+the differences just illustrate how different vendors interpret the
+OpenCL specification either more strictly or more loosely. We should
+resort to using the lowest common denominator. Each of the cases below
+are accepted by some drivers, but rejected by at least one driver.
+
+- Intel: Doesn't support "__local int array[]" as function
+  parameter. One needs to use "__local int *array" instead.
+- AMD: Doesn't like "size_t" types as kernel parameters.
+- AMD: Doesn't allow you to index vectors as in "uint4 v; v[0] = 0;".
+- AMD: Doesn't allow you to access vector fields from pointer. You
+  need to use "uint4 *p = &v; (*p).x = 0;" instead of "p->x = 0;".
+
+OpenCL Linux Driver Bugs
+------------------------
+
+We have also found nasty bugs in Linux OpenCL drivers. For this reason
+we suggest that POCL is used on Linux as the Linux binary drivers of
+hardware vendors seem to cause a lot of problems.
+
+- POCL doesn't support image3d_t. We use image3d_t in a test case to
+  verify that WebCL Validator doesn't accept it.
+- Intel provides stable Core iX drivers only for Windows and Xeon
+  drivers only for Linux. Older Linux beta driver, that worked on
+  laptop processor, couldn't cope very well with accessing the same
+  vector with two different routes (directly and via a pointer). We
+  haven't tested the new stable drivers yet.
+- AMD provides CPU driver for Linux. However, it started to corrupt
+  vector variable contents when barriers were used.
+
+
+
+Clang
+=====
+
+This section describes limitations of Clang regarding OpenCL C
 code. We should try to upstream relevant fixes at some point.
 
--------------
 Builtin Types
 -------------
 
@@ -9,7 +56,6 @@ Not yet fixed locally:
 Trunk of Clang supports OpenCL image and event types. Support isn't
 present in 3.2. We should import these changes from upstream.
 
------------------------
 Image Access Qualifiers
 -----------------------
 
@@ -19,7 +65,6 @@ access qualifiers. However, these qualifiers aren't associated with
 types of parameter variable declarations and they are thrown away when
 AST is built.
 
-----------------------------
 Optional Function Qualifiers
 ----------------------------
 
@@ -27,7 +72,6 @@ Not yet fixed locally:
 The __attribute__((vec_type_hint(<type>))) has been defined but isn't
 currently handled properly.
 
----------------
 Printing of AST
 ---------------
 
@@ -47,14 +91,12 @@ Fixed locally, not in upstream:
 The __kernel qualifier is printed as
 __attribute__((opencl_kernel_function)).
 
--------------
 Preprocessing
 -------------
 Fixed locally, not in upstream:
 Clang supports a bunch of preprosessor callbacks. This mechanism needs
 to be extended with OpenCL extension pragmas.
 
---------------
 Array Indexing
 --------------
 
