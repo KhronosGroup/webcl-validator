@@ -1,4 +1,4 @@
-// RUN: cat %s | %opencl-validator
+// RUN: cat %s | grep -v DRIVER-MAY-REJECT  %opencl-validator
 // RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>&1 | %FileCheck %s
 
 // CHECK-NOT: warning: Array size not known until run-time.
@@ -23,9 +23,11 @@ int get_indexed_value(__global int *array, int index)
     // CHECK: warning: Array size not known until run-time.
     // index[triple]:
     // CHECK: warning: Index value not known until run-time.
-    const int sum3 = index[array] + 0[array] + index[triple];
-    const int sum4 = 0[triple] + 1[triple] + 2[triple];
-    return sum1 + sum2 + sum3 + sum4;
+    const int sum3 = index[array] + 0[array] + index[triple]; // DRIVER-MAY-REJECT
+    const int sum4 = 0[triple] + 1[triple] + 2[triple]; // DRIVER-MAY-REJECT
+    return sum1 + sum2
+        + sum3 + sum4 // DRIVER-MAY-REJECT
+        ;
 }
 
 // CHECK-NOT: warning: Array size not known until run-time.
@@ -40,7 +42,7 @@ void set_indexed_value(__global int *array, int index, int value)
     // index[array]:
     // CHECK: warning: Array size not known until run-time.
     // CHECK: warning: Index value not known until run-time.
-    index[array] += value;
+    index[array] += value; // DRIVER-MAY-REJECT
 }
 
 // CHECK-NOT: warning: Array size not known until run-time.

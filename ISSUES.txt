@@ -23,6 +23,8 @@ are accepted by some drivers, but rejected by at least one driver.
 - AMD: Doesn't allow you to index vectors as in "uint4 v; v[0] = 0;".
 - AMD: Doesn't allow you to access vector fields from pointer. You
   need to use "uint4 *p = &v; (*p).x = 0;" instead of "p->x = 0;".
+- AMD: Compiler segfaults if array is indexed with "index[array]"
+  instead of "array[index]".
 
 OpenCL Linux Driver Bugs
 ------------------------
