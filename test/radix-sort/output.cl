@@ -130,9 +130,9 @@ void inc_histogram(
 __kernel __attribute__((reqd_work_group_size(STREAM_COUNT_WORKGROUP_SIZE, 1, 1)))
 void stream_count_kernel(
     __constant uint *unsorted_elements,
-    const size_t wcl_unsorted_elements_size,
+    const unsigned long wcl_unsorted_elements_size,
     __global uint *element_counts,
-    const size_t wcl_element_counts_size,
+    const unsigned long wcl_element_counts_size,
     const int bit_offset,
     const int num_elements,
     const int num_workgroups,
@@ -268,7 +268,7 @@ __kernel __attribute__((reqd_work_group_size(PREFIX_SCAN_WORKGROUP_SIZE, 1, 1)))
 void prefix_scan_kernel(
     __global uint *histogram, // [[c0_g0, c0_g1, ..., c0_gm], ..., [c15_g0, c15_g1, ..., c15_gm]] ->
                               // [[s0_g0, s0_g1, ..., s0_gm], ..., [s15_g0, s15_g1, ..., s15_gm]]
-    const size_t wcl_histogram_size,
+    const unsigned long wcl_histogram_size,
     const int num_workgroups)
 {
     __private WclPrivates wcl_ps;
