@@ -1,5 +1,5 @@
 // RUN: cat %s | grep -v DRIVER-MAY-REJECT | %opencl-validator
-// RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>&1 | %FileCheck %s
+// RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>&1 | grep -v CHECK | %FileCheck %s
 
 __kernel void transform_array_index(
     __global int *array)
@@ -12,8 +12,9 @@ __kernel void transform_array_index(
     // CHECK: pair[(i + 1) % 2UL] = 1;
     (i + 1)[pair] = 1; // DRIVER-MAY-REJECT
 
-    // CHECK: array[i] = pair[(i + 0) % 2UL] + pair[(i + 1) % 2UL];
+    // CHECK: array[i] = pair[(i + 0) % 2UL]
     array[i] = pair[i + 0]
+    // CHECK: + pair[(i + 1) % 2UL]
         + (i + 1)[pair] // DRIVER-MAY-REJECT
         ;
 }

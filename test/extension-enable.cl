@@ -1,5 +1,5 @@
 // RUN: cat %s | grep -v ^#pragma | %opencl-validator
-// RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>&1 | %FileCheck %s
+// RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>&1 | grep -v CHECK | %FileCheck %s
 
 // We allow only certain extensions to be enabled.
 
