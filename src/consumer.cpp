@@ -29,6 +29,7 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
 void WebCLConsumer::setTransformer(WebCLTransformer &transformer)
 {
     accessor_.setTransformer(transformer);
+    printer_.setTransformer(transformer);
 }
 
 bool WebCLConsumer::hasErrors(clang::ASTContext &context) const

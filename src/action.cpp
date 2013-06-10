@@ -6,6 +6,7 @@
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendOptions.h"
 #include "clang/Parse/ParseAST.h"
+#include "clang/Sema/Sema.h"
 
 #include "llvm/ADT/OwningPtr.h"
 
@@ -72,7 +73,7 @@ clang::ASTConsumer* WebCLAction::CreateASTConsumer(clang::CompilerInstance &inst
         return 0;
     }
 
-    transformer_ = new WebCLTransformer(instance, *sema_);
+    transformer_ = new WebCLTransformer(instance);
     if (!transformer_) {
         reporter_->fatal("Internal error. Can't create AST transformer.\n");
         return 0;

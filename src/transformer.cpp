@@ -1,81 +1,93 @@
 #include "transformer.hpp"
 
+#include "clang/AST/ASTContext.h"
+#include "clang/AST/Expr.h"
 #include "clang/Frontend/CompilerInstance.h"
+#include "clang/Rewrite/Core/Rewriter.h"
 
-WebCLTransformer::WebCLTransformer(clang::CompilerInstance &instance,
-                                   clang::Sema &sema)
+WebCLConstantArraySubscriptTransformation::WebCLConstantArraySubscriptTransformation(
+    clang::CompilerInstance &instance,
+    clang::ArraySubscriptExpr *expr, llvm::APInt &bound)
+    : WebCLReporter(instance), expr_(expr), bound_(bound)
+{
+}
+
+WebCLConstantArraySubscriptTransformation::~WebCLConstantArraySubscriptTransformation()
+{
+}
+
+bool WebCLConstantArraySubscriptTransformation::rewrite(clang::Rewriter &rewriter)
+{
+    clang::Expr *base = expr_->getBase();
+    if (!base) {
+        error(expr_->getLocStart(), "Invalid indexed array.");
+        return false;
+    }
+    clang::Expr *index = expr_->getIdx();
+    if (!index) {
+        error(expr_->getLocStart(), "Invalid array index.");
+        return false;
+    }
+    clang::Expr *plainIndex = index->IgnoreParens();
+    if (!plainIndex) {
+        error(index->getLocStart(), "Can't remove parentheses from array index.");
+        return false;
+    }
+
+    const std::string replacement =
+        rewriter.getRewrittenText(base->getSourceRange()) + "[(" +
+        rewriter.getRewrittenText(plainIndex->getSourceRange()) + ") % " +
+        bound_.toString(10, false) + "UL]";
+    // Rewriter returns false on success.
+    return !rewriter.ReplaceText(expr_->getSourceRange(), replacement);
+}
+
+WebCLTransformer::WebCLTransformer(clang::CompilerInstance &instance)
     : WebCLReporter(instance)
-    , clang::TreeTransform<WebCLTransformer>(sema)
 {
 }
 
 WebCLTransformer::~WebCLTransformer()
 {
+    for (ExprTransformations::iterator i = exprTransformations_.begin();
+         i != exprTransformations_.end(); ++i) {
+        WebCLTransformation *transformation = i->second;
+        delete transformation;
+    }
 }
 
-bool WebCLTransformer::AlwaysRebuild()
+bool WebCLTransformer::rewrite(clang::Rewriter &rewriter)
 {
-    return true;
+    bool status = true;
+
+    for (ExprTransformations::iterator i = exprTransformations_.begin();
+         i != exprTransformations_.end(); ++i) {
+        WebCLTransformation *transformation = i->second;
+        status = status && transformation->rewrite(rewriter);
+    }
+
+    return status;
 }
 
 void WebCLTransformer::addArrayIndexCheck(
     clang::ArraySubscriptExpr *expr, llvm::APInt &bound)
 {
-    clang::Expr *base = expr->getBase();
-    if (!base) {
-        error(expr->getLocStart(), "Invalid indexed array.");
-        return;
-    }
-    clang::Expr *index = expr->getIdx();
-    if (!index) {
-        error(expr->getLocStart(), "Invalid array index.");
-        return;
-    }
-    clang::Expr *plainIndex = index->IgnoreParens();
-    if (!plainIndex) {
-        error(index->getLocStart(), "Can't remove parentheses from array index.");
+    WebCLTransformation *transformation =
+        new WebCLConstantArraySubscriptTransformation(instance_, expr, bound);
+
+    if (!transformation) {
+        error(expr->getLocStart(), "Internal error. Can't create array index check.");
         return;
     }
 
-    clang::ExprResult baseClone = getDerived().TransformExpr(base);
-    if (baseClone.isInvalid()) {
-        error(base->getLocStart(), "Can't clone indexed array.");
-        return;
-    }
-    clang::ExprResult indexClone = getDerived().TransformExpr(plainIndex);
-    if (indexClone.isInvalid()) {
-        error(index->getLocStart(), "Can't clone array index.");
-        return;
-    }
-    
-    clang::ExprResult parenResult = RebuildParenExpr(
-        indexClone.get(), clang::SourceLocation(), clang::SourceLocation());
-    if (parenResult.isInvalid()) {
-        error(index->getLocStart(), "Can't wrap array index in parentheses.");
-        return;
-    }
-    clang::IntegerLiteral *boundLiteral = clang::IntegerLiteral::Create(
-        SemaRef.Context, bound, SemaRef.Context.getSizeType(), clang::SourceLocation());
-    if (!boundLiteral) {
-        error(index->getLocStart(), "Can't create bound for array index.");
-        return;
-    }
-    clang::ExprResult boundResult = TransformIntegerLiteral(boundLiteral);
-    if (boundResult.isInvalid()) {
-        error(index->getLocStart(), "Can't transform bound of array index.");
-        return;
-    }
-    clang::ExprResult clampedIndex = RebuildBinaryOperator(
-        clang::SourceLocation(), clang::BO_Rem, parenResult.get(), boundResult.get());
-    if (clampedIndex.isInvalid()) {
-        error(index->getLocStart(), "Can't create check for array index bound.");
-        return;
-    }
+    const std::pair<ExprTransformations::iterator, bool> status =
+        exprTransformations_.insert(
+            ExprTransformations::value_type(expr, transformation));
 
-    // array[i + 1] -> array[(i + 1) % bound]
-    // (i + 1)[array] -> array[(i + 1) % bound]
-    expr->setLHS(baseClone.get());
-    expr->setRHS(clampedIndex.get());
+    if (!status.second) {
+        error(expr->getLocStart(), "Array index check has been already created.");
+        return;
+    }
 }
 
 WebCLTransformerClient::WebCLTransformerClient()

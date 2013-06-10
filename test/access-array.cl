@@ -1,5 +1,5 @@
-// RUN: cat %s | grep -v DRIVER-MAY-REJECT  %opencl-validator
-// RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>&1 | %FileCheck %s
+// RUN: cat %s | grep -v DRIVER-MAY-REJECT %opencl-validator
+// RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>&1 | grep -v CHECK | %FileCheck %s
 
 // CHECK-NOT: warning: Array size not known until run-time.
 // CHECK-NOT: warning: Index value not known until run-time.

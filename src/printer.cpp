@@ -4,6 +4,7 @@
 
 WebCLPrinter::WebCLPrinter(clang::CompilerInstance &instance)
     : WebCLReporter(instance)
+    , WebCLTransformerClient()
     , clang::RecursiveASTVisitor<WebCLPrinter>()
     , rewriter_(instance.getSourceManager(), instance.getLangOpts())
 {
@@ -15,12 +16,19 @@ WebCLPrinter::~WebCLPrinter()
 
 bool WebCLPrinter::VisitTranslationUnitDecl(clang::TranslationUnitDecl *decl)
 {
-    // Insert a comment at the top of the main source file.
+    // Insert a comment at the top of the main source file. This is to
+    // ensure that at least some modifications are made so that
+    // rewrite buffer becomes available.
     clang::SourceManager &manager = rewriter_.getSourceMgr();
     clang::FileID file = manager.getMainFileID();
     clang::SourceLocation start = manager.getLocForStartOfFile(file);
     const std::string comment = "// Transformed by WebCL Validator.\n\n";
     rewriter_.InsertText(start, comment, true, true);
+
+    // Apply transformer modifications.
+    WebCLTransformer &transformer = getTransformer();
+    if (!transformer.rewrite(rewriter_))
+        return false;
 
     return print();
 }

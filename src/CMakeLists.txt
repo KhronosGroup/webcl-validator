@@ -16,10 +16,6 @@ target_link_libraries(
   clangRewriteFrontend
 )
 
-include_directories(
-  ${CLANG_SOURCE_DIR} # Internal headers such as TreeTransform.h.
-)
-
 install(
   TARGETS webcl-validator RUNTIME
   DESTINATION bin

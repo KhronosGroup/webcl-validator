@@ -2,12 +2,14 @@
 #define WEBCLVALIDATOR_WEBCLPRINTER
 
 #include "reporter.hpp"
+#include "transformer.hpp"
 
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
 /// \brief Transforms and prints original WebCL C source file.
 class WebCLPrinter : public WebCLReporter
+                   , public WebCLTransformerClient
                    , public clang::RecursiveASTVisitor<WebCLPrinter>
 {
 public:
