@@ -6,7 +6,7 @@ WebCLConsumer::WebCLConsumer(clang::CompilerInstance &instance)
     : clang::ASTConsumer()
     , restrictor_(instance)
     , accessor_(instance)
-    , printer_()
+    , printer_(instance)
 {
 }
 

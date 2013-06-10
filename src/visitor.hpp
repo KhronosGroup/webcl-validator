@@ -60,17 +60,4 @@ private:
     bool isPointerCheckNeeded(const clang::Expr *expr);
 };
 
-/// \brief Prints an AST of WebCL C code.
-/// \see DeclPrinter
-class WebCLPrinter : public clang::RecursiveASTVisitor<WebCLPrinter>
-{
-public:
-
-    WebCLPrinter();
-    ~WebCLPrinter();
-
-    /// \see RecursiveASTVisitor::VisitTranslationUnitDecl
-    bool VisitTranslationUnitDecl(clang::TranslationUnitDecl *decl);
-};
-
 #endif // WEBCLVALIDATOR_WEBCLVISITOR

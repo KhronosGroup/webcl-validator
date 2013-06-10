@@ -4,6 +4,7 @@ add_clang_executable(
   consumer.cpp
   main.cpp
   preprocessor.cpp
+  printer.cpp
   reporter.cpp
   transformer.cpp
   visitor.cpp

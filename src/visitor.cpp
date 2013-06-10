@@ -217,22 +217,3 @@ bool WebCLAccessor::isPointerCheckNeeded(const clang::Expr *expr)
 
     return type->isPointerType();
 }
-
-WebCLPrinter::WebCLPrinter()
-    : clang::RecursiveASTVisitor<WebCLPrinter>()
-{
-}
-
-WebCLPrinter::~WebCLPrinter()
-{
-}
-
-bool WebCLPrinter::VisitTranslationUnitDecl(clang::TranslationUnitDecl *decl)
-{
-    clang::ASTContext &context = decl->getASTContext();
-    clang::PrintingPolicy policy = context.getPrintingPolicy();
-    policy.SuppressAuxFiles = true;
-    context.setPrintingPolicy(policy);
-    decl->print(llvm::outs(), policy, 0, true);
-    return false;
-}
