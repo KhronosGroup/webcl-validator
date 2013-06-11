@@ -156,6 +156,10 @@ bool WebCLAccessor::VisitArraySubscriptExpr(clang::ArraySubscriptExpr *expr)
         getTransformer().addArrayIndexCheck(expr, arraySize);
     }
 
+    if (!isArraySizeKnown) {
+        getTransformer().addArrayIndexCheck(expr);
+    }
+
     return true;
 }
 
@@ -167,8 +171,16 @@ bool WebCLAccessor::VisitUnaryOperator(clang::UnaryOperator *expr)
     if (expr->getOpcode() != clang::UO_Deref)
         return true;
 
-    if (isPointerCheckNeeded(expr->getSubExpr()))
+    clang::Expr *pointer = expr->getSubExpr();
+    if (!pointer) {
+        error(expr->getLocStart(), "Invalid pointer dereference.\n");
+        return false;
+    }
+
+    if (isPointerCheckNeeded(pointer)) {
         warning(expr->getExprLoc(), "Pointer access needs to be checked.\n");
+        getTransformer().addPointerCheck(pointer);
+    }
 
     return true;
 }

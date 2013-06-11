@@ -3,9 +3,12 @@
 
 #include "reporter.hpp"
 
+#include "clang/AST/Type.h"
 #include "llvm/ADT/APInt.h"
 
 #include <map>
+#include <set>
+#include <utility>
 
 namespace clang {
     class Expr;
@@ -59,10 +62,53 @@ public:
     /// array[index] -> array[index % bound]
     void addArrayIndexCheck(clang::ArraySubscriptExpr *expr, llvm::APInt &bound);
 
+    /// Modify array indexing:
+    /// array[index] -> array[unknown_array_size_check(index)]
+    void addArrayIndexCheck(clang::ArraySubscriptExpr *expr);
+
+    /// Modify pointer dereferencing:
+    // *pointer -> *unknown_pointer_check(pointer)
+    void addPointerCheck(clang::Expr *expr);
+
 private:
 
-    typedef std::map<clang::Expr*, WebCLTransformation*> ExprTransformations;
+    typedef std::map<const clang::Expr*, WebCLTransformation*> ExprTransformations;
+    // address space, name
+    typedef std::pair<const std::string, const std::string> CheckedType;
+    typedef std::set<CheckedType> CheckedTypes;
+
+    bool rewritePrologue(clang::Rewriter &rewriter);
+    bool rewriteTransformations(clang::Rewriter &rewriter);
+
+    std::string getTypeAsString(clang::QualType type);
+    std::string getAddressSpaceOfType(clang::QualType type);
+    std::string getNameOfType(clang::QualType type);
+
+    void addCheckedType(CheckedTypes &types, clang::QualType type);
+
+    void emitAddressSpaceOfType(std::ostream &out, clang::QualType type);
+    void emitNameOfType(std::ostream &out, clang::QualType type);
+
+    void emitAddressSpaceRecord(std::ostream &out, const std::string &name);
+    void emitPrologueRecords(std::ostream &out);
+
+    void emitLimitMacros(std::ostream &out);
+    void emitPointerLimitMacros(std::ostream &out);
+    void emitIndexLimitMacros(std::ostream &out);
+    void emitPointerCheckerMacro(std::ostream &out);
+    void emitIndexCheckerMacro(std::ostream &out);
+    void emitPrologueMacros(std::ostream &out);
+
+    void emitConstantIndexChecker(std::ostream &out);
+    void emitChecker(std::ostream &out, const CheckedType &type, const std::string &kind);
+    void emitCheckers(std::ostream &out, const CheckedTypes &types, const std::string &kind);
+    void emitPrologueCheckers(std::ostream &out);
+
+    void emitPrologue(std::ostream &out);
+
     ExprTransformations exprTransformations_;
+    CheckedTypes checkedPointerTypes_;
+    CheckedTypes checkedIndexTypes_;
 };
 
 /// \brief Mixin class for making AST transformations available after
