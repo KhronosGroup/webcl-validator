@@ -21,27 +21,80 @@ namespace clang {
 class WebCLTransformation
 {
 public:
+    virtual ~WebCLTransformation() {};
     virtual bool rewrite(clang::Rewriter &rewriter) = 0;
 };
 
-/// \brief Adds an index check to array subscription when the limits
-/// are known at compile time.
-class WebCLConstantArraySubscriptTransformation : public WebCLTransformation
-                                                , public WebCLReporter
+/// \brief A base class for transformations that want to wrap an
+/// expression inside a checker function.
+class WebCLCheckerTransformation : public WebCLTransformation
+                                 , public WebCLReporter
 {
 public:
-    WebCLConstantArraySubscriptTransformation(
-        clang::CompilerInstance &instance,
-        clang::ArraySubscriptExpr *expr, llvm::APInt &bound);
-    ~WebCLConstantArraySubscriptTransformation();
+    WebCLCheckerTransformation(
+        clang::CompilerInstance &instance, const std::string &checker);
+
+protected:
+
+    const std::string checker_;
+};
+
+
+/// \brief Adds an index check to array subscription when the limits
+/// are unknown at compile time.
+class WebCLArraySubscriptTransformation : public WebCLCheckerTransformation
+{
+public:
+
+    WebCLArraySubscriptTransformation(
+        clang::CompilerInstance &instance, const std::string &checker,
+        clang::ArraySubscriptExpr *expr);
+    virtual ~WebCLArraySubscriptTransformation();
 
     /// \see WebCLTransformation::rewrite
     virtual bool rewrite(clang::Rewriter &rewriter);
 
-private:
+protected:
+
+    std::string getBaseAsText(clang::Rewriter &rewriter);
+    std::string getIndexAsText(clang::Rewriter &rewriter);
 
     clang::ArraySubscriptExpr *expr_;
+};
+
+/// \brief Adds an index check to array subscription when the limits
+/// are known at compile time.
+class WebCLConstantArraySubscriptTransformation : public WebCLArraySubscriptTransformation
+{
+public:
+    WebCLConstantArraySubscriptTransformation(
+        clang::CompilerInstance &instance, const std::string &checker,
+        clang::ArraySubscriptExpr *expr, llvm::APInt &bound);
+    virtual ~WebCLConstantArraySubscriptTransformation();
+
+    /// \see WebCLTransformation::rewrite
+    virtual bool rewrite(clang::Rewriter &rewriter);
+
+protected:
+
     llvm::APInt bound_;
+};
+
+/// \brief Adds pointer limit check.
+class WebCLPointerDereferenceTransformation : public WebCLCheckerTransformation
+{
+public:
+    WebCLPointerDereferenceTransformation(
+        clang::CompilerInstance &instance, const std::string &checker,
+        clang::Expr *expr);
+    virtual ~WebCLPointerDereferenceTransformation();
+
+    /// \see WebCLTransformation::rewrite
+    virtual bool rewrite(clang::Rewriter &rewriter);
+
+protected:
+
+    clang::Expr *expr_;
 };
 
 /// \brief Performs AST node transformations.
@@ -83,8 +136,10 @@ private:
     std::string getTypeAsString(clang::QualType type);
     std::string getAddressSpaceOfType(clang::QualType type);
     std::string getNameOfType(clang::QualType type);
+    std::string getNameOfChecker(clang::QualType type);
 
     void addCheckedType(CheckedTypes &types, clang::QualType type);
+    void addTransformation(const clang::Expr *expr, WebCLTransformation *transformation);
 
     void emitAddressSpaceOfType(std::ostream &out, clang::QualType type);
     void emitNameOfType(std::ostream &out, clang::QualType type);

@@ -1,23 +1,17 @@
 // RUN: cat %s | %opencl-validator
 // RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>&1 | grep -v CHECK | %FileCheck %s
 
-// CHECK-NOT: Pointer access needs to be checked.
-
 int get_pointed_value(__global int *pointer)
 {
-    // CHECK: Pointer access needs to be checked.
+    // CHECK: return *wcl_global_int_ptr(NULL, pointer);
     return *pointer;
 }
 
-// CHECK-NOT: Pointer access needs to be checked.
-
 void set_pointed_value(__global int *pointer, int value)
 {
-    // CHECK: Pointer access needs to be checked.
+    // CHECK: *wcl_global_int_ptr(NULL, pointer) = value;
     *pointer = value;
 }
-
-// CHECK-NOT: Pointer access needs to be checked.
 
 __kernel void access_pointer(
     __global int *array)

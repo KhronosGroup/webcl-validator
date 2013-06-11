@@ -1,52 +1,29 @@
 // RUN: cat %s | grep -v DRIVER-MAY-REJECT %opencl-validator
 // RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>&1 | grep -v CHECK | %FileCheck %s
 
-// CHECK-NOT: warning: Array size not known until run-time.
-// CHECK-NOT: warning: Index value not known until run-time.
-
 int get_indexed_value(__global int *array, int index)
 {
     const int triple[3] = { 0, 1, 2 };
-    // array[index]:
-    // CHECK: warning: Array size not known until run-time.
-    // CHECK: warning: Index value not known until run-time.
-    // array[0]:
-    // CHECK: warning: Array size not known until run-time.
-    // triple[index]:
-    // CHECK: warning: Index value not known until run-time.
+    // CHECK: const int sum1 = array[wcl_global_int_idx(NULL, array, index)] + array[wcl_global_int_idx(NULL, array, 0)] + triple[wcl_idx(index, 3UL)];
     const int sum1 = array[index] + array[0] + triple[index];
+    // CHECK: const int sum2 = triple[0] + triple[1] + triple[2];
     const int sum2 = triple[0] + triple[1] + triple[2];
-    // index[array]:
-    // CHECK: warning: Array size not known until run-time.
-    // CHECK: warning: Index value not known until run-time.
-    // 0[array]:
-    // CHECK: warning: Array size not known until run-time.
-    // index[triple]:
-    // CHECK: warning: Index value not known until run-time.
+    // CHECK: const int sum3 = array[wcl_global_int_idx(NULL, array, index)] + array[wcl_global_int_idx(NULL, array, 0)] + triple[wcl_idx(index, 3UL)];
     const int sum3 = index[array] + 0[array] + index[triple]; // DRIVER-MAY-REJECT
+    // CHECK: const int sum4 = 0[triple] + 1[triple] + 2[triple];
     const int sum4 = 0[triple] + 1[triple] + 2[triple]; // DRIVER-MAY-REJECT
     return sum1 + sum2
         + sum3 + sum4 // DRIVER-MAY-REJECT
         ;
 }
 
-// CHECK-NOT: warning: Array size not known until run-time.
-// CHECK-NOT: warning: Index value not known until run-time.
-
 void set_indexed_value(__global int *array, int index, int value)
 {
-    // array[index]:
-    // CHECK: warning: Array size not known until run-time.
-    // CHECK: warning: Index value not known until run-time.
+    // CHECK: array[wcl_global_int_idx(NULL, array, index)] += value;
     array[index] += value;
-    // index[array]:
-    // CHECK: warning: Array size not known until run-time.
-    // CHECK: warning: Index value not known until run-time.
+    // CHECK: array[wcl_global_int_idx(NULL, array, index)] += value;
     index[array] += value; // DRIVER-MAY-REJECT
 }
-
-// CHECK-NOT: warning: Array size not known until run-time.
-// CHECK-NOT: warning: Index value not known until run-time.
 
 __kernel void access_array(
     __global int *array)

@@ -7,12 +7,71 @@
 
 #include <sstream>
 
+WebCLCheckerTransformation::WebCLCheckerTransformation(
+    clang::CompilerInstance &instance, const std::string &checker)
+    : WebCLReporter(instance), checker_(checker)
+{
+}
+
+// WebCLArraySubscriptTransformation
+
+WebCLArraySubscriptTransformation::WebCLArraySubscriptTransformation(
+    clang::CompilerInstance &instance, const std::string &checker,
+    clang::ArraySubscriptExpr *expr)
+    : WebCLCheckerTransformation(instance, checker)
+    , expr_(expr)
+{
+}
+
+WebCLArraySubscriptTransformation::~WebCLArraySubscriptTransformation()
+{
+}
+
+std::string WebCLArraySubscriptTransformation::getBaseAsText(clang::Rewriter &rewriter)
+{
+    clang::Expr *base = expr_->getBase();
+    if (!base) {
+        error(expr_->getLocStart(), "Invalid indexed array.");
+        return "";
+    }
+
+    return rewriter.getRewrittenText(base->getSourceRange());
+}
+
+std::string WebCLArraySubscriptTransformation::getIndexAsText(clang::Rewriter &rewriter)
+{
+    clang::Expr *index = expr_->getIdx();
+    if (!index) {
+        error(expr_->getLocStart(), "Invalid array index.");
+        return "";
+    }
+    clang::Expr *plainIndex = index->IgnoreParens();
+    if (!plainIndex) {
+        error(index->getLocStart(), "Can't remove parentheses from array index.");
+        return "";
+    }
+
+    return rewriter.getRewrittenText(plainIndex->getSourceRange());
+}
+
+bool WebCLArraySubscriptTransformation::rewrite(clang::Rewriter &rewriter)
+{
+    const std::string base = getBaseAsText(rewriter);
+    const std::string index = getIndexAsText(rewriter);
+
+    const std::string replacement =
+        base + "[" + checker_ + "(NULL, " + base + ", " + index + ")]";
+    // Rewriter returns false on success.
+    return !rewriter.ReplaceText(expr_->getSourceRange(), replacement);
+}
+
 // WebCLConstantArraySubscriptTransformation
 
 WebCLConstantArraySubscriptTransformation::WebCLConstantArraySubscriptTransformation(
-    clang::CompilerInstance &instance,
+    clang::CompilerInstance &instance, const std::string &checker,
     clang::ArraySubscriptExpr *expr, llvm::APInt &bound)
-    : WebCLReporter(instance), expr_(expr), bound_(bound)
+    : WebCLArraySubscriptTransformation(instance, checker, expr)
+    , bound_(bound)
 {
 }
 
@@ -22,26 +81,34 @@ WebCLConstantArraySubscriptTransformation::~WebCLConstantArraySubscriptTransform
 
 bool WebCLConstantArraySubscriptTransformation::rewrite(clang::Rewriter &rewriter)
 {
-    clang::Expr *base = expr_->getBase();
-    if (!base) {
-        error(expr_->getLocStart(), "Invalid indexed array.");
-        return false;
-    }
-    clang::Expr *index = expr_->getIdx();
-    if (!index) {
-        error(expr_->getLocStart(), "Invalid array index.");
-        return false;
-    }
-    clang::Expr *plainIndex = index->IgnoreParens();
-    if (!plainIndex) {
-        error(index->getLocStart(), "Can't remove parentheses from array index.");
-        return false;
-    }
+    const std::string base = getBaseAsText(rewriter);
+    const std::string index = getIndexAsText(rewriter);
 
     const std::string replacement =
-        rewriter.getRewrittenText(base->getSourceRange()) + "[(" +
-        rewriter.getRewrittenText(plainIndex->getSourceRange()) + ") % " +
-        bound_.toString(10, false) + "UL]";
+        base + "[" + checker_ + "(" + index + ", " + bound_.toString(10, false) + "UL)]";
+    // Rewriter returns false on success.
+    return !rewriter.ReplaceText(expr_->getSourceRange(), replacement);
+}
+
+
+// WebCLPointerDereferenceTransformation
+
+WebCLPointerDereferenceTransformation::WebCLPointerDereferenceTransformation(
+    clang::CompilerInstance &instance, const std::string &checker,
+    clang::Expr *expr)
+    : WebCLCheckerTransformation(instance, checker)
+    , expr_(expr)
+{
+}
+
+WebCLPointerDereferenceTransformation::~WebCLPointerDereferenceTransformation()
+{
+}
+
+bool WebCLPointerDereferenceTransformation::rewrite(clang::Rewriter &rewriter)
+{
+    const std::string replacement =
+        checker_ + "(NULL, " + rewriter.getRewrittenText(expr_->getSourceRange()) + ")";
     // Rewriter returns false on success.
     return !rewriter.ReplaceText(expr_->getSourceRange(), replacement);
 }
@@ -78,28 +145,21 @@ bool WebCLTransformer::rewrite(clang::Rewriter &rewriter)
 void WebCLTransformer::addArrayIndexCheck(
     clang::ArraySubscriptExpr *expr, llvm::APInt &bound)
 {
-    WebCLTransformation *transformation =
-        new WebCLConstantArraySubscriptTransformation(instance_, expr, bound);
-
-    if (!transformation) {
-        error(expr->getLocStart(), "Internal error. Can't create constant array index check.");
-        return;
-    }
-
-    const std::pair<ExprTransformations::iterator, bool> status =
-        exprTransformations_.insert(
-            ExprTransformations::value_type(expr, transformation));
-
-    if (!status.second) {
-        error(expr->getLocStart(), "Array index check has been already created.");
-        return;
-    }
+    addTransformation(
+        expr,
+        new WebCLConstantArraySubscriptTransformation(
+            instance_, "wcl_idx", expr, bound));
 }
 
 void WebCLTransformer::addArrayIndexCheck(clang::ArraySubscriptExpr *expr)
 {
     const clang::QualType type = expr->getType();
     addCheckedType(checkedIndexTypes_, type);
+
+    const std::string checker = getNameOfChecker(type) + "_idx";
+    addTransformation(
+        expr,
+        new WebCLArraySubscriptTransformation(instance_, checker, expr));
 }
 
 void WebCLTransformer::addPointerCheck(clang::Expr *expr)
@@ -107,6 +167,11 @@ void WebCLTransformer::addPointerCheck(clang::Expr *expr)
     const clang::Type *type = expr->getType().getTypePtrOrNull();
     const clang::QualType pointee = type->getPointeeType();
     addCheckedType(checkedPointerTypes_, pointee);
+
+    const std::string checker = getNameOfChecker(pointee) + "_ptr";
+    addTransformation(
+        expr,
+        new WebCLPointerDereferenceTransformation(instance_, checker, expr));
 }
 
 bool WebCLTransformer::rewritePrologue(clang::Rewriter &rewriter)
@@ -161,12 +226,37 @@ std::string WebCLTransformer::getNameOfType(clang::QualType type)
     return type.getUnqualifiedType().getAsString();
 }
 
+std::string WebCLTransformer::getNameOfChecker(clang::QualType type)
+{
+    const std::string addressSpace = getAddressSpaceOfType(type);
+    const std::string name = getNameOfType(type);
+    return "wcl_" + addressSpace + "_" + name;
+}
+
 void WebCLTransformer::addCheckedType(CheckedTypes &types, clang::QualType type)
 {
     const std::string addressSpace = getAddressSpaceOfType(type);
     const std::string name = getNameOfType(type);
     const CheckedType checked(addressSpace, name);
     types.insert(checked);
+}
+
+void WebCLTransformer::addTransformation(
+    const clang::Expr *expr, WebCLTransformation *transformation)
+{
+    if (!transformation) {
+        error(expr->getLocStart(), "Internal error. Can't create transformation.");
+        return;
+    }
+
+    const std::pair<ExprTransformations::iterator, bool> status =
+        exprTransformations_.insert(
+            ExprTransformations::value_type(expr, transformation));
+
+    if (!status.second) {
+        error(expr->getLocStart(), "Transformation has been already created.");
+        return;
+    }
 }
 
 void WebCLTransformer::emitAddressSpaceRecord(std::ostream &out, const std::string &name)

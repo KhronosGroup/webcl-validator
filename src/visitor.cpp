@@ -121,8 +121,6 @@ bool WebCLAccessor::VisitArraySubscriptExpr(clang::ArraySubscriptExpr *expr)
             if (!isArraySizeValid)
                 error(base->getLocStart(), "Array size is not positive.\n");
         }
-    } else {
-        warning(base->getLocStart(), "Array size not known until run-time.\n");
     }
 
     llvm::APSInt indexValue;
@@ -136,8 +134,6 @@ bool WebCLAccessor::VisitArraySubscriptExpr(clang::ArraySubscriptExpr *expr)
             if (!isIndexValueValid)
                 error(index->getLocStart(), "Array index is too small.\n");
         }
-    } else {
-        warning(index->getLocStart(), "Index value not known until run-time.\n");
     }
 
     if (isArraySizeValid && isIndexValueValid) {
@@ -154,9 +150,7 @@ bool WebCLAccessor::VisitArraySubscriptExpr(clang::ArraySubscriptExpr *expr)
 
     if (isArraySizeValid && !isIndexValueValid) {
         getTransformer().addArrayIndexCheck(expr, arraySize);
-    }
-
-    if (!isArraySizeKnown) {
+    } else if (!isArraySizeKnown) {
         getTransformer().addArrayIndexCheck(expr);
     }
 
@@ -178,7 +172,6 @@ bool WebCLAccessor::VisitUnaryOperator(clang::UnaryOperator *expr)
     }
 
     if (isPointerCheckNeeded(pointer)) {
-        warning(expr->getExprLoc(), "Pointer access needs to be checked.\n");
         getTransformer().addPointerCheck(pointer);
     }
 
