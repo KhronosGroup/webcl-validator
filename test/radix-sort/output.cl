@@ -50,8 +50,9 @@ typedef struct {
 #define WCL_MAX_PTR(name, type, field)          \
     (WCL_MIN_PTR(name, type, (field) + 1) - 1)
 #define WCL_MIN_IDX(name, type, field, ptr)     \
-    0// negative indices need to be taken into account
-    //(ptr - WCL_MIN_PTR(name, type, field))
+    0
+    // negative indices need to be taken into account
+    // (ptr - WCL_MIN_PTR(name, type, field))
 #define WCL_MAX_IDX(name, type, field, ptr)     \
     (WCL_MAX_PTR(name, type, field) - ptr)
 
