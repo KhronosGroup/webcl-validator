@@ -146,6 +146,30 @@ bool WebCLConstantArraySubscriptTransformation::rewrite(clang::Rewriter &rewrite
     return !rewriter.ReplaceText(expr_->getSourceRange(), replacement);
 }
 
+// WebCLKernelArraySubscriptTransformation
+
+WebCLKernelArraySubscriptTransformation::WebCLKernelArraySubscriptTransformation(
+    clang::CompilerInstance &instance, const std::string &checker,
+    clang::ArraySubscriptExpr *expr, const std::string &bound)
+    : WebCLArraySubscriptTransformation(instance, checker, expr)
+    , bound_(bound)
+{
+}
+
+WebCLKernelArraySubscriptTransformation::~WebCLKernelArraySubscriptTransformation()
+{
+}
+
+bool WebCLKernelArraySubscriptTransformation::rewrite(clang::Rewriter &rewriter)
+{
+    const std::string base = getBaseAsText(rewriter);
+    const std::string index = getIndexAsText(rewriter);
+
+    const std::string replacement =
+        base + "[" + checker_ + "(" + index + ", " + bound_ + ")]";
+    // Rewriter returns false on success.
+    return !rewriter.ReplaceText(expr_->getSourceRange(), replacement);
+}
 
 // WebCLPointerDereferenceTransformation
 
@@ -209,8 +233,8 @@ void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)
 
 void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
 {
-    const std::string name = decl->getName();
-    const std::string parameter = "unsigned long wcl_" + name + "_size";
+    const std::string name = getNameOfSizeParameter(decl);
+    const std::string parameter = "unsigned long " + name;
     addTransformation(
         decl,
         new WebCLSizeParameterInsertion(
@@ -228,13 +252,20 @@ void WebCLTransformer::addArrayIndexCheck(
 
 void WebCLTransformer::addArrayIndexCheck(clang::ArraySubscriptExpr *expr)
 {
-    const clang::QualType type = expr->getType();
-    addCheckedType(checkedIndexTypes_, type);
+    if (clang::ParmVarDecl *var = getDeclarationOfArray(expr)) {
+        addTransformation(
+            expr,
+            new WebCLKernelArraySubscriptTransformation(
+                instance_, "wcl_idx", expr, getNameOfSizeParameter(var)));
+    } else {
+        const clang::QualType type = expr->getType();
+        addCheckedType(checkedIndexTypes_, type);
 
-    const std::string checker = getNameOfChecker(type) + "_idx";
-    addTransformation(
-        expr,
-        new WebCLArraySubscriptTransformation(instance_, checker, expr));
+        const std::string checker = getNameOfChecker(type) + "_idx";
+        addTransformation(
+            expr,
+            new WebCLArraySubscriptTransformation(instance_, checker, expr));
+    }
 }
 
 void WebCLTransformer::addPointerCheck(clang::Expr *expr)
@@ -312,6 +343,36 @@ std::string WebCLTransformer::getNameOfChecker(clang::QualType type)
     const std::string addressSpace = getAddressSpaceOfType(type);
     const std::string name = getNameOfType(type);
     return "wcl_" + addressSpace + "_" + name;
+}
+
+clang::ParmVarDecl *WebCLTransformer::getDeclarationOfArray(clang::ArraySubscriptExpr *expr)
+{
+    clang::Expr *base = expr->getBase();
+    if (!base)
+        return NULL;
+
+    clang::Expr *pruned = base->IgnoreImpCasts();
+    if (!pruned)
+        return NULL;
+
+    clang::DeclRefExpr *ref = llvm::dyn_cast<clang::DeclRefExpr>(pruned);
+    if (!ref)
+        return NULL;
+
+    clang::ParmVarDecl *var = llvm::dyn_cast<clang::ParmVarDecl>(ref->getDecl());
+    if (!var)
+        return NULL;
+
+    if (!declTransformations_.count(var))
+        return NULL;
+
+    return var;
+}
+
+std::string WebCLTransformer::getNameOfSizeParameter(clang::ParmVarDecl *decl)
+{
+    const std::string name = decl->getName();
+    return "wcl_" + name + "_size";
 }
 
 void WebCLTransformer::addCheckedType(CheckedTypes &types, clang::QualType type)

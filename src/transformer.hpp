@@ -28,8 +28,8 @@ public:
     virtual bool rewrite(clang::Rewriter &rewriter) = 0;
 };
 
-/// \brief A base class for transformations that inserts a parameter
-/// to a function or kernel declaration.
+/// \brief A base class for transformations that insert a parameter to
+/// a function or kernel declaration.
 class WebCLParameterInsertion : public WebCLTransformation
                               , public WebCLReporter
 {
@@ -137,6 +137,24 @@ protected:
     llvm::APInt bound_;
 };
 
+/// \brief Adds an index check to kernel parameter array subscription.
+class WebCLKernelArraySubscriptTransformation : public WebCLArraySubscriptTransformation
+{
+public:
+
+    WebCLKernelArraySubscriptTransformation(
+        clang::CompilerInstance &instance, const std::string &checker,
+        clang::ArraySubscriptExpr *expr, const std::string &bound);
+    virtual ~WebCLKernelArraySubscriptTransformation();
+
+    /// \see WebCLTransformation::rewrite
+    virtual bool rewrite(clang::Rewriter &rewriter);
+
+protected:
+
+    std::string bound_;
+};
+
 /// \brief Adds pointer limit check.
 class WebCLPointerDereferenceTransformation : public WebCLCheckerTransformation
 {
@@ -204,6 +222,9 @@ private:
     std::string getAddressSpaceOfType(clang::QualType type);
     std::string getNameOfType(clang::QualType type);
     std::string getNameOfChecker(clang::QualType type);
+
+    clang::ParmVarDecl *getDeclarationOfArray(clang::ArraySubscriptExpr *expr);
+    std::string getNameOfSizeParameter(clang::ParmVarDecl *decl);
 
     void addCheckedType(CheckedTypes &types, clang::QualType type);
     void addTransformation(const clang::Decl *decl, WebCLTransformation *transformation);
