@@ -35,6 +35,39 @@ private:
         clang::SourceLocation typeLocation, const clang::Type *type);
 };
 
+/// \brief Finds function parameter lists that need to be extended.
+class WebCLParameterizer : public WebCLReporter
+                         , public WebCLTransformerClient
+                         , public clang::RecursiveASTVisitor<WebCLParameterizer>
+{
+public:
+
+    explicit WebCLParameterizer(clang::CompilerInstance &instance);
+    ~WebCLParameterizer();
+
+    /// \see clang::RecursiveASTVisitor::VisitFunctionDecl
+    bool VisitFunctionDecl(clang::FunctionDecl *decl);
+
+private:
+
+    bool handleFunction(clang::FunctionDecl *decl);
+
+    bool handleKernel(clang::FunctionDecl *decl);
+
+    /// \brief Whether function needs address space record parameter.
+    bool isRecordRequired(clang::FunctionDecl *decl);
+
+    /// \brief Whether parameter requires size information.
+    ///
+    /// This is intended for __global, __local and __constant memory
+    /// object parameters.
+    bool isSizeRequired(const clang::ParmVarDecl *decl);
+
+    /// \brief Whether address space is __global, __local or
+    /// __constant.
+    bool isNonPrivateOpenCLAddressSpace(unsigned int addressSpace) const;
+};
+
 /// \brief Finds array subscriptions and pointer dereferences.
 class WebCLAccessor : public WebCLReporter
                     , public WebCLTransformerClient

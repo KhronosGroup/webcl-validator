@@ -7,6 +7,62 @@
 
 #include <sstream>
 
+// WebCLParameterInsertion
+
+WebCLParameterInsertion::WebCLParameterInsertion(
+    clang::CompilerInstance &instance, const std::string &parameter)
+    : WebCLReporter(instance), parameter_(parameter)
+{
+}
+
+// WebCLRecordParameterInsertion
+
+WebCLRecordParameterInsertion::WebCLRecordParameterInsertion(
+    clang::CompilerInstance &instance, const std::string &parameter,
+    clang::FunctionDecl *decl)
+    : WebCLParameterInsertion(instance, parameter)
+    , decl_(decl)
+{
+}
+
+WebCLRecordParameterInsertion::~WebCLRecordParameterInsertion()
+{
+}
+
+bool WebCLRecordParameterInsertion::rewrite(clang::Rewriter &rewriter)
+{
+    // Rewriter returns false on success.
+    return !rewriter.InsertTextBefore(
+        decl_->getParamDecl(0)->getLocStart(), parameter_ + ", ");
+}
+
+// WebCLSizeParameterInsertion
+
+WebCLSizeParameterInsertion::WebCLSizeParameterInsertion(
+    clang::CompilerInstance &instance, const std::string &parameter,
+    clang::ParmVarDecl *decl)
+    : WebCLParameterInsertion(instance, parameter)
+    , decl_(decl)
+{
+}
+
+WebCLSizeParameterInsertion::~WebCLSizeParameterInsertion()
+{
+}
+
+bool WebCLSizeParameterInsertion::rewrite(clang::Rewriter &rewriter)
+{
+    // Doesn't work as expected:
+    //return !rewriter.InsertTextAfter(decl_->getLocEnd(), ", " + parameter_);
+
+    // Rewriter returns false on success.
+    const std::string replacement =
+        rewriter.getRewrittenText(decl_->getSourceRange()) + ", " + parameter_;
+    return !rewriter.ReplaceText(decl_->getSourceRange(), replacement);
+}
+
+// WebCLCheckerTransformation
+
 WebCLCheckerTransformation::WebCLCheckerTransformation(
     clang::CompilerInstance &instance, const std::string &checker)
     : WebCLReporter(instance), checker_(checker)
@@ -117,6 +173,7 @@ bool WebCLPointerDereferenceTransformation::rewrite(clang::Rewriter &rewriter)
 
 WebCLTransformer::WebCLTransformer(clang::CompilerInstance &instance)
     : WebCLReporter(instance)
+    , declTransformations_()
     , exprTransformations_()
     , checkedPointerTypes_()
     , checkedIndexTypes_()
@@ -140,6 +197,24 @@ bool WebCLTransformer::rewrite(clang::Rewriter &rewriter)
     status = status && rewriteTransformations(rewriter);
 
     return status;
+}
+
+void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)
+{
+    addTransformation(
+        decl,
+        new WebCLRecordParameterInsertion(
+            instance_, "WclAddressSpaces *wcl_as", decl));
+}
+
+void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
+{
+    const std::string name = decl->getName();
+    const std::string parameter = "unsigned long wcl_" + name + "_size";
+    addTransformation(
+        decl,
+        new WebCLSizeParameterInsertion(
+            instance_, parameter, decl));
 }
 
 void WebCLTransformer::addArrayIndexCheck(
@@ -188,6 +263,12 @@ bool WebCLTransformer::rewritePrologue(clang::Rewriter &rewriter)
 bool WebCLTransformer::rewriteTransformations(clang::Rewriter &rewriter)
 {
     bool status = true;
+
+    for (DeclTransformations::iterator i = declTransformations_.begin();
+         i != declTransformations_.end(); ++i) {
+        WebCLTransformation *transformation = i->second;
+        status = status && transformation->rewrite(rewriter);
+    }
 
     for (ExprTransformations::iterator i = exprTransformations_.begin();
          i != exprTransformations_.end(); ++i) {
@@ -242,10 +323,28 @@ void WebCLTransformer::addCheckedType(CheckedTypes &types, clang::QualType type)
 }
 
 void WebCLTransformer::addTransformation(
+    const clang::Decl *decl, WebCLTransformation *transformation)
+{
+    if (!transformation) {
+        error(decl->getLocStart(), "Internal error. Can't create declaration transformation.");
+        return;
+    }
+
+    const std::pair<DeclTransformations::iterator, bool> status =
+        declTransformations_.insert(
+            DeclTransformations::value_type(decl, transformation));
+
+    if (!status.second) {
+        error(decl->getLocStart(), "Declaration transformation has been already created.");
+        return;
+    }
+}
+
+void WebCLTransformer::addTransformation(
     const clang::Expr *expr, WebCLTransformation *transformation)
 {
     if (!transformation) {
-        error(expr->getLocStart(), "Internal error. Can't create transformation.");
+        error(expr->getLocStart(), "Internal error. Can't create expression transformation.");
         return;
     }
 
@@ -254,7 +353,7 @@ void WebCLTransformer::addTransformation(
             ExprTransformations::value_type(expr, transformation));
 
     if (!status.second) {
-        error(expr->getLocStart(), "Transformation has been already created.");
+        error(expr->getLocStart(), "Expression transformation has been already created.");
         return;
     }
 }

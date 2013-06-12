@@ -23,6 +23,7 @@ private:
     bool hasErrors(clang::ASTContext &context) const;
 
     WebCLRestrictor restrictor_;
+    WebCLParameterizer parameterizer_;
     WebCLAccessor accessor_;
     WebCLPrinter printer_;
 };

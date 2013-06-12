@@ -4,6 +4,8 @@
 #include "clang/AST/Decl.h"
 #include "clang/Frontend/CompilerInstance.h"
 
+// WebCLRestrictor
+
 WebCLRestrictor::WebCLRestrictor(clang::CompilerInstance &instance)
     : WebCLReporter(instance)
     , clang::RecursiveASTVisitor<WebCLRestrictor>()
@@ -89,6 +91,96 @@ void WebCLRestrictor::check3dImageParameter(
             error(typeLocation, "WebCL doesn't support 3D images.\n");
     }
 }
+
+// WebCLParameterizer
+
+WebCLParameterizer::WebCLParameterizer(clang::CompilerInstance &instance)
+    : WebCLReporter(instance)
+    , WebCLTransformerClient()
+    , clang::RecursiveASTVisitor<WebCLParameterizer>()
+{
+}
+
+WebCLParameterizer::~WebCLParameterizer()
+{
+}
+
+bool WebCLParameterizer::VisitFunctionDecl(clang::FunctionDecl *decl)
+{
+    if (!isFromMainFile(decl->getLocStart()))
+        return true;
+
+    if (decl->hasAttr<clang::OpenCLKernelAttr>())
+        return handleKernel(decl);
+    return handleFunction(decl);
+}
+
+bool WebCLParameterizer::handleFunction(clang::FunctionDecl *decl)
+{
+    if (!isRecordRequired(decl))
+        return true;
+    getTransformer().addRecordParameter(decl);
+    return true;
+}
+
+bool WebCLParameterizer::handleKernel(clang::FunctionDecl *decl)
+{
+    std::set<clang::ParmVarDecl*> params;
+    for (unsigned int i = 0; i < decl->getNumParams(); ++i) {
+        clang::ParmVarDecl *param = decl->getParamDecl(i);
+        if (!param) {
+            error(decl->getLocation(), "Invalid parameter at position %0.") << i;
+        } else if (isSizeRequired(param)) {
+            getTransformer().addSizeParameter(param);
+        }
+    }
+    return true;
+}
+
+bool WebCLParameterizer::isRecordRequired(clang::FunctionDecl *decl)
+{
+    // Examine whether the function body needs to perform limit checks.
+    return decl->getNumParams() > 0;
+}
+
+bool WebCLParameterizer::isSizeRequired(const clang::ParmVarDecl *decl)
+{
+    const clang::TypeSourceInfo *info = decl->getTypeSourceInfo();
+    if (!info) {
+        error(decl->getSourceRange().getBegin(), "Invalid parameter type.");
+        return false;
+    }
+
+    const clang::Type *type = decl->getOriginalType().getTypePtrOrNull();
+    if (!type) {
+        clang::SourceLocation typeLocation = info->getTypeLoc().getBeginLoc();
+        error(typeLocation, "Invalid parameter type.");
+        return false;
+    }
+
+    if (!type->isPointerType())
+        return false;
+
+    return isNonPrivateOpenCLAddressSpace(type->getPointeeType().getAddressSpace());
+}
+
+bool WebCLParameterizer::isNonPrivateOpenCLAddressSpace(unsigned int addressSpace) const
+{
+    static const clang::LangAS::ID spaces[] = {
+        clang::LangAS::opencl_global,
+        clang::LangAS::opencl_local,
+        clang::LangAS::opencl_constant
+    };
+
+    for (unsigned int i = 0; i < sizeof(spaces) / sizeof(spaces[0]); ++i) {
+        if (addressSpace == spaces[i])
+            return true;
+    }
+
+    return false;
+}
+
+// WebCLAccessor
 
 WebCLAccessor::WebCLAccessor(
     clang::CompilerInstance &instance)

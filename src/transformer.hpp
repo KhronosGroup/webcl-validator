@@ -11,7 +11,9 @@
 #include <utility>
 
 namespace clang {
+    class Decl;
     class Expr;
+    class ParmVarDecl;
     class Rewriter;
     class ArraySubscriptExpr;
 }
@@ -21,8 +23,62 @@ namespace clang {
 class WebCLTransformation
 {
 public:
+
     virtual ~WebCLTransformation() {};
     virtual bool rewrite(clang::Rewriter &rewriter) = 0;
+};
+
+/// \brief A base class for transformations that inserts a parameter
+/// to a function or kernel declaration.
+class WebCLParameterInsertion : public WebCLTransformation
+                              , public WebCLReporter
+{
+public:
+
+    WebCLParameterInsertion(
+        clang::CompilerInstance &instance, const std::string &parameter);
+
+protected:
+
+    const std::string parameter_;
+};
+
+/// \brief Inserts address space record parameter at the first
+/// position in parameter list.
+class WebCLRecordParameterInsertion : public WebCLParameterInsertion
+{
+public:
+
+    WebCLRecordParameterInsertion(
+        clang::CompilerInstance &instance, const std::string &parameter,
+        clang::FunctionDecl *decl);
+    virtual ~WebCLRecordParameterInsertion();
+
+    /// \see WebCLTransformation::rewrite
+    virtual bool rewrite(clang::Rewriter &rewriter);
+
+protected:
+
+    clang::FunctionDecl *decl_;
+};
+
+/// \brief Inserts size parameter that is linked to a kernel memory
+/// object.
+class WebCLSizeParameterInsertion : public WebCLParameterInsertion
+{
+public:
+
+    WebCLSizeParameterInsertion(
+        clang::CompilerInstance &instance, const std::string &parameter,
+        clang::ParmVarDecl *decl);
+    virtual ~WebCLSizeParameterInsertion();
+
+    /// \see WebCLTransformation::rewrite
+    virtual bool rewrite(clang::Rewriter &rewriter);
+
+protected:
+
+    clang::ParmVarDecl *decl_;
 };
 
 /// \brief A base class for transformations that want to wrap an
@@ -31,6 +87,7 @@ class WebCLCheckerTransformation : public WebCLTransformation
                                  , public WebCLReporter
 {
 public:
+
     WebCLCheckerTransformation(
         clang::CompilerInstance &instance, const std::string &checker);
 
@@ -38,7 +95,6 @@ protected:
 
     const std::string checker_;
 };
-
 
 /// \brief Adds an index check to array subscription when the limits
 /// are unknown at compile time.
@@ -67,6 +123,7 @@ protected:
 class WebCLConstantArraySubscriptTransformation : public WebCLArraySubscriptTransformation
 {
 public:
+
     WebCLConstantArraySubscriptTransformation(
         clang::CompilerInstance &instance, const std::string &checker,
         clang::ArraySubscriptExpr *expr, llvm::APInt &bound);
@@ -84,6 +141,7 @@ protected:
 class WebCLPointerDereferenceTransformation : public WebCLCheckerTransformation
 {
 public:
+
     WebCLPointerDereferenceTransformation(
         clang::CompilerInstance &instance, const std::string &checker,
         clang::Expr *expr);
@@ -111,6 +169,14 @@ public:
     /// \see WebCLTransformation::rewrite
     virtual bool rewrite(clang::Rewriter &rewriter);
 
+    /// Modify function parameter declarations:
+    /// function(a, b) -> function(record, a, b)
+    void addRecordParameter(clang::FunctionDecl *decl);
+
+    /// Modify kernel parameter declarations:
+    /// kernel(a, array, b) -> kernel(a, array, array_size, b)
+    void addSizeParameter(clang::ParmVarDecl *decl);
+
     /// Modify array indexing:
     /// array[index] -> array[index % bound]
     void addArrayIndexCheck(clang::ArraySubscriptExpr *expr, llvm::APInt &bound);
@@ -125,6 +191,7 @@ public:
 
 private:
 
+    typedef std::map<const clang::Decl*, WebCLTransformation*> DeclTransformations;
     typedef std::map<const clang::Expr*, WebCLTransformation*> ExprTransformations;
     // address space, name
     typedef std::pair<const std::string, const std::string> CheckedType;
@@ -139,6 +206,7 @@ private:
     std::string getNameOfChecker(clang::QualType type);
 
     void addCheckedType(CheckedTypes &types, clang::QualType type);
+    void addTransformation(const clang::Decl *decl, WebCLTransformation *transformation);
     void addTransformation(const clang::Expr *expr, WebCLTransformation *transformation);
 
     void emitAddressSpaceOfType(std::ostream &out, clang::QualType type);
@@ -161,6 +229,7 @@ private:
 
     void emitPrologue(std::ostream &out);
 
+    DeclTransformations declTransformations_;
     ExprTransformations exprTransformations_;
     CheckedTypes checkedPointerTypes_;
     CheckedTypes checkedIndexTypes_;
