@@ -5,6 +5,7 @@
 WebCLConsumer::WebCLConsumer(clang::CompilerInstance &instance)
     : clang::ASTConsumer()
     , restrictor_(instance)
+    , relocator_(instance)
     , parameterizer_(instance)
     , accessor_(instance)
     , printer_(instance)
@@ -22,6 +23,8 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
     if (!hasErrors(context))
         restrictor_.TraverseDecl(decl);
     if (!hasErrors(context))
+        relocator_.TraverseDecl(decl);
+    if (!hasErrors(context))
         parameterizer_.TraverseDecl(decl);
     if (!hasErrors(context))
         accessor_.TraverseDecl(decl);
@@ -31,6 +34,7 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
 
 void WebCLConsumer::setTransformer(WebCLTransformer &transformer)
 {
+    relocator_.setTransformer(transformer);
     parameterizer_.setTransformer(transformer);
     accessor_.setTransformer(transformer);
     printer_.setTransformer(transformer);

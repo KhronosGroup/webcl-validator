@@ -35,6 +35,34 @@ private:
         clang::SourceLocation typeLocation, const clang::Type *type);
 };
 
+/// \brief Finds variables that need to be relocated into address
+/// space records.
+class WebCLRelocator : public WebCLReporter
+                     , public WebCLTransformerClient
+                     , public clang::RecursiveASTVisitor<WebCLRelocator>
+{
+public:
+
+    explicit WebCLRelocator(clang::CompilerInstance &instance);
+    ~WebCLRelocator();
+
+    /// \see clang::RecursiveASTVisitor::VisitDeclStmt
+    bool VisitDeclStmt(clang::DeclStmt *stmt);
+    /// \see clang::RecursiveASTVisitor::VisitVarDecl
+    bool VisitVarDecl(clang::VarDecl *decl);
+    /// \see clang::RecursiveASTVisitor::VisitUnaryOperator
+    bool VisitUnaryOperator(clang::UnaryOperator *expr);
+
+private:
+
+    clang::VarDecl *getRelocatedVariable(clang::Expr *expr);
+
+    clang::DeclStmt *current_;
+    typedef std::pair<clang::VarDecl*, clang::DeclStmt*> RelocationCandidate;
+    typedef std::map<clang::VarDecl*, clang::DeclStmt*> RelocationCandidates;
+    RelocationCandidates relocationCandidates_;
+};
+
 /// \brief Finds function parameter lists that need to be extended.
 class WebCLParameterizer : public WebCLReporter
                          , public WebCLTransformerClient

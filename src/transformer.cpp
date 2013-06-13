@@ -7,6 +7,35 @@
 
 #include <sstream>
 
+// WebCLVariableRelocation
+
+WebCLVariableRelocation::WebCLVariableRelocation(
+    clang::CompilerInstance &instance,
+    clang::DeclStmt *stmt, clang::VarDecl *decl)
+    : WebCLReporter(instance_)
+    , stmt_(stmt), decl_(decl)
+{
+}
+
+WebCLVariableRelocation::~WebCLVariableRelocation()
+{
+}
+
+bool WebCLVariableRelocation::rewrite(clang::Rewriter &rewriter)
+{
+    clang::SourceRange range = stmt_ ? stmt_->getSourceRange() : decl_->getSourceRange();
+    if (!stmt_) {
+        range.setEnd(range.getEnd().getLocWithOffset(1));
+    }
+
+    const std::string prologue = "\n#if 0\n";
+    const std::string epilogue = "\n#endif\n";
+    const std::string replacement =
+        prologue + rewriter.getRewrittenText(range) + epilogue;
+    // Rewriter returns false on success.
+    return !rewriter.ReplaceText(range, replacement);
+}
+
 // WebCLParameterInsertion
 
 WebCLParameterInsertion::WebCLParameterInsertion(
@@ -221,6 +250,14 @@ bool WebCLTransformer::rewrite(clang::Rewriter &rewriter)
     status = status && rewriteTransformations(rewriter);
 
     return status;
+}
+
+void WebCLTransformer::addRelocatedVariable(clang::DeclStmt *stmt, clang::VarDecl *decl)
+{
+    addTransformation(
+        decl,
+        new WebCLVariableRelocation(
+            instance_, stmt, decl));
 }
 
 void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)

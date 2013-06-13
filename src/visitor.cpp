@@ -92,6 +92,81 @@ void WebCLRestrictor::check3dImageParameter(
     }
 }
 
+// WebCLRelocator
+
+WebCLRelocator::WebCLRelocator(clang::CompilerInstance &instance)
+    : WebCLReporter(instance)
+    , WebCLTransformerClient()
+    , clang::RecursiveASTVisitor<WebCLRelocator>()
+    , current_(NULL)
+    , relocationCandidates_()
+{
+}
+
+WebCLRelocator::~WebCLRelocator()
+{
+}
+
+bool WebCLRelocator::VisitDeclStmt(clang::DeclStmt *stmt)
+{
+    current_ = stmt;
+    return true;
+}
+
+bool WebCLRelocator::VisitVarDecl(clang::VarDecl *decl)
+{
+    // In global scope 'current_' is NULL.
+    RelocationCandidate candidate(decl, current_);
+    relocationCandidates_.insert(candidate);
+    return true;
+}
+
+bool WebCLRelocator::VisitUnaryOperator(clang::UnaryOperator *expr)
+{
+    if (!isFromMainFile(expr->getLocStart()))
+        return true;
+
+    if (expr->getOpcode() != clang::UO_AddrOf)
+        return true;
+
+    clang::Expr *variable = expr->getSubExpr();
+    if (!variable) {
+        error(expr->getLocStart(), "Invalid variable addressing.\n");
+        return true;
+    }
+
+    clang::VarDecl *relocated = getRelocatedVariable(variable);
+    if (!relocated)
+        return true;
+
+    RelocationCandidates::iterator i = relocationCandidates_.find(relocated);
+    if (i == relocationCandidates_.end()) {
+        error(relocated->getLocStart(), "Haven't seen enclosing statement yet.");
+        return true;
+    }
+
+    clang::DeclStmt *stmt = i->second;
+    getTransformer().addRelocatedVariable(stmt, relocated);
+    return true;
+}
+
+clang::VarDecl *WebCLRelocator::getRelocatedVariable(clang::Expr *expr)
+{
+    clang::Expr *pruned = expr->IgnoreImpCasts();
+    if (!pruned)
+        return NULL;
+
+    clang::DeclRefExpr *ref = llvm::dyn_cast<clang::DeclRefExpr>(pruned);
+    if (!ref)
+        return NULL;
+
+    clang::VarDecl *var = llvm::dyn_cast<clang::VarDecl>(ref->getDecl());
+    if (!var)
+        return NULL;
+
+    return var;
+}
+
 // WebCLParameterizer
 
 WebCLParameterizer::WebCLParameterizer(clang::CompilerInstance &instance)

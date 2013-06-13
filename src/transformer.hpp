@@ -11,11 +11,13 @@
 #include <utility>
 
 namespace clang {
+    class ArraySubscriptExpr;
     class Decl;
+    class DeclStmt;
     class Expr;
     class ParmVarDecl;
-    class Rewriter;
-    class ArraySubscriptExpr;
+    class Rewriter; 
+    class VarDecl;
 }
 
 /// \brief Transforms an AST node by rewriting its contents in the
@@ -26,6 +28,26 @@ public:
 
     virtual ~WebCLTransformation() {};
     virtual bool rewrite(clang::Rewriter &rewriter) = 0;
+};
+
+/// \brief Relocate a variable into a corresponding address space
+/// record.
+class WebCLVariableRelocation : public WebCLTransformation
+                              , public WebCLReporter
+{
+public:
+
+    WebCLVariableRelocation(clang::CompilerInstance &instance,
+                            clang::DeclStmt *stmt, clang::VarDecl *decl);
+    virtual ~WebCLVariableRelocation();
+
+    /// \see WebCLTransformation::rewrite
+    virtual bool rewrite(clang::Rewriter &rewriter);
+
+protected:
+
+    clang::DeclStmt *stmt_;
+    clang::VarDecl *decl_;
 };
 
 /// \brief A base class for transformations that insert a parameter to
@@ -186,6 +208,12 @@ public:
     ///
     /// \see WebCLTransformation::rewrite
     virtual bool rewrite(clang::Rewriter &rewriter);
+
+    /// Inform about a variable that is accessed indirectly with a
+    /// pointer. The variable declaration will be moved to a
+    /// corresponding address space record so that indirect accesses
+    /// can be checked.
+    void addRelocatedVariable(clang::DeclStmt *stmt, clang::VarDecl *decl);
 
     /// Modify function parameter declarations:
     /// function(a, b) -> function(record, a, b)
