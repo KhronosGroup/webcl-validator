@@ -26,6 +26,11 @@ __kernel void relocate_variables(
     // CHECK: __global int *result, unsigned long wcl_result_size)
     __global int *result)
 {
+    // CHECK: WclPrivates wcl_ps;
+    // CHECK: WclLocals wcl_ls;
+    // CHECK: WclConstants wcl_cs;
+    // CHECK: WclAddressSpaces wcl_as = { &wcl_ps, &wcl_ls, &wcl_cs, 0 };
+
     // CHECK: #if 0
     // CHECK: int value = constant_value;
     // CHECK: #endif

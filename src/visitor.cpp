@@ -200,6 +200,8 @@ bool WebCLParameterizer::handleFunction(clang::FunctionDecl *decl)
 
 bool WebCLParameterizer::handleKernel(clang::FunctionDecl *decl)
 {
+    getTransformer().addKernel(decl);
+
     std::set<clang::ParmVarDecl*> params;
     for (unsigned int i = 0; i < decl->getNumParams(); ++i) {
         clang::ParmVarDecl *param = decl->getParamDecl(i);

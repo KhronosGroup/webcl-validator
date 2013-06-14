@@ -200,7 +200,7 @@ public:
     const std::string privateAddressSpace_;
     const std::string privateRecordType_;
     const std::string privateField_;
-    const std::string privateRecordName;
+    const std::string privateRecordName_;
 
     const std::string localAddressSpace_;
     const std::string localRecordType_;
@@ -231,6 +231,9 @@ public:
 
     /// Applies all AST transformations.
     bool rewrite(clang::Rewriter &rewriter);
+
+    // Inform about a kernels so that kernel prologues can be emitted.
+    void addKernel(clang::FunctionDecl *decl);
 
     /// Inform about a variable that is accessed indirectly with a
     /// pointer. The variable declaration will be moved to a
@@ -266,8 +269,10 @@ private:
     typedef std::pair<const std::string, const std::string> CheckedType;
     typedef std::set<CheckedType> CheckedTypes;
     typedef std::set<const clang::VarDecl*> VariableDeclarations;
+    typedef std::set<const clang::FunctionDecl*> Kernels;
 
     bool rewritePrologue(clang::Rewriter &rewriter);
+    bool rewriteKernelPrologue(const clang::FunctionDecl *kernel, clang::Rewriter &rewriter);
     bool rewriteTransformations(clang::Rewriter &rewriter);
 
     clang::ParmVarDecl *getDeclarationOfArray(clang::ArraySubscriptExpr *expr);
@@ -296,6 +301,8 @@ private:
 
     void emitPrologue(std::ostream &out);
 
+    void emitKernelPrologue(std::ostream &out);
+
     DeclTransformations declTransformations_;
     ExprTransformations exprTransformations_;
     CheckedTypes checkedPointerTypes_;
@@ -304,6 +311,7 @@ private:
     VariableDeclarations relocatedLocals_;
     VariableDeclarations relocatedConstants_;
     VariableDeclarations relocatedPrivates_;
+    Kernels kernels_;
 
     WebCLTransformerConfiguration cfg_;
 };

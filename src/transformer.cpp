@@ -238,7 +238,7 @@ WebCLTransformerConfiguration::WebCLTransformerConfiguration()
     , privateAddressSpace_("private")
     , privateRecordType_("WclPrivates")
     , privateField_("privates")
-    , privateRecordName("wcl_ps")
+    , privateRecordName_("wcl_ps")
     , localAddressSpace_("local")
     , localRecordType_("WclLocals")
     , localField_("locals")
@@ -328,6 +328,7 @@ WebCLTransformer::WebCLTransformer(clang::CompilerInstance &instance)
     , relocatedLocals_()
     , relocatedConstants_()
     , relocatedPrivates_()
+    , kernels_()
     , cfg_()
 {
 }
@@ -355,6 +356,11 @@ bool WebCLTransformer::rewrite(clang::Rewriter &rewriter)
     status = status && rewriteTransformations(rewriter);
 
     return status;
+}
+
+void WebCLTransformer::addKernel(clang::FunctionDecl *decl)
+{
+    kernels_.insert(decl);
 }
 
 void WebCLTransformer::addRelocatedVariable(clang::DeclStmt *stmt, clang::VarDecl *decl)
@@ -426,12 +432,33 @@ bool WebCLTransformer::rewritePrologue(clang::Rewriter &rewriter)
     std::ostringstream out;
     emitPrologue(out);
     // Rewriter returns false on success.
-    return !rewriter.InsertText(start, out.str(), true, true);
+    return !rewriter.InsertTextAfter(start, out.str());
+}
+
+bool WebCLTransformer::rewriteKernelPrologue(
+    const clang::FunctionDecl *kernel, clang::Rewriter &rewriter)
+{
+    clang::Stmt *body = kernel->getBody();
+    if (!body) {
+        error(kernel->getLocStart(), "Kernel has no body.");
+        return false;
+    }
+
+    std::ostringstream out;
+    emitKernelPrologue(out);
+    // Rewriter returns false on success.
+    return !rewriter.InsertTextAfter(
+        body->getLocStart().getLocWithOffset(1), out.str());
 }
 
 bool WebCLTransformer::rewriteTransformations(clang::Rewriter &rewriter)
 {
     bool status = true;
+
+    for (Kernels::iterator i = kernels_.begin(); i != kernels_.end(); ++i) {
+        const clang::FunctionDecl *kernel = (*i);
+        status = status && rewriteKernelPrologue(kernel, rewriter);
+    }
 
     for (DeclTransformations::iterator i = declTransformations_.begin();
          i != declTransformations_.end(); ++i) {
@@ -714,6 +741,60 @@ void WebCLTransformer::emitPrologue(std::ostream &out)
     emitPrologueRecords(out);
     emitPrologueMacros(out);
     emitPrologueCheckers(out);
+}
+
+void WebCLTransformer::emitKernelPrologue(std::ostream &out)
+{
+    out << "\n";
+
+    std::string privateString = cfg_.privateRecordName_;
+    if (relocatedPrivates_.size()) {
+        out << cfg_.indentation_
+            << cfg_.privateRecordType_ << " " << privateString
+            << ";\n";
+        privateString = "&" + privateString;
+    } else {
+        privateString = "0";
+    }
+
+    std::string localString = cfg_.localRecordName_;
+    if (relocatedLocals_.size()) {
+        out << cfg_.indentation_
+            << cfg_.localRecordType_ << " " << localString
+            << ";\n";
+        localString = "&" + localString;
+    } else {
+        localString = "0";
+    }
+
+    std::string constantString = cfg_.constantRecordName_;
+    if (relocatedConstants_.size()) {
+        out << cfg_.indentation_
+            << cfg_.constantRecordType_ << " " << constantString
+            << ";\n";
+        constantString = "&" + constantString;
+    } else {
+        constantString = "0";
+    }
+
+    std::string globalString = cfg_.globalRecordName_;
+    if (relocatedGlobals_.size()) {
+        out << cfg_.indentation_
+            << cfg_.globalRecordType_ << " " << globalString
+            << ";\n";
+        globalString = "&" + globalString;
+    } else {
+        globalString = "0";
+    }
+
+    out << cfg_.indentation_
+        << cfg_.addressSpaceRecordType_ << " " << cfg_.addressSpaceRecordName_
+        << " = { "
+        << privateString << ", "
+        << localString << ", "
+        << constantString << ", "
+        << globalString
+        << " };\n";
 }
 
 // WebCLTransformerClient
