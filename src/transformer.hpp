@@ -242,6 +242,7 @@ private:
     // address space, name
     typedef std::pair<const std::string, const std::string> CheckedType;
     typedef std::set<CheckedType> CheckedTypes;
+    typedef std::set<const clang::VarDecl*> VariableDeclarations;
 
     bool rewritePrologue(clang::Rewriter &rewriter);
     bool rewriteTransformations(clang::Rewriter &rewriter);
@@ -257,11 +258,11 @@ private:
     void addCheckedType(CheckedTypes &types, clang::QualType type);
     void addTransformation(const clang::Decl *decl, WebCLTransformation *transformation);
     void addTransformation(const clang::Expr *expr, WebCLTransformation *transformation);
+    void addRelocatedVariable(clang::VarDecl *decl);
 
-    void emitAddressSpaceOfType(std::ostream &out, clang::QualType type);
-    void emitNameOfType(std::ostream &out, clang::QualType type);
-
-    void emitAddressSpaceRecord(std::ostream &out, const std::string &name);
+    void emitVariable(std::ostream& out, const clang::VarDecl *decl);
+    void emitAddressSpaceRecord(std::ostream &out, const VariableDeclarations &variables,
+                                const std::string &name);
     void emitPrologueRecords(std::ostream &out);
 
     void emitLimitMacros(std::ostream &out);
@@ -282,6 +283,10 @@ private:
     ExprTransformations exprTransformations_;
     CheckedTypes checkedPointerTypes_;
     CheckedTypes checkedIndexTypes_;
+    VariableDeclarations relocatedGlobals_;
+    VariableDeclarations relocatedLocals_;
+    VariableDeclarations relocatedConstants_;
+    VariableDeclarations relocatedPrivates_;
 };
 
 /// \brief Mixin class for making AST transformations available after

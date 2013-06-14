@@ -1,6 +1,19 @@
 // RUN: cat %s | %opencl-validator
 // RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>&1 | grep -v CHECK | %FileCheck %s
 
+// CHECK: typedef struct {
+// CHECK: int value,
+// CHECK: int private_value
+// CHECK: } WclPrivates;
+
+// CHECK: typedef struct {
+// CHECK: int local_value
+// CHECK: } WclLocals;
+
+// CHECK: typedef struct {
+// CHECK: int constant_value
+// CHECK: } WclConstants;
+
 // CHECK: #if 0
 // CHECK: __constant int constant_value = 1;
 // CHECK: #endif

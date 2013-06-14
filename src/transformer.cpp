@@ -230,6 +230,10 @@ WebCLTransformer::WebCLTransformer(clang::CompilerInstance &instance)
     , exprTransformations_()
     , checkedPointerTypes_()
     , checkedIndexTypes_()
+    , relocatedGlobals_()
+    , relocatedLocals_()
+    , relocatedConstants_()
+    , relocatedPrivates_()
 {
 }
 
@@ -258,6 +262,7 @@ void WebCLTransformer::addRelocatedVariable(clang::DeclStmt *stmt, clang::VarDec
         decl,
         new WebCLVariableRelocation(
             instance_, stmt, decl));
+    addRelocatedVariable(decl);
 }
 
 void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)
@@ -456,10 +461,56 @@ void WebCLTransformer::addTransformation(
     }
 }
 
-void WebCLTransformer::emitAddressSpaceRecord(std::ostream &out, const std::string &name)
+void WebCLTransformer::addRelocatedVariable(clang::VarDecl *decl)
 {
-    out << "typedef struct {\n"
-        << "} " << name << ";\n"
+    clang::QualType type = decl->getType();
+    if (const unsigned int space = type.getAddressSpace()) {
+        switch (space) {
+        case clang::LangAS::opencl_global:
+            relocatedGlobals_.insert(decl);
+            return;
+        case clang::LangAS::opencl_local:
+            relocatedLocals_.insert(decl);
+            return;
+        case clang::LangAS::opencl_constant:
+            relocatedConstants_.insert(decl);
+            return;
+        default:
+            error(decl->getLocStart(), "Unknown address space.");
+            return;
+        }
+    }
+
+    relocatedPrivates_.insert(decl);
+}
+
+void WebCLTransformer::emitVariable(std::ostream &out, const clang::VarDecl *decl)
+{
+    clang::QualType type = decl->getType();
+    clang::Qualifiers qualifiers = type.getQualifiers();
+    qualifiers.removeAddressSpace();
+
+    std::string variable;
+    llvm::raw_string_ostream stream(variable);
+    clang::PrintingPolicy policy(instance_.getLangOpts());
+    clang::QualType::print(
+        type.getTypePtrOrNull(), qualifiers, stream, policy, decl->getName());
+    out << stream.str();
+}
+
+void WebCLTransformer::emitAddressSpaceRecord(
+    std::ostream &out, const VariableDeclarations &variables, const std::string &name)
+{
+    out << "typedef struct {";
+
+    for (VariableDeclarations::iterator i = variables.begin(); i != variables.end(); ++i) {
+        if (i != variables.begin())
+            out << ",";
+        out << "\n    ";
+        emitVariable(out, (*i));
+    }
+
+    out << "\n} " << name << ";\n"
         << "\n";
 }
 
@@ -470,10 +521,10 @@ void WebCLTransformer::emitPrologueRecords(std::ostream &out)
     const char *constants = "WclConstants";
     const char *globals = "WclGlobals";
 
-    emitAddressSpaceRecord(out, privates);
-    emitAddressSpaceRecord(out, locals);
-    emitAddressSpaceRecord(out, constants);
-    emitAddressSpaceRecord(out, globals);
+    emitAddressSpaceRecord(out, relocatedPrivates_, privates);
+    emitAddressSpaceRecord(out, relocatedLocals_, locals);
+    emitAddressSpaceRecord(out, relocatedConstants_, constants);
+    emitAddressSpaceRecord(out, relocatedGlobals_, globals);
 
     out << "typedef struct {\n"
         << "    " << privates << " __private *privates;\n"
