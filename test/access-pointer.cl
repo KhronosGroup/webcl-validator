@@ -3,13 +3,13 @@
 
 int get_pointed_value(__global int *pointer)
 {
-    // CHECK: return *wcl_global_int_ptr(NULL, pointer);
+    // CHECK: return *wcl_global_int_ptr(wcl_as, pointer);
     return *pointer;
 }
 
 void set_pointed_value(__global int *pointer, int value)
 {
-    // CHECK: *wcl_global_int_ptr(NULL, pointer) = value;
+    // CHECK: *wcl_global_int_ptr(wcl_as, pointer) = value;
     *pointer = value;
 }
 

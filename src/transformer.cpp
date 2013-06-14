@@ -7,12 +7,23 @@
 
 #include <sstream>
 
+// WebCLTransformation
+
+WebCLTransformation::WebCLTransformation(clang::CompilerInstance &instance)
+    : WebCLReporter(instance)
+{
+}
+
+WebCLTransformation::~WebCLTransformation()
+{
+}
+
 // WebCLVariableRelocation
 
 WebCLVariableRelocation::WebCLVariableRelocation(
     clang::CompilerInstance &instance,
     clang::DeclStmt *stmt, clang::VarDecl *decl)
-    : WebCLReporter(instance_)
+    : WebCLTransformation(instance)
     , stmt_(stmt), decl_(decl)
 {
 }
@@ -21,36 +32,27 @@ WebCLVariableRelocation::~WebCLVariableRelocation()
 {
 }
 
-bool WebCLVariableRelocation::rewrite(clang::Rewriter &rewriter)
+bool WebCLVariableRelocation::rewrite(
+    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
 {
     clang::SourceRange range = stmt_ ? stmt_->getSourceRange() : decl_->getSourceRange();
     if (!stmt_) {
         range.setEnd(range.getEnd().getLocWithOffset(1));
     }
 
-    const std::string prologue = "\n#if 0\n";
-    const std::string epilogue = "\n#endif\n";
+    static const std::string prologue = "\n#if 0\n";
+    static const std::string epilogue = "\n#endif\n";
     const std::string replacement =
         prologue + rewriter.getRewrittenText(range) + epilogue;
     // Rewriter returns false on success.
     return !rewriter.ReplaceText(range, replacement);
 }
 
-// WebCLParameterInsertion
-
-WebCLParameterInsertion::WebCLParameterInsertion(
-    clang::CompilerInstance &instance, const std::string &parameter)
-    : WebCLReporter(instance), parameter_(parameter)
-{
-}
-
 // WebCLRecordParameterInsertion
 
 WebCLRecordParameterInsertion::WebCLRecordParameterInsertion(
-    clang::CompilerInstance &instance, const std::string &parameter,
-    clang::FunctionDecl *decl)
-    : WebCLParameterInsertion(instance, parameter)
-    , decl_(decl)
+    clang::CompilerInstance &instance, clang::FunctionDecl *decl)
+    : WebCLTransformation(instance), decl_(decl)
 {
 }
 
@@ -58,20 +60,21 @@ WebCLRecordParameterInsertion::~WebCLRecordParameterInsertion()
 {
 }
 
-bool WebCLRecordParameterInsertion::rewrite(clang::Rewriter &rewriter)
+bool WebCLRecordParameterInsertion::rewrite(
+    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
 {
+    const std::string parameter =
+        cfg.addressSpaceRecordType_ + " *" + cfg.addressSpaceRecordName_;
     // Rewriter returns false on success.
     return !rewriter.InsertTextBefore(
-        decl_->getParamDecl(0)->getLocStart(), parameter_ + ", ");
+        decl_->getParamDecl(0)->getLocStart(), parameter + ", ");
 }
 
 // WebCLSizeParameterInsertion
 
 WebCLSizeParameterInsertion::WebCLSizeParameterInsertion(
-    clang::CompilerInstance &instance, const std::string &parameter,
-    clang::ParmVarDecl *decl)
-    : WebCLParameterInsertion(instance, parameter)
-    , decl_(decl)
+    clang::CompilerInstance &instance, clang::ParmVarDecl *decl)
+    : WebCLTransformation(instance), decl_(decl)
 {
 }
 
@@ -79,32 +82,26 @@ WebCLSizeParameterInsertion::~WebCLSizeParameterInsertion()
 {
 }
 
-bool WebCLSizeParameterInsertion::rewrite(clang::Rewriter &rewriter)
+bool WebCLSizeParameterInsertion::rewrite(
+    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
 {
+    const std::string parameter =
+        cfg.sizeParameterType_ + " " + cfg.getNameOfSizeParameter(decl_);
+
     // Doesn't work as expected:
-    //return !rewriter.InsertTextAfter(decl_->getLocEnd(), ", " + parameter_);
+    //return !rewriter.InsertTextAfter(decl_->getLocEnd(), ", " + parameter);
 
     // Rewriter returns false on success.
     const std::string replacement =
-        rewriter.getRewrittenText(decl_->getSourceRange()) + ", " + parameter_;
+        rewriter.getRewrittenText(decl_->getSourceRange()) + ", " + parameter;
     return !rewriter.ReplaceText(decl_->getSourceRange(), replacement);
-}
-
-// WebCLCheckerTransformation
-
-WebCLCheckerTransformation::WebCLCheckerTransformation(
-    clang::CompilerInstance &instance, const std::string &checker)
-    : WebCLReporter(instance), checker_(checker)
-{
 }
 
 // WebCLArraySubscriptTransformation
 
 WebCLArraySubscriptTransformation::WebCLArraySubscriptTransformation(
-    clang::CompilerInstance &instance, const std::string &checker,
-    clang::ArraySubscriptExpr *expr)
-    : WebCLCheckerTransformation(instance, checker)
-    , expr_(expr)
+    clang::CompilerInstance &instance, clang::ArraySubscriptExpr *expr)
+    : WebCLTransformation(instance), expr_(expr)
 {
 }
 
@@ -139,13 +136,16 @@ std::string WebCLArraySubscriptTransformation::getIndexAsText(clang::Rewriter &r
     return rewriter.getRewrittenText(plainIndex->getSourceRange());
 }
 
-bool WebCLArraySubscriptTransformation::rewrite(clang::Rewriter &rewriter)
+bool WebCLArraySubscriptTransformation::rewrite(
+    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
 {
     const std::string base = getBaseAsText(rewriter);
     const std::string index = getIndexAsText(rewriter);
 
     const std::string replacement =
-        base + "[" + checker_ + "(NULL, " + base + ", " + index + ")]";
+        base + "[" + cfg.getNameOfIndexChecker(expr_->getType()) + "(" +
+        cfg.addressSpaceRecordName_ + ", " + base + ", " + index +
+        ")]";
     // Rewriter returns false on success.
     return !rewriter.ReplaceText(expr_->getSourceRange(), replacement);
 }
@@ -153,9 +153,9 @@ bool WebCLArraySubscriptTransformation::rewrite(clang::Rewriter &rewriter)
 // WebCLConstantArraySubscriptTransformation
 
 WebCLConstantArraySubscriptTransformation::WebCLConstantArraySubscriptTransformation(
-    clang::CompilerInstance &instance, const std::string &checker,
-    clang::ArraySubscriptExpr *expr, llvm::APInt &bound)
-    : WebCLArraySubscriptTransformation(instance, checker, expr)
+    clang::CompilerInstance &instance, clang::ArraySubscriptExpr *expr,
+    llvm::APInt &bound)
+    : WebCLArraySubscriptTransformation(instance, expr)
     , bound_(bound)
 {
 }
@@ -164,13 +164,16 @@ WebCLConstantArraySubscriptTransformation::~WebCLConstantArraySubscriptTransform
 {
 }
 
-bool WebCLConstantArraySubscriptTransformation::rewrite(clang::Rewriter &rewriter)
+bool WebCLConstantArraySubscriptTransformation::rewrite(
+    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
 {
     const std::string base = getBaseAsText(rewriter);
     const std::string index = getIndexAsText(rewriter);
 
     const std::string replacement =
-        base + "[" + checker_ + "(" + index + ", " + bound_.toString(10, false) + "UL)]";
+        base + "[" + cfg.getNameOfIndexChecker() + "("
+        + index + ", " + bound_.toString(10, false) + "UL" +
+        ")]";
     // Rewriter returns false on success.
     return !rewriter.ReplaceText(expr_->getSourceRange(), replacement);
 }
@@ -178,9 +181,9 @@ bool WebCLConstantArraySubscriptTransformation::rewrite(clang::Rewriter &rewrite
 // WebCLKernelArraySubscriptTransformation
 
 WebCLKernelArraySubscriptTransformation::WebCLKernelArraySubscriptTransformation(
-    clang::CompilerInstance &instance, const std::string &checker,
-    clang::ArraySubscriptExpr *expr, const std::string &bound)
-    : WebCLArraySubscriptTransformation(instance, checker, expr)
+    clang::CompilerInstance &instance, clang::ArraySubscriptExpr *expr,
+    const std::string &bound)
+    : WebCLArraySubscriptTransformation(instance, expr)
     , bound_(bound)
 {
 }
@@ -189,13 +192,14 @@ WebCLKernelArraySubscriptTransformation::~WebCLKernelArraySubscriptTransformatio
 {
 }
 
-bool WebCLKernelArraySubscriptTransformation::rewrite(clang::Rewriter &rewriter)
+bool WebCLKernelArraySubscriptTransformation::rewrite(
+    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
 {
     const std::string base = getBaseAsText(rewriter);
     const std::string index = getIndexAsText(rewriter);
 
     const std::string replacement =
-        base + "[" + checker_ + "(" + index + ", " + bound_ + ")]";
+        base + "[" + cfg.getNameOfIndexChecker() + "(" + index + ", " + bound_ + ")]";
     // Rewriter returns false on success.
     return !rewriter.ReplaceText(expr_->getSourceRange(), replacement);
 }
@@ -203,10 +207,8 @@ bool WebCLKernelArraySubscriptTransformation::rewrite(clang::Rewriter &rewriter)
 // WebCLPointerDereferenceTransformation
 
 WebCLPointerDereferenceTransformation::WebCLPointerDereferenceTransformation(
-    clang::CompilerInstance &instance, const std::string &checker,
-    clang::Expr *expr)
-    : WebCLCheckerTransformation(instance, checker)
-    , expr_(expr)
+    clang::CompilerInstance &instance, clang::Expr *expr)
+    : WebCLTransformation(instance), expr_(expr)
 {
 }
 
@@ -214,12 +216,104 @@ WebCLPointerDereferenceTransformation::~WebCLPointerDereferenceTransformation()
 {
 }
 
-bool WebCLPointerDereferenceTransformation::rewrite(clang::Rewriter &rewriter)
+bool WebCLPointerDereferenceTransformation::rewrite(
+    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
 {
     const std::string replacement =
-        checker_ + "(NULL, " + rewriter.getRewrittenText(expr_->getSourceRange()) + ")";
+        cfg.getNameOfPointerChecker(expr_->getType().getTypePtr()->getPointeeType()) + "(" +
+        cfg.addressSpaceRecordName_ + ", " + rewriter.getRewrittenText(expr_->getSourceRange()) +
+        ")";
     // Rewriter returns false on success.
     return !rewriter.ReplaceText(expr_->getSourceRange(), replacement);
+}
+
+// WebCLTransformerConfiguration
+
+WebCLTransformerConfiguration::WebCLTransformerConfiguration()
+    : prefix_("wcl")
+    , pointerSuffix_("ptr")
+    , indexSuffix_("idx")
+    , indentation_("    ")
+    , sizeParameterType_("unsigned long")
+    , privateAddressSpace_("private")
+    , privateRecordType_("WclPrivates")
+    , privateField_("privates")
+    , privateRecordName("wcl_ps")
+    , localAddressSpace_("local")
+    , localRecordType_("WclLocals")
+    , localField_("locals")
+    , localRecordName_("wcl_ls")
+    , constantAddressSpace_("constant")
+    , constantRecordType_("WclConstants")
+    , constantField_("constants")
+    , constantRecordName_("wcl_cs")
+    , globalAddressSpace_("global")
+    , globalRecordType_("WclGlobals")
+    , globalField_("globals")
+    , globalRecordName_("wcl_gs")
+    , addressSpaceRecordType_("WclAddressSpaces")
+    , addressSpaceRecordName_("wcl_as")
+{
+}
+
+WebCLTransformerConfiguration::~WebCLTransformerConfiguration()
+{
+}
+
+const std::string WebCLTransformerConfiguration::getNameOfAddressSpace(clang::QualType type) const
+{
+    if (const unsigned int space = type.getAddressSpace()) {
+        switch (space) {
+        case clang::LangAS::opencl_global:
+            return globalAddressSpace_;
+        case clang::LangAS::opencl_local:
+            return localAddressSpace_;
+        case clang::LangAS::opencl_constant:
+            return constantAddressSpace_;
+        default:
+            return "???";
+        }
+    }
+
+    return privateAddressSpace_;
+}
+
+const std::string WebCLTransformerConfiguration::getNameOfType(clang::QualType type) const
+{
+    return type.getUnqualifiedType().getAsString();
+}
+
+const std::string WebCLTransformerConfiguration::getNameOfPointerChecker(clang::QualType type) const
+{
+    return prefix_ + "_" +
+        getNameOfAddressSpace(type) + "_" + getNameOfType(type) +
+        "_" + pointerSuffix_;
+}
+
+const std::string WebCLTransformerConfiguration::getNameOfIndexChecker(clang::QualType type) const
+{
+    return prefix_ + "_" +
+        getNameOfAddressSpace(type) + "_" + getNameOfType(type) +
+        "_" + indexSuffix_;
+}
+
+const std::string WebCLTransformerConfiguration::getNameOfIndexChecker() const
+{
+    return prefix_ + "_" + indexSuffix_;
+}
+
+const std::string WebCLTransformerConfiguration::getNameOfSizeParameter(clang::ParmVarDecl *decl) const
+{
+    const std::string name = decl->getName();
+    return prefix_ + "_" + name + "_size";
+}
+
+const std::string WebCLTransformerConfiguration::getIndentation(unsigned int levels) const
+{
+    std::string indentation;
+    for (unsigned int i = 0; i < levels; ++i)
+        indentation.append(indentation_);
+    return indentation;
 }
 
 // WebCLTransformer
@@ -234,11 +328,18 @@ WebCLTransformer::WebCLTransformer(clang::CompilerInstance &instance)
     , relocatedLocals_()
     , relocatedConstants_()
     , relocatedPrivates_()
+    , cfg_()
 {
 }
 
 WebCLTransformer::~WebCLTransformer()
 {
+    for (DeclTransformations::iterator i = declTransformations_.begin();
+         i != declTransformations_.end(); ++i) {
+        WebCLTransformation *transformation = i->second;
+        delete transformation;
+    }
+
     for (ExprTransformations::iterator i = exprTransformations_.begin();
          i != exprTransformations_.end(); ++i) {
         WebCLTransformation *transformation = i->second;
@@ -270,17 +371,15 @@ void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)
     addTransformation(
         decl,
         new WebCLRecordParameterInsertion(
-            instance_, "WclAddressSpaces *wcl_as", decl));
+            instance_, decl));
 }
 
 void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
 {
-    const std::string name = getNameOfSizeParameter(decl);
-    const std::string parameter = "unsigned long " + name;
     addTransformation(
         decl,
         new WebCLSizeParameterInsertion(
-            instance_, parameter, decl));
+            instance_, decl));
 }
 
 void WebCLTransformer::addArrayIndexCheck(
@@ -289,7 +388,7 @@ void WebCLTransformer::addArrayIndexCheck(
     addTransformation(
         expr,
         new WebCLConstantArraySubscriptTransformation(
-            instance_, "wcl_idx", expr, bound));
+            instance_, expr, bound));
 }
 
 void WebCLTransformer::addArrayIndexCheck(clang::ArraySubscriptExpr *expr)
@@ -298,28 +397,25 @@ void WebCLTransformer::addArrayIndexCheck(clang::ArraySubscriptExpr *expr)
         addTransformation(
             expr,
             new WebCLKernelArraySubscriptTransformation(
-                instance_, "wcl_idx", expr, getNameOfSizeParameter(var)));
+                instance_, expr, cfg_.getNameOfSizeParameter(var)));
     } else {
-        const clang::QualType type = expr->getType();
-        addCheckedType(checkedIndexTypes_, type);
+        addCheckedType(checkedIndexTypes_, expr->getType());
 
-        const std::string checker = getNameOfChecker(type) + "_idx";
         addTransformation(
             expr,
-            new WebCLArraySubscriptTransformation(instance_, checker, expr));
+            new WebCLArraySubscriptTransformation(
+                instance_, expr));
     }
 }
 
 void WebCLTransformer::addPointerCheck(clang::Expr *expr)
 {
-    const clang::Type *type = expr->getType().getTypePtrOrNull();
-    const clang::QualType pointee = type->getPointeeType();
-    addCheckedType(checkedPointerTypes_, pointee);
+    addCheckedType(checkedPointerTypes_, expr->getType().getTypePtr()->getPointeeType());
 
-    const std::string checker = getNameOfChecker(pointee) + "_ptr";
     addTransformation(
         expr,
-        new WebCLPointerDereferenceTransformation(instance_, checker, expr));
+        new WebCLPointerDereferenceTransformation(
+            instance_, expr));
 }
 
 bool WebCLTransformer::rewritePrologue(clang::Rewriter &rewriter)
@@ -340,51 +436,16 @@ bool WebCLTransformer::rewriteTransformations(clang::Rewriter &rewriter)
     for (DeclTransformations::iterator i = declTransformations_.begin();
          i != declTransformations_.end(); ++i) {
         WebCLTransformation *transformation = i->second;
-        status = status && transformation->rewrite(rewriter);
+        status = status && transformation->rewrite(cfg_, rewriter);
     }
 
     for (ExprTransformations::iterator i = exprTransformations_.begin();
          i != exprTransformations_.end(); ++i) {
         WebCLTransformation *transformation = i->second;
-        status = status && transformation->rewrite(rewriter);
+        status = status && transformation->rewrite(cfg_, rewriter);
     }
 
     return status;
-}
-
-std::string WebCLTransformer::getTypeAsString(clang::QualType type)
-{
-    return getAddressSpaceOfType(type) + "_" + getNameOfType(type);
-}
-
-std::string WebCLTransformer::getAddressSpaceOfType(clang::QualType type)
-{
-    if (const unsigned int space = type.getAddressSpace()) {
-        switch (space) {
-        case clang::LangAS::opencl_global:
-            return "global";
-        case clang::LangAS::opencl_local:
-            return "local";
-        case clang::LangAS::opencl_constant:
-            return "constant";
-        default:
-            return "";
-        }
-    }
-
-    return "private";
-}
-
-std::string WebCLTransformer::getNameOfType(clang::QualType type)
-{
-    return type.getUnqualifiedType().getAsString();
-}
-
-std::string WebCLTransformer::getNameOfChecker(clang::QualType type)
-{
-    const std::string addressSpace = getAddressSpaceOfType(type);
-    const std::string name = getNameOfType(type);
-    return "wcl_" + addressSpace + "_" + name;
 }
 
 clang::ParmVarDecl *WebCLTransformer::getDeclarationOfArray(clang::ArraySubscriptExpr *expr)
@@ -411,17 +472,9 @@ clang::ParmVarDecl *WebCLTransformer::getDeclarationOfArray(clang::ArraySubscrip
     return var;
 }
 
-std::string WebCLTransformer::getNameOfSizeParameter(clang::ParmVarDecl *decl)
-{
-    const std::string name = decl->getName();
-    return "wcl_" + name + "_size";
-}
-
 void WebCLTransformer::addCheckedType(CheckedTypes &types, clang::QualType type)
 {
-    const std::string addressSpace = getAddressSpaceOfType(type);
-    const std::string name = getNameOfType(type);
-    const CheckedType checked(addressSpace, name);
+    const CheckedType checked(cfg_.getNameOfAddressSpace(type), cfg_.getNameOfType(type));
     types.insert(checked);
 }
 
@@ -506,7 +559,7 @@ void WebCLTransformer::emitAddressSpaceRecord(
     for (VariableDeclarations::iterator i = variables.begin(); i != variables.end(); ++i) {
         if (i != variables.begin())
             out << ",";
-        out << "\n    ";
+        out << "\n" <<  cfg_.indentation_;
         emitVariable(out, (*i));
     }
 
@@ -516,81 +569,101 @@ void WebCLTransformer::emitAddressSpaceRecord(
 
 void WebCLTransformer::emitPrologueRecords(std::ostream &out)
 {
-    const char *privates = "WclPrivates";
-    const char *locals = "WclLocals";
-    const char *constants = "WclConstants";
-    const char *globals = "WclGlobals";
-
-    emitAddressSpaceRecord(out, relocatedPrivates_, privates);
-    emitAddressSpaceRecord(out, relocatedLocals_, locals);
-    emitAddressSpaceRecord(out, relocatedConstants_, constants);
-    emitAddressSpaceRecord(out, relocatedGlobals_, globals);
+    emitAddressSpaceRecord(out, relocatedPrivates_, cfg_.privateRecordType_);
+    emitAddressSpaceRecord(out, relocatedLocals_, cfg_.localRecordType_);
+    emitAddressSpaceRecord(out, relocatedConstants_, cfg_.constantRecordType_);
+    emitAddressSpaceRecord(out, relocatedGlobals_, cfg_.globalRecordType_);
 
     out << "typedef struct {\n"
-        << "    " << privates << " __private *privates;\n"
-        << "    " << locals << " __local *locals;\n"
-        << "    " << constants << " __constant *constants;\n"
-        << "    " << globals << " __global *globals;\n"
-        << "} WclAddressSpaces;\n"
+
+        << cfg_.indentation_ << cfg_.privateRecordType_
+        << " __" << cfg_.privateAddressSpace_ << " *" << cfg_.privateField_ << ";\n"
+
+        << cfg_.indentation_ << cfg_.localRecordType_
+        << " __" << cfg_.localAddressSpace_ << " *" << cfg_.localField_ << ";\n"
+
+        << cfg_.indentation_ << cfg_.constantRecordType_
+        << " __" << cfg_.constantAddressSpace_ << " *" << cfg_.constantField_ << ";\n"
+
+        << cfg_.indentation_ << cfg_.globalRecordType_
+        << " __" << cfg_.globalAddressSpace_ << " *" << cfg_.globalField_ << ";\n"
+
+        << "} " << cfg_.addressSpaceRecordType_ << ";\n"
         << "\n";
 }
 
 void WebCLTransformer::emitLimitMacros(std::ostream &out)
 {
-    out << "#define WCL_MIN(a, b)                                              \\\n"
-        << "    (((a) < (b)) ? (a) : (b))\n"
+    out << "#define WCL_MIN(a, b) \\\n"
+        << cfg_.indentation_ << "(((a) < (b)) ? (a) : (b))\n"
 
-        << "#define WCL_MAX(a, b)                                              \\\n"
-        << "    (((a) < (b)) ? (b) : (a))\n"
+        << "#define WCL_MAX(a, b) \\\n"
+        << cfg_.indentation_ << "(((a) < (b)) ? (b) : (a))\n"
 
-        << "#define WCL_CLAMP(low, value, high)                                \\\n"
-        << "    WCL_MAX((low), WCL_MIN((value), (high)))\n"
+        << "#define WCL_CLAMP(low, value, high) \\\n"
+        << cfg_.indentation_ << "WCL_MAX((low), WCL_MIN((value), (high)))\n"
         << "\n";
 }
 
 void WebCLTransformer::emitPointerLimitMacros(std::ostream &out)
 {
-    out << "#define WCL_MIN_PTR(name, type, field)                             \\\n"
-        << "    ((name type *)(field))\n"
+    out << "#define WCL_MIN_PTR(name, type, field) \\\n"
+        << cfg_.indentation_ << "((name type *)(field))\n"
 
-        << "#define WCL_MAX_PTR(name, type, field)                             \\\n"
-        << "    (WCL_MIN_PTR(name, type, (field) + 1) - 1)\n"
+        << "#define WCL_MAX_PTR(name, type, field) \\\n"
+        << cfg_.indentation_ << "(WCL_MIN_PTR(name, type, (field) + 1) - 1)\n"
         << "\n";
 }
 
 void WebCLTransformer::emitIndexLimitMacros(std::ostream &out)
 {
-    out << "#define WCL_MIN_IDX(name, type, field, ptr)                        \\\n"
-        << "    0\n"
+    out << "#define WCL_MIN_IDX(name, type, field, ptr) \\\n"
+        << cfg_.indentation_ << "0\n"
 
-        << "#define WCL_MAX_IDX(name, type, field, ptr)                        \\\n"
-        << "    (WCL_MAX_PTR(name, type, field) - ptr)\n"
+        << "#define WCL_MAX_IDX(name, type, field, ptr) \\\n"
+        << cfg_.indentation_ << "(WCL_MAX_PTR(name, type, field) - ptr)\n"
         << "\n";
 }
 
 void WebCLTransformer::emitPointerCheckerMacro(std::ostream &out)
 {
-    out << "#define WCL_PTR_CHECKER(name, field, type)                         \\\n"
-        << "    name type *wcl_##name##_##type##_ptr(                          \\\n"
-        << "        WclAddressSpaces *as, name type *ptr)                      \\\n"
-        << "    {                                                              \\\n"
-        << "        return WCL_CLAMP(WCL_MIN_PTR(name, type, as->field),       \\\n"
-        << "                         ptr,                                      \\\n"
-        << "                         WCL_MAX_PTR(name, type, as->field));      \\\n"
-        << "    }\n"
+    static const std::string functionName =
+        cfg_.prefix_ + "_##name##_##type##_" + cfg_.pointerSuffix_;
+    static const std::string asParameter =
+        cfg_.addressSpaceRecordType_ + " *" + cfg_.addressSpaceRecordName_;
+    static const std::string asField =
+        cfg_.addressSpaceRecordName_ + "->field";
+    
+    out << "#define WCL_PTR_CHECKER(name, field, type) \\\n"
+        << cfg_.getIndentation(1) << "name type *" << functionName << "( \\\n"
+        << cfg_.getIndentation(2) << asParameter << ", name type *ptr) \\\n"
+        << cfg_.getIndentation(1) << "{ \\\n"
+        << cfg_.getIndentation(2) << "return WCL_CLAMP( \\\n"
+        << cfg_.getIndentation(3) << "WCL_MIN_PTR(name, type, " << asField << "), \\\n"
+        << cfg_.getIndentation(3) << "ptr, \\\n"
+        << cfg_.getIndentation(3) << "WCL_MAX_PTR(name, type, " << asField << ")); \\\n"
+        << cfg_.getIndentation(1) << "}\n"
         << "\n";
 }
 
 void WebCLTransformer::emitIndexCheckerMacro(std::ostream &out)
 {
-    out << "#define WCL_IDX_CHECKER(name, field, type)                         \\\n"
-        << "    size_t wcl_##name##_##type##_idx(                              \\\n"
-        << "        WclAddressSpaces *as, name type *ptr, size_t idx)          \\\n"
-        << "    {                                                              \\\n"
-        << "        return WCL_CLAMP(WCL_MIN_IDX(name, type, as->field, ptr),  \\\n"
-        << "                         idx,                                      \\\n"
-        << "                         WCL_MAX_IDX(name, type, as->field, ptr)); \\\n"
-        << "    }\n"
+    static const std::string functionName =
+        cfg_.prefix_ + "_##name##_##type##_" + cfg_.indexSuffix_;
+    static const std::string asParameter =
+        cfg_.addressSpaceRecordType_ + " *" + cfg_.addressSpaceRecordName_;
+    static const std::string asField =
+        cfg_.addressSpaceRecordName_ + "->field";
+
+    out << "#define WCL_IDX_CHECKER(name, field, type) \\\n"
+        << cfg_.getIndentation(1) << "size_t " << functionName << "( \\\n"
+        << cfg_.getIndentation(2) << asParameter << ", name type *ptr, size_t idx) \\\n"
+        << cfg_.getIndentation(1) << "{ \\\n"
+        << cfg_.getIndentation(2) << "return WCL_CLAMP( \\\n"
+        << cfg_.getIndentation(3) << "WCL_MIN_IDX(name, type, " << asField << ", ptr), \\\n"
+        << cfg_.getIndentation(3) << "idx, \\\n"
+        << cfg_.getIndentation(3) << "WCL_MAX_IDX(name, type, " << asField << ", ptr)); \\\n"
+        << cfg_.getIndentation(1) << "}\n"
         << "\n";
 }
 
@@ -605,9 +678,9 @@ void WebCLTransformer::emitPrologueMacros(std::ostream &out)
 
 void WebCLTransformer::emitConstantIndexChecker(std::ostream &out)
 {
-    out << "size_t wcl_idx(size_t idx, size_t limit)\n"
+    out << "size_t " << cfg_.getNameOfIndexChecker() << "(size_t idx, size_t limit)\n"
         << "{\n"
-        << "    return idx % limit;\n"
+        << cfg_.getIndentation(1) << "return idx % limit;\n"
         << "}\n"
         << "\n";
 }

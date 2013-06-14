@@ -20,29 +20,35 @@ namespace clang {
     class VarDecl;
 }
 
+class WebCLTransformerConfiguration;
+
 /// \brief Transforms an AST node by rewriting its contents in the
 /// source code domain.
-class WebCLTransformation
+class WebCLTransformation : public WebCLReporter
 {
 public:
 
-    virtual ~WebCLTransformation() {};
-    virtual bool rewrite(clang::Rewriter &rewriter) = 0;
+    WebCLTransformation(clang::CompilerInstance &instance);
+    virtual ~WebCLTransformation();
+
+    virtual bool rewrite(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter) = 0;
 };
 
 /// \brief Relocate a variable into a corresponding address space
 /// record.
 class WebCLVariableRelocation : public WebCLTransformation
-                              , public WebCLReporter
 {
 public:
 
-    WebCLVariableRelocation(clang::CompilerInstance &instance,
-                            clang::DeclStmt *stmt, clang::VarDecl *decl);
+    WebCLVariableRelocation(
+        clang::CompilerInstance &instance,
+        clang::DeclStmt *stmt, clang::VarDecl *decl);
     virtual ~WebCLVariableRelocation();
 
     /// \see WebCLTransformation::rewrite
-    virtual bool rewrite(clang::Rewriter &rewriter);
+    virtual bool rewrite(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
 
 protected:
 
@@ -50,34 +56,19 @@ protected:
     clang::VarDecl *decl_;
 };
 
-/// \brief A base class for transformations that insert a parameter to
-/// a function or kernel declaration.
-class WebCLParameterInsertion : public WebCLTransformation
-                              , public WebCLReporter
-{
-public:
-
-    WebCLParameterInsertion(
-        clang::CompilerInstance &instance, const std::string &parameter);
-
-protected:
-
-    const std::string parameter_;
-};
-
 /// \brief Inserts address space record parameter at the first
 /// position in parameter list.
-class WebCLRecordParameterInsertion : public WebCLParameterInsertion
+class WebCLRecordParameterInsertion : public WebCLTransformation
 {
 public:
 
     WebCLRecordParameterInsertion(
-        clang::CompilerInstance &instance, const std::string &parameter,
-        clang::FunctionDecl *decl);
+        clang::CompilerInstance &instance, clang::FunctionDecl *decl);
     virtual ~WebCLRecordParameterInsertion();
 
     /// \see WebCLTransformation::rewrite
-    virtual bool rewrite(clang::Rewriter &rewriter);
+    virtual bool rewrite(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
 
 protected:
 
@@ -86,51 +77,36 @@ protected:
 
 /// \brief Inserts size parameter that is linked to a kernel memory
 /// object.
-class WebCLSizeParameterInsertion : public WebCLParameterInsertion
+class WebCLSizeParameterInsertion : public WebCLTransformation
 {
 public:
 
     WebCLSizeParameterInsertion(
-        clang::CompilerInstance &instance, const std::string &parameter,
-        clang::ParmVarDecl *decl);
+        clang::CompilerInstance &instance, clang::ParmVarDecl *decl);
     virtual ~WebCLSizeParameterInsertion();
 
     /// \see WebCLTransformation::rewrite
-    virtual bool rewrite(clang::Rewriter &rewriter);
+    virtual bool rewrite(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
 
 protected:
 
     clang::ParmVarDecl *decl_;
 };
 
-/// \brief A base class for transformations that want to wrap an
-/// expression inside a checker function.
-class WebCLCheckerTransformation : public WebCLTransformation
-                                 , public WebCLReporter
-{
-public:
-
-    WebCLCheckerTransformation(
-        clang::CompilerInstance &instance, const std::string &checker);
-
-protected:
-
-    const std::string checker_;
-};
-
 /// \brief Adds an index check to array subscription when the limits
 /// are unknown at compile time.
-class WebCLArraySubscriptTransformation : public WebCLCheckerTransformation
+class WebCLArraySubscriptTransformation : public WebCLTransformation
 {
 public:
 
     WebCLArraySubscriptTransformation(
-        clang::CompilerInstance &instance, const std::string &checker,
-        clang::ArraySubscriptExpr *expr);
+        clang::CompilerInstance &instance, clang::ArraySubscriptExpr *expr);
     virtual ~WebCLArraySubscriptTransformation();
 
     /// \see WebCLTransformation::rewrite
-    virtual bool rewrite(clang::Rewriter &rewriter);
+    virtual bool rewrite(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
 
 protected:
 
@@ -147,12 +123,13 @@ class WebCLConstantArraySubscriptTransformation : public WebCLArraySubscriptTran
 public:
 
     WebCLConstantArraySubscriptTransformation(
-        clang::CompilerInstance &instance, const std::string &checker,
-        clang::ArraySubscriptExpr *expr, llvm::APInt &bound);
+        clang::CompilerInstance &instance, clang::ArraySubscriptExpr *expr,
+        llvm::APInt &bound);
     virtual ~WebCLConstantArraySubscriptTransformation();
 
     /// \see WebCLTransformation::rewrite
-    virtual bool rewrite(clang::Rewriter &rewriter);
+    virtual bool rewrite(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
 
 protected:
 
@@ -165,12 +142,13 @@ class WebCLKernelArraySubscriptTransformation : public WebCLArraySubscriptTransf
 public:
 
     WebCLKernelArraySubscriptTransformation(
-        clang::CompilerInstance &instance, const std::string &checker,
-        clang::ArraySubscriptExpr *expr, const std::string &bound);
+        clang::CompilerInstance &instance, clang::ArraySubscriptExpr *expr,
+        const std::string &bound);
     virtual ~WebCLKernelArraySubscriptTransformation();
 
     /// \see WebCLTransformation::rewrite
-    virtual bool rewrite(clang::Rewriter &rewriter);
+    virtual bool rewrite(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
 
 protected:
 
@@ -178,26 +156,73 @@ protected:
 };
 
 /// \brief Adds pointer limit check.
-class WebCLPointerDereferenceTransformation : public WebCLCheckerTransformation
+class WebCLPointerDereferenceTransformation : public WebCLTransformation
 {
 public:
 
     WebCLPointerDereferenceTransformation(
-        clang::CompilerInstance &instance, const std::string &checker,
-        clang::Expr *expr);
+        clang::CompilerInstance &instance, clang::Expr *expr);
     virtual ~WebCLPointerDereferenceTransformation();
 
     /// \see WebCLTransformation::rewrite
-    virtual bool rewrite(clang::Rewriter &rewriter);
+    virtual bool rewrite(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
 
 protected:
 
     clang::Expr *expr_;
 };
 
+/// \brief A helper structure that configures strings that occur
+/// repeatedly in generated code.
+class WebCLTransformerConfiguration
+{
+public:
+
+    WebCLTransformerConfiguration();
+    ~WebCLTransformerConfiguration();
+
+    const std::string getNameOfAddressSpace(clang::QualType type) const;
+    const std::string getNameOfType(clang::QualType type) const;
+    const std::string getNameOfPointerChecker(clang::QualType type) const;
+    const std::string getNameOfIndexChecker(clang::QualType type) const;
+    const std::string getNameOfIndexChecker() const;
+    const std::string getNameOfSizeParameter(clang::ParmVarDecl *decl) const;
+    const std::string getIndentation(unsigned int levels) const;
+
+    const std::string prefix_;
+    const std::string pointerSuffix_;
+    const std::string indexSuffix_;
+
+    const std::string indentation_;
+    const std::string sizeParameterType_;
+
+    const std::string privateAddressSpace_;
+    const std::string privateRecordType_;
+    const std::string privateField_;
+    const std::string privateRecordName;
+
+    const std::string localAddressSpace_;
+    const std::string localRecordType_;
+    const std::string localField_;
+    const std::string localRecordName_;
+
+    const std::string constantAddressSpace_;
+    const std::string constantRecordType_;
+    const std::string constantField_;
+    const std::string constantRecordName_;
+
+    const std::string globalAddressSpace_;
+    const std::string globalRecordType_;
+    const std::string globalField_;
+    const std::string globalRecordName_;
+
+    const std::string addressSpaceRecordType_;
+    const std::string addressSpaceRecordName_;
+};
+
 /// \brief Performs AST node transformations.
-class WebCLTransformer : public WebCLTransformation
-                       , public WebCLReporter
+class WebCLTransformer : public WebCLReporter
 {
 public:
 
@@ -205,9 +230,7 @@ public:
     ~WebCLTransformer();
 
     /// Applies all AST transformations.
-    ///
-    /// \see WebCLTransformation::rewrite
-    virtual bool rewrite(clang::Rewriter &rewriter);
+    bool rewrite(clang::Rewriter &rewriter);
 
     /// Inform about a variable that is accessed indirectly with a
     /// pointer. The variable declaration will be moved to a
@@ -247,13 +270,7 @@ private:
     bool rewritePrologue(clang::Rewriter &rewriter);
     bool rewriteTransformations(clang::Rewriter &rewriter);
 
-    std::string getTypeAsString(clang::QualType type);
-    std::string getAddressSpaceOfType(clang::QualType type);
-    std::string getNameOfType(clang::QualType type);
-    std::string getNameOfChecker(clang::QualType type);
-
     clang::ParmVarDecl *getDeclarationOfArray(clang::ArraySubscriptExpr *expr);
-    std::string getNameOfSizeParameter(clang::ParmVarDecl *decl);
 
     void addCheckedType(CheckedTypes &types, clang::QualType type);
     void addTransformation(const clang::Decl *decl, WebCLTransformation *transformation);
@@ -287,6 +304,8 @@ private:
     VariableDeclarations relocatedLocals_;
     VariableDeclarations relocatedConstants_;
     VariableDeclarations relocatedPrivates_;
+
+    WebCLTransformerConfiguration cfg_;
 };
 
 /// \brief Mixin class for making AST transformations available after
