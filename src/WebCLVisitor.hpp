@@ -95,6 +95,7 @@ public:
 /// \brief Finds variables that need to be relocated into address
 /// space records.
 class WebCLRelocator : public WebCLTransformingVisitor
+                     , public WebCLHelper
 {
 public:
 

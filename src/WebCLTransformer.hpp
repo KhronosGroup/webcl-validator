@@ -1,6 +1,7 @@
 #ifndef WEBCLVALIDATOR_WEBCLTRANSFORMER
 #define WEBCLVALIDATOR_WEBCLTRANSFORMER
 
+#include "WebCLHelper.hpp"
 #include "WebCLReporter.hpp"
 #include "WebCLTransformerConfiguration.hpp"
 
@@ -27,6 +28,7 @@ class WebCLTransformation;
 
 /// \brief Performs AST node transformations.
 class WebCLTransformer : public WebCLReporter
+                       , public WebCLHelper
 {
 public:
 

@@ -251,7 +251,7 @@ bool WebCLPointerDereferenceTransformation::rewrite(
     WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
 {
     const std::string replacement =
-        cfg.getNameOfPointerChecker(expr_->getType().getTypePtr()->getPointeeType()) + "(" +
+        cfg.getNameOfPointerChecker(getPointeeType(expr_)) + "(" +
         cfg.addressSpaceRecordName_ + ", " + rewriter.getRewrittenText(expr_->getSourceRange()) +
         ")";
     // Rewriter returns false on success.

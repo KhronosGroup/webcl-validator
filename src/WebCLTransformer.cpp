@@ -105,7 +105,7 @@ void WebCLTransformer::addArrayIndexCheck(clang::ArraySubscriptExpr *expr)
 
 void WebCLTransformer::addPointerCheck(clang::Expr *expr)
 {
-    addCheckedType(checkedPointerTypes_, expr->getType().getTypePtr()->getPointeeType());
+    addCheckedType(checkedPointerTypes_, getPointeeType(expr));
 
     addTransformation(
         exprTransformations_, expr,
@@ -201,15 +201,11 @@ clang::ParmVarDecl *WebCLTransformer::getDeclarationOfArray(clang::ArraySubscrip
     if (!base)
         return NULL;
 
-    clang::Expr *pruned = base->IgnoreImpCasts();
+    clang::ValueDecl *pruned = pruneValue(base);
     if (!pruned)
         return NULL;
 
-    clang::DeclRefExpr *ref = llvm::dyn_cast<clang::DeclRefExpr>(pruned);
-    if (!ref)
-        return NULL;
-
-    clang::ParmVarDecl *var = llvm::dyn_cast<clang::ParmVarDecl>(ref->getDecl());
+    clang::ParmVarDecl *var = llvm::dyn_cast<clang::ParmVarDecl>(pruned);
     if (!var)
         return NULL;
 

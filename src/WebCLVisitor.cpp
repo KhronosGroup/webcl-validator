@@ -253,15 +253,11 @@ bool WebCLRelocator::handleUnaryOperator(clang::UnaryOperator *expr)
 
 clang::VarDecl *WebCLRelocator::getRelocatedVariable(clang::Expr *expr)
 {
-    clang::Expr *pruned = expr->IgnoreImpCasts();
+    clang::ValueDecl *pruned = pruneValue(expr);
     if (!pruned)
         return NULL;
 
-    clang::DeclRefExpr *ref = llvm::dyn_cast<clang::DeclRefExpr>(pruned);
-    if (!ref)
-        return NULL;
-
-    clang::VarDecl *var = llvm::dyn_cast<clang::VarDecl>(ref->getDecl());
+    clang::VarDecl *var = llvm::dyn_cast<clang::VarDecl>(pruned);
     if (!var)
         return NULL;
 

@@ -3,6 +3,7 @@ add_clang_executable(
   main.cpp
   WebCLAction.cpp
   WebCLConsumer.cpp
+  WebCLHelper.cpp
   WebCLPreprocessor.cpp
   WebCLPrinter.cpp
   WebCLReporter.cpp

@@ -1,6 +1,7 @@
 #ifndef WEBCLVALIDATOR_WEBCLTRANSFORMATION
 #define WEBCLVALIDATOR_WEBCLTRANSFORMATION
 
+#include "WebCLHelper.hpp"
 #include "WebCLReporter.hpp"
 
 #include "llvm/ADT/APInt.h"
@@ -170,6 +171,7 @@ protected:
 
 /// \brief Adds pointer limit check.
 class WebCLPointerDereferenceTransformation : public WebCLTransformation
+                                            , public WebCLHelper
 {
 public:
 
