@@ -10,20 +10,67 @@ namespace clang {
     class TranslationUnitDecl;
 }
 
+/// \brief Common base for all AST visitors.
+///
+/// There are two kinds of visitors:
+/// - Visitors that traverse the AST before transformations. They
+///   check whether a valid OpenCL AST is also a valid WebCL AST.
+/// - Visitors that find nodes to be transformed. When they are sure
+///   that some AST node needs to be transformed, they call
+///   WebCLTransformer services to do the actual transformations.
+class WebCLVisitor : public WebCLReporter
+                   , public clang::RecursiveASTVisitor<WebCLVisitor>
+
+{
+public:
+
+    explicit WebCLVisitor(clang::CompilerInstance &instance);
+    virtual ~WebCLVisitor();
+
+    /// \see clang::RecursiveASTVisitor::VisitTranslationUnitDecl
+    bool VisitTranslationUnitDecl(clang::TranslationUnitDecl *decl);
+    /// \see clang::RecursiveASTVisitor::VisitFunctionDecl
+    bool VisitFunctionDecl(clang::FunctionDecl *decl);
+    /// \see clang::RecursiveASTVisitor::VisitParmVar
+    bool VisitParmVarDecl(clang::ParmVarDecl *decl);
+    /// \see clang::RecursiveASTVisitor::VisitVarDecl
+    bool VisitVarDecl(clang::VarDecl *decl);
+
+    /// \see clang::RecursiveASTVisitor::VisitDeclStmt
+    bool VisitDeclStmt(clang::DeclStmt *stmt);
+
+    /// \see clang::RecursiveASTVisitor::VisitArraySubscriptExpr
+    bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr *expr);
+    /// \see clang::RecursiveASTVisitor::VisitUnaryOperator
+    bool VisitUnaryOperator(clang::UnaryOperator *expr);
+    /// \see clang::RecursiveASTVisitor::VisitCallExpr
+    bool VisitCallExpr(clang::CallExpr *expr);
+
+protected:
+
+    virtual bool handleTranslationUnitDecl(clang::TranslationUnitDecl *decl);
+    virtual bool handleFunctionDecl(clang::FunctionDecl *decl);
+    virtual bool handleParmVarDecl(clang::ParmVarDecl *decl);
+    virtual bool handleVarDecl(clang::VarDecl *decl);
+    virtual bool handleDeclStmt(clang::DeclStmt *stmt);
+    virtual bool handleArraySubscriptExpr(clang::ArraySubscriptExpr *expr);
+    virtual bool handleUnaryOperator(clang::UnaryOperator *expr);
+    virtual bool handleCallExpr(clang::CallExpr *expr);
+};
+
 /// \brief Complains about WebCL limitations in OpenCL C code.
-class WebCLRestrictor : public WebCLReporter
-                      , public clang::RecursiveASTVisitor<WebCLRestrictor>
+class WebCLRestrictor : public WebCLVisitor
 {
 public:
 
     explicit WebCLRestrictor(clang::CompilerInstance &instance);
-    ~WebCLRestrictor();
+    virtual ~WebCLRestrictor();
 
-    /// \see RecursiveASTVisitor::VisitFunctionDecl
-    bool VisitFunctionDecl(clang::FunctionDecl *decl);
+    /// \see WebCLVisitor::handleFunctionDecl
+    virtual bool handleFunctionDecl(clang::FunctionDecl *decl);
 
-    /// \see RecursiveASTVisitor::VisitParmVar
-    bool VisitParmVarDecl(clang::ParmVarDecl *decl);
+    /// \see WebCLVisitor::handleParmVar
+    virtual bool handleParmVarDecl(clang::ParmVarDecl *decl);
 
 private:
 
@@ -35,23 +82,31 @@ private:
         clang::SourceLocation typeLocation, const clang::Type *type);
 };
 
+/// \brief Common base for transforming visitors.
+class WebCLTransformingVisitor : public WebCLVisitor
+                               , public WebCLTransformerClient
+{
+public:
+
+    explicit WebCLTransformingVisitor(clang::CompilerInstance &instance);
+    virtual ~WebCLTransformingVisitor();
+};
+
 /// \brief Finds variables that need to be relocated into address
 /// space records.
-class WebCLRelocator : public WebCLReporter
-                     , public WebCLTransformerClient
-                     , public clang::RecursiveASTVisitor<WebCLRelocator>
+class WebCLRelocator : public WebCLTransformingVisitor
 {
 public:
 
     explicit WebCLRelocator(clang::CompilerInstance &instance);
-    ~WebCLRelocator();
+    virtual ~WebCLRelocator();
 
-    /// \see clang::RecursiveASTVisitor::VisitDeclStmt
-    bool VisitDeclStmt(clang::DeclStmt *stmt);
-    /// \see clang::RecursiveASTVisitor::VisitVarDecl
-    bool VisitVarDecl(clang::VarDecl *decl);
-    /// \see clang::RecursiveASTVisitor::VisitUnaryOperator
-    bool VisitUnaryOperator(clang::UnaryOperator *expr);
+    /// \see WebCLVisitor::handleDeclStmt
+    virtual bool handleDeclStmt(clang::DeclStmt *stmt);
+    /// \see WebCLVisitor::handleVarDecl
+    virtual bool handleVarDecl(clang::VarDecl *decl);
+    /// \see WebCLVisitor::handleUnaryOperator
+    virtual bool handleUnaryOperator(clang::UnaryOperator *expr);
 
 private:
 
@@ -65,14 +120,12 @@ private:
 
 /// Finds function parameter lists that need to be extended. Also
 /// finds function calls and augments argument lists when necessary.
-class WebCLParameterizer : public WebCLReporter
-                         , public WebCLTransformerClient
-                         , public clang::RecursiveASTVisitor<WebCLParameterizer>
+class WebCLParameterizer : public WebCLTransformingVisitor
 {
 public:
 
     explicit WebCLParameterizer(clang::CompilerInstance &instance);
-    ~WebCLParameterizer();
+    virtual ~WebCLParameterizer();
 
     /// Checks whether parameter lists need to be extended:
     ///
@@ -80,16 +133,16 @@ public:
     /// - Add address space record parameters for functions that need
     ///   to do pointer and index checking.
     ///
-    /// \see clang::RecursiveASTVisitor::VisitFunctionDecl
-    bool VisitFunctionDecl(clang::FunctionDecl *decl);
+    /// \see WebCLVisitor::handleFunctionDecl
+    virtual bool handleFunctionDecl(clang::FunctionDecl *decl);
 
     /// Checks whether argument lists need to be extended:
     ///
     /// - Add address space argument for functions that need to do
     ///  pointer and index checking.
     ///
-    /// \see clang::RecursiveASTVisitor::VisitCallExpr
-    bool VisitCallExpr(clang::CallExpr *expr);
+    /// \see WebCLVisitor::handleCallExpr
+    virtual bool handleCallExpr(clang::CallExpr *expr);
 
 private:
 
@@ -112,20 +165,18 @@ private:
 };
 
 /// \brief Finds array subscriptions and pointer dereferences.
-class WebCLAccessor : public WebCLReporter
-                    , public WebCLTransformerClient
-                    , public clang::RecursiveASTVisitor<WebCLAccessor>
+class WebCLAccessor : public WebCLTransformingVisitor
 {
 public:
 
-    WebCLAccessor(clang::CompilerInstance &instance);
-    ~WebCLAccessor();
+    explicit WebCLAccessor(clang::CompilerInstance &instance);
+    virtual ~WebCLAccessor();
 
-    /// \see clang::RecursiveASTVisitor::VisitArraySubscriptExpr
-    bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr *expr);
+    /// \see WebCLVisitor::handleArraySubscriptExpr
+    virtual bool handleArraySubscriptExpr(clang::ArraySubscriptExpr *expr);
 
-    /// \see clang::RecursiveASTVisitor::VisitUnaryOperator
-    bool VisitUnaryOperator(clang::UnaryOperator *expr);
+    /// \see WebCLVisitor::handleUnaryOperator
+    virtual bool handleUnaryOperator(clang::UnaryOperator *expr);
 
 private:
 

@@ -1,16 +1,13 @@
 #ifndef WEBCLVALIDATOR_WEBCLPRINTER
 #define WEBCLVALIDATOR_WEBCLPRINTER
 
-#include "WebCLReporter.hpp"
-#include "WebCLTransformer.hpp"
+#include "WebCLVisitor.hpp"
 
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
 /// \brief Transforms and prints original WebCL C source file.
-class WebCLPrinter : public WebCLReporter
-                   , public WebCLTransformerClient
-                   , public clang::RecursiveASTVisitor<WebCLPrinter>
+class WebCLPrinter : public WebCLTransformingVisitor
 {
 public:
 
@@ -21,8 +18,8 @@ public:
     /// transformations apply succesfully, print the transformed
     /// source to standard output.
     ///
-    /// \see RecursiveASTVisitor::VisitTranslationUnitDecl
-    bool VisitTranslationUnitDecl(clang::TranslationUnitDecl *decl);
+    /// \see WebCLVisitor::handleTranslationUnitDecl
+    virtual bool handleTranslationUnitDecl(clang::TranslationUnitDecl *decl);
 
 private:
 

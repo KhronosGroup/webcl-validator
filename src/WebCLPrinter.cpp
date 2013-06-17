@@ -3,9 +3,7 @@
 #include "clang/Frontend/CompilerInstance.h"
 
 WebCLPrinter::WebCLPrinter(clang::CompilerInstance &instance)
-    : WebCLReporter(instance)
-    , WebCLTransformerClient()
-    , clang::RecursiveASTVisitor<WebCLPrinter>()
+    : WebCLTransformingVisitor(instance)
     , rewriter_(instance.getSourceManager(), instance.getLangOpts())
 {
 }
@@ -14,7 +12,7 @@ WebCLPrinter::~WebCLPrinter()
 {
 }
 
-bool WebCLPrinter::VisitTranslationUnitDecl(clang::TranslationUnitDecl *decl)
+bool WebCLPrinter::handleTranslationUnitDecl(clang::TranslationUnitDecl *decl)
 {
     // Insert a comment at the top of the main source file. This is to
     // ensure that at least some modifications are made so that

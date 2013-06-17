@@ -4,11 +4,114 @@
 #include "clang/AST/Decl.h"
 #include "clang/Frontend/CompilerInstance.h"
 
+// WebCLVisitor
+
+WebCLVisitor::WebCLVisitor(clang::CompilerInstance &instance)
+    : WebCLReporter(instance)
+    , clang::RecursiveASTVisitor<WebCLVisitor>()
+{
+}
+
+WebCLVisitor::~WebCLVisitor()
+{
+}
+
+bool WebCLVisitor::VisitTranslationUnitDecl(clang::TranslationUnitDecl *decl)
+{
+    return handleTranslationUnitDecl(decl);
+}
+
+bool WebCLVisitor::VisitFunctionDecl(clang::FunctionDecl *decl)
+{
+    return handleFunctionDecl(decl);
+}
+
+bool WebCLVisitor::VisitParmVarDecl(clang::ParmVarDecl *decl)
+{
+    return handleParmVarDecl(decl);
+}
+
+bool WebCLVisitor::VisitVarDecl(clang::VarDecl *decl)
+{
+    return handleVarDecl(decl);
+}
+
+bool WebCLVisitor::VisitDeclStmt(clang::DeclStmt *stmt)
+{
+    return handleDeclStmt(stmt);
+}
+
+bool WebCLVisitor::VisitArraySubscriptExpr(clang::ArraySubscriptExpr *expr)
+{
+    return handleArraySubscriptExpr(expr);
+}
+
+bool WebCLVisitor::VisitUnaryOperator(clang::UnaryOperator *expr)
+{
+    return handleUnaryOperator(expr);
+}
+
+bool WebCLVisitor::VisitCallExpr(clang::CallExpr *expr)
+{
+    return handleCallExpr(expr);
+}
+
+bool WebCLVisitor::handleTranslationUnitDecl(clang::TranslationUnitDecl *decl)
+{
+    return true;
+}
+
+bool WebCLVisitor::handleFunctionDecl(clang::FunctionDecl *decl)
+{
+    return true;
+}
+
+bool WebCLVisitor::handleParmVarDecl(clang::ParmVarDecl *decl)
+{
+    return true;
+}
+
+bool WebCLVisitor::handleVarDecl(clang::VarDecl *decl)
+{
+    return true;
+}
+
+bool WebCLVisitor::handleDeclStmt(clang::DeclStmt *stmt)
+{
+    return true;
+}
+
+bool WebCLVisitor::handleArraySubscriptExpr(clang::ArraySubscriptExpr *expr)
+{
+    return true;
+}
+
+bool WebCLVisitor::handleUnaryOperator(clang::UnaryOperator *expr)
+{
+    return true;
+}
+
+bool WebCLVisitor::handleCallExpr(clang::CallExpr *expr)
+{
+    return true;
+}
+
+// WebCLTransformingVisitor
+
+WebCLTransformingVisitor::WebCLTransformingVisitor(clang::CompilerInstance &instance)
+    : WebCLVisitor(instance)
+    , WebCLTransformerClient()
+{
+}
+
+WebCLTransformingVisitor::~WebCLTransformingVisitor()
+{
+}
+
 // WebCLRestrictor
 
 WebCLRestrictor::WebCLRestrictor(clang::CompilerInstance &instance)
-    : WebCLReporter(instance)
-    , clang::RecursiveASTVisitor<WebCLRestrictor>()
+    : WebCLVisitor(instance)
 {
 }
 
@@ -16,7 +119,7 @@ WebCLRestrictor::~WebCLRestrictor()
 {
 }
 
-bool WebCLRestrictor::VisitFunctionDecl(clang::FunctionDecl *decl)
+bool WebCLRestrictor::handleFunctionDecl(clang::FunctionDecl *decl)
 {
     if (decl->hasAttr<clang::OpenCLKernelAttr>()) {
         const clang::DeclarationNameInfo nameInfo = decl->getNameInfo();
@@ -33,7 +136,7 @@ bool WebCLRestrictor::VisitFunctionDecl(clang::FunctionDecl *decl)
     return true;
 }
 
-bool WebCLRestrictor::VisitParmVarDecl(clang::ParmVarDecl *decl)
+bool WebCLRestrictor::handleParmVarDecl(clang::ParmVarDecl *decl)
 { 
     const clang::TypeSourceInfo *info = decl->getTypeSourceInfo();
     if (!info) {
@@ -95,9 +198,7 @@ void WebCLRestrictor::check3dImageParameter(
 // WebCLRelocator
 
 WebCLRelocator::WebCLRelocator(clang::CompilerInstance &instance)
-    : WebCLReporter(instance)
-    , WebCLTransformerClient()
-    , clang::RecursiveASTVisitor<WebCLRelocator>()
+    : WebCLTransformingVisitor(instance)
     , current_(NULL)
     , relocationCandidates_()
 {
@@ -107,13 +208,13 @@ WebCLRelocator::~WebCLRelocator()
 {
 }
 
-bool WebCLRelocator::VisitDeclStmt(clang::DeclStmt *stmt)
+bool WebCLRelocator::handleDeclStmt(clang::DeclStmt *stmt)
 {
     current_ = stmt;
     return true;
 }
 
-bool WebCLRelocator::VisitVarDecl(clang::VarDecl *decl)
+bool WebCLRelocator::handleVarDecl(clang::VarDecl *decl)
 {
     // In global scope 'current_' is NULL.
     RelocationCandidate candidate(decl, current_);
@@ -121,7 +222,7 @@ bool WebCLRelocator::VisitVarDecl(clang::VarDecl *decl)
     return true;
 }
 
-bool WebCLRelocator::VisitUnaryOperator(clang::UnaryOperator *expr)
+bool WebCLRelocator::handleUnaryOperator(clang::UnaryOperator *expr)
 {
     if (!isFromMainFile(expr->getLocStart()))
         return true;
@@ -170,9 +271,7 @@ clang::VarDecl *WebCLRelocator::getRelocatedVariable(clang::Expr *expr)
 // WebCLParameterizer
 
 WebCLParameterizer::WebCLParameterizer(clang::CompilerInstance &instance)
-    : WebCLReporter(instance)
-    , WebCLTransformerClient()
-    , clang::RecursiveASTVisitor<WebCLParameterizer>()
+    : WebCLTransformingVisitor(instance)
 {
 }
 
@@ -180,7 +279,7 @@ WebCLParameterizer::~WebCLParameterizer()
 {
 }
 
-bool WebCLParameterizer::VisitFunctionDecl(clang::FunctionDecl *decl)
+bool WebCLParameterizer::handleFunctionDecl(clang::FunctionDecl *decl)
 {
     if (!isFromMainFile(decl->getLocStart()))
         return true;
@@ -190,7 +289,7 @@ bool WebCLParameterizer::VisitFunctionDecl(clang::FunctionDecl *decl)
     return handleFunction(decl);
 }
 
-bool WebCLParameterizer::VisitCallExpr(clang::CallExpr *expr)
+bool WebCLParameterizer::handleCallExpr(clang::CallExpr *expr)
 {
     if (!isFromMainFile(expr->getLocStart()))
         return true;
@@ -279,9 +378,7 @@ bool WebCLParameterizer::isNonPrivateOpenCLAddressSpace(unsigned int addressSpac
 
 WebCLAccessor::WebCLAccessor(
     clang::CompilerInstance &instance)
-    : WebCLReporter(instance)
-    , WebCLTransformerClient()
-    , clang::RecursiveASTVisitor<WebCLAccessor>()
+    : WebCLTransformingVisitor(instance)
 {
 }
 
@@ -289,7 +386,7 @@ WebCLAccessor::~WebCLAccessor()
 {
 }
 
-bool WebCLAccessor::VisitArraySubscriptExpr(clang::ArraySubscriptExpr *expr)
+bool WebCLAccessor::handleArraySubscriptExpr(clang::ArraySubscriptExpr *expr)
 {
     if (!isFromMainFile(expr->getLocStart()))
         return true;
@@ -344,7 +441,7 @@ bool WebCLAccessor::VisitArraySubscriptExpr(clang::ArraySubscriptExpr *expr)
     return true;
 }
 
-bool WebCLAccessor::VisitUnaryOperator(clang::UnaryOperator *expr)
+bool WebCLAccessor::handleUnaryOperator(clang::UnaryOperator *expr)
 {
     if (!isFromMainFile(expr->getLocStart()))
         return true;
