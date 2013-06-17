@@ -63,7 +63,8 @@ private:
     RelocationCandidates relocationCandidates_;
 };
 
-/// \brief Finds function parameter lists that need to be extended.
+/// Finds function parameter lists that need to be extended. Also
+/// finds function calls and augments argument lists when necessary.
 class WebCLParameterizer : public WebCLReporter
                          , public WebCLTransformerClient
                          , public clang::RecursiveASTVisitor<WebCLParameterizer>
@@ -73,8 +74,22 @@ public:
     explicit WebCLParameterizer(clang::CompilerInstance &instance);
     ~WebCLParameterizer();
 
+    /// Checks whether parameter lists need to be extended:
+    ///
+    /// - Add array size parameters for kernel array parameters.
+    /// - Add address space record parameters for functions that need
+    ///   to do pointer and index checking.
+    ///
     /// \see clang::RecursiveASTVisitor::VisitFunctionDecl
     bool VisitFunctionDecl(clang::FunctionDecl *decl);
+
+    /// Checks whether argument lists need to be extended:
+    ///
+    /// - Add address space argument for functions that need to do
+    ///  pointer and index checking.
+    ///
+    /// \see clang::RecursiveASTVisitor::VisitCallExpr
+    bool VisitCallExpr(clang::CallExpr *expr);
 
 private:
 

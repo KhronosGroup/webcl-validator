@@ -12,6 +12,7 @@
 
 namespace clang {
     class ArraySubscriptExpr;
+    class CallExpr;
     class Decl;
     class DeclStmt;
     class Expr;
@@ -73,6 +74,23 @@ public:
 protected:
 
     clang::FunctionDecl *decl_;
+};
+
+class WebCLRecordArgumentInsertion : public WebCLTransformation
+{
+public:
+
+    WebCLRecordArgumentInsertion(
+        clang::CompilerInstance &instance, clang::CallExpr *expr);
+    virtual ~WebCLRecordArgumentInsertion();
+
+    /// \see WebCLTransformation::rewrite
+    virtual bool rewrite(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
+
+protected:
+
+    clang::CallExpr *expr_;
 };
 
 /// \brief Inserts size parameter that is linked to a kernel memory
@@ -244,6 +262,10 @@ public:
     /// Modify function parameter declarations:
     /// function(a, b) -> function(record, a, b)
     void addRecordParameter(clang::FunctionDecl *decl);
+
+    /// Modify arguments passed to a function:
+    /// call(a, b) -> call(record, a, b)
+    void addRecordArgument(clang::CallExpr *expr);
 
     /// Modify kernel parameter declarations:
     /// kernel(a, array, b) -> kernel(a, array, array_size, b)

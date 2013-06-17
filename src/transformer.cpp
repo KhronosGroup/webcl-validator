@@ -70,6 +70,40 @@ bool WebCLRecordParameterInsertion::rewrite(
         decl_->getParamDecl(0)->getLocStart(), parameter + ", ");
 }
 
+// WebCLRecordArgumentInsertion
+
+WebCLRecordArgumentInsertion::WebCLRecordArgumentInsertion(
+    clang::CompilerInstance &instance, clang::CallExpr *expr)
+    : WebCLTransformation(instance), expr_(expr)
+{
+}
+
+WebCLRecordArgumentInsertion::~WebCLRecordArgumentInsertion()
+{
+}
+
+bool WebCLRecordArgumentInsertion::rewrite(
+    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
+{
+    const unsigned int numArguments = expr_->getNumArgs();
+
+    clang::SourceLocation location = expr_->getRParenLoc();
+    if (numArguments) {
+        clang::Expr *first = expr_->getArg(0);
+        if (!first) {
+            error(expr_->getLocStart(), "Invalid first argument.");
+            return false;
+        }
+        location = first->getLocStart();
+    }
+
+    const std::string comma = (numArguments > 0) ? ", " : "";
+    const std::string argument = cfg.addressSpaceRecordName_ + comma;
+
+    // Rewriter returns false on success.
+    return !rewriter.InsertTextBefore(location, argument);
+}
+
 // WebCLSizeParameterInsertion
 
 WebCLSizeParameterInsertion::WebCLSizeParameterInsertion(
@@ -378,6 +412,14 @@ void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)
         decl,
         new WebCLRecordParameterInsertion(
             instance_, decl));
+}
+
+void WebCLTransformer::addRecordArgument(clang::CallExpr *expr)
+{
+    addTransformation(
+        expr,
+        new WebCLRecordArgumentInsertion(
+            instance_, expr));
 }
 
 void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)

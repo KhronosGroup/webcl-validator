@@ -190,6 +190,24 @@ bool WebCLParameterizer::VisitFunctionDecl(clang::FunctionDecl *decl)
     return handleFunction(decl);
 }
 
+bool WebCLParameterizer::VisitCallExpr(clang::CallExpr *expr)
+{
+    if (!isFromMainFile(expr->getLocStart()))
+        return true;
+
+    clang::FunctionDecl *decl = expr->getDirectCallee();
+    if (!decl) {
+        error(expr->getLocStart(), "Invalid callee.");
+        return true;
+    }
+
+    if (!isRecordRequired(decl))
+        return true;
+
+    getTransformer().addRecordArgument(expr);
+    return true;
+}
+
 bool WebCLParameterizer::handleFunction(clang::FunctionDecl *decl)
 {
     if (!isRecordRequired(decl))
