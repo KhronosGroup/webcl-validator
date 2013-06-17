@@ -1,8 +1,8 @@
 #ifndef WEBCLVALIDATOR_WEBCLVISITOR
 #define WEBCLVALIDATOR_WEBCLVISITOR
 
-#include "reporter.hpp"
-#include "transformer.hpp"
+#include "WebCLReporter.hpp"
+#include "WebCLTransformer.hpp"
 
 #include "clang/AST/RecursiveASTVisitor.h"
 

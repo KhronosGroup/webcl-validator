@@ -1,4 +1,4 @@
-#include "printer.hpp"
+#include "WebCLPrinter.hpp"
 
 #include "clang/Frontend/CompilerInstance.h"
 

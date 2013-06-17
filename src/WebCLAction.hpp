@@ -1,7 +1,7 @@
 #ifndef WEBCLVALIDATOR_WEBCLACTION
 #define WEBCLVALIDATOR_WEBCLACTION
 
-#include "consumer.hpp"
+#include "WebCLConsumer.hpp"
 
 #include "clang/Frontend/FrontendAction.h"
 

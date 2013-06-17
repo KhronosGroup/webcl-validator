@@ -1,6 +1,6 @@
-#include "action.hpp"
-#include "preprocessor.hpp"
-#include "transformer.hpp"
+#include "WebCLAction.hpp"
+#include "WebCLPreprocessor.hpp"
+#include "WebCLTransformer.hpp"
 
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Frontend/CompilerInstance.h"

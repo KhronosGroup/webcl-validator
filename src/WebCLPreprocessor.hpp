@@ -1,7 +1,7 @@
 #ifndef WEBCLVALIDATOR_WEBCLPREPROCESSOR
 #define WEBCLVALIDATOR_WEBCLPREPROCESSOR
 
-#include "reporter.hpp"
+#include "WebCLReporter.hpp"
 
 #include "clang/Lex/PPCallbacks.h"
 

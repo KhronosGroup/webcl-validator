@@ -1,8 +1,8 @@
 #ifndef WEBCLVALIDATOR_WEBCLPRINTER
 #define WEBCLVALIDATOR_WEBCLPRINTER
 
-#include "reporter.hpp"
-#include "transformer.hpp"
+#include "WebCLReporter.hpp"
+#include "WebCLTransformer.hpp"
 
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Rewrite/Core/Rewriter.h"

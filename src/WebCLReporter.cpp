@@ -1,4 +1,4 @@
-#include "reporter.hpp"
+#include "WebCLReporter.hpp"
 
 #include "clang/Frontend/CompilerInstance.h"
 

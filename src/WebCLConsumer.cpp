@@ -1,4 +1,4 @@
-#include "consumer.hpp"
+#include "WebCLConsumer.hpp"
 
 #include "clang/AST/ASTContext.h"
 

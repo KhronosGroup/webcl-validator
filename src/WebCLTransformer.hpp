@@ -1,7 +1,7 @@
 #ifndef WEBCLVALIDATOR_WEBCLTRANSFORMER
 #define WEBCLVALIDATOR_WEBCLTRANSFORMER
 
-#include "reporter.hpp"
+#include "WebCLReporter.hpp"
 
 #include "clang/AST/Type.h"
 #include "llvm/ADT/APInt.h"

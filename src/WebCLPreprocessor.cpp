@@ -1,4 +1,4 @@
-#include "preprocessor.hpp"
+#include "WebCLPreprocessor.hpp"
 
 #include "clang/Basic/IdentifierTable.h"
 #include "clang/Frontend/CompilerInstance.h"

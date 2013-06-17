@@ -1,8 +1,8 @@
 #ifndef WEBCLVALIDATOR_WEBCLCONSUMER
 #define WEBCLVALIDATOR_WEBCLCONSUMER
 
-#include "printer.hpp"
-#include "visitor.hpp"
+#include "WebCLPrinter.hpp"
+#include "WebCLVisitor.hpp"
 
 #include "clang/AST/ASTConsumer.h"
 

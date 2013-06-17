@@ -1,4 +1,4 @@
-#include "visitor.hpp"
+#include "WebCLVisitor.hpp"
 
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"

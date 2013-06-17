@@ -1,4 +1,4 @@
-#include "transformer.hpp"
+#include "WebCLTransformer.hpp"
 
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"

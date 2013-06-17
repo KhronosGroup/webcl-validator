@@ -1,4 +1,4 @@
-#include "action.hpp"
+#include "WebCLAction.hpp"
 
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"

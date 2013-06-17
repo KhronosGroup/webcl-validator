@@ -1,13 +1,13 @@
 add_clang_executable(
   webcl-validator
-  action.cpp
-  consumer.cpp
   main.cpp
-  preprocessor.cpp
-  printer.cpp
-  reporter.cpp
-  transformer.cpp
-  visitor.cpp
+  WebCLAction.cpp
+  WebCLConsumer.cpp
+  WebCLPreprocessor.cpp
+  WebCLPrinter.cpp
+  WebCLReporter.cpp
+  WebCLTransformer.cpp
+  WebCLVisitor.cpp
 )
 
 target_link_libraries(
