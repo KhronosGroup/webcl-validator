@@ -369,17 +369,8 @@ WebCLTransformer::WebCLTransformer(clang::CompilerInstance &instance)
 
 WebCLTransformer::~WebCLTransformer()
 {
-    for (DeclTransformations::iterator i = declTransformations_.begin();
-         i != declTransformations_.end(); ++i) {
-        WebCLTransformation *transformation = i->second;
-        delete transformation;
-    }
-
-    for (ExprTransformations::iterator i = exprTransformations_.begin();
-         i != exprTransformations_.end(); ++i) {
-        WebCLTransformation *transformation = i->second;
-        delete transformation;
-    }
+    deleteTransformations(declTransformations_);
+    deleteTransformations(exprTransformations_);
 }
 
 bool WebCLTransformer::rewrite(clang::Rewriter &rewriter)
@@ -400,7 +391,7 @@ void WebCLTransformer::addKernel(clang::FunctionDecl *decl)
 void WebCLTransformer::addRelocatedVariable(clang::DeclStmt *stmt, clang::VarDecl *decl)
 {
     addTransformation(
-        decl,
+        declTransformations_, decl,
         new WebCLVariableRelocation(
             instance_, stmt, decl));
     addRelocatedVariable(decl);
@@ -409,7 +400,7 @@ void WebCLTransformer::addRelocatedVariable(clang::DeclStmt *stmt, clang::VarDec
 void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)
 {
     addTransformation(
-        decl,
+        declTransformations_, decl,
         new WebCLRecordParameterInsertion(
             instance_, decl));
 }
@@ -417,7 +408,7 @@ void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)
 void WebCLTransformer::addRecordArgument(clang::CallExpr *expr)
 {
     addTransformation(
-        expr,
+        exprTransformations_, expr,
         new WebCLRecordArgumentInsertion(
             instance_, expr));
 }
@@ -425,7 +416,7 @@ void WebCLTransformer::addRecordArgument(clang::CallExpr *expr)
 void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
 {
     addTransformation(
-        decl,
+        declTransformations_, decl,
         new WebCLSizeParameterInsertion(
             instance_, decl));
 }
@@ -434,7 +425,7 @@ void WebCLTransformer::addArrayIndexCheck(
     clang::ArraySubscriptExpr *expr, llvm::APInt &bound)
 {
     addTransformation(
-        expr,
+        exprTransformations_, expr,
         new WebCLConstantArraySubscriptTransformation(
             instance_, expr, bound));
 }
@@ -443,14 +434,14 @@ void WebCLTransformer::addArrayIndexCheck(clang::ArraySubscriptExpr *expr)
 {
     if (clang::ParmVarDecl *var = getDeclarationOfArray(expr)) {
         addTransformation(
-            expr,
+            exprTransformations_, expr,
             new WebCLKernelArraySubscriptTransformation(
                 instance_, expr, cfg_.getNameOfSizeParameter(var)));
     } else {
         addCheckedType(checkedIndexTypes_, expr->getType());
 
         addTransformation(
-            expr,
+            exprTransformations_, expr,
             new WebCLArraySubscriptTransformation(
                 instance_, expr));
     }
@@ -461,9 +452,49 @@ void WebCLTransformer::addPointerCheck(clang::Expr *expr)
     addCheckedType(checkedPointerTypes_, expr->getType().getTypePtr()->getPointeeType());
 
     addTransformation(
-        expr,
+        exprTransformations_, expr,
         new WebCLPointerDereferenceTransformation(
             instance_, expr));
+}
+
+template <typename NodeMap, typename Node>
+void WebCLTransformer::addTransformation(
+    NodeMap &map, const Node *node, WebCLTransformation *transformation)
+{
+    if (!transformation) {
+        error(node->getLocStart(), "Internal error. Can't create transformation.");
+        return;
+    }
+
+    const std::pair<typename NodeMap::iterator, bool> status =
+        map.insert(typename NodeMap::value_type(node, transformation));
+
+    if (!status.second) {
+        error(node->getLocStart(), "Transformation has been already created.");
+        return;
+    }
+}
+
+template <typename NodeMap>
+void WebCLTransformer::deleteTransformations(NodeMap &map)
+{
+    for (typename NodeMap::iterator i = map.begin(); i != map.end(); ++i) {
+        WebCLTransformation *transformation = i->second;
+        delete transformation;
+    }
+}
+
+template <typename NodeMap>
+bool WebCLTransformer::rewriteTransformations(NodeMap &map, clang::Rewriter &rewriter)
+{
+    bool status = true;
+
+    for (typename NodeMap::iterator i = map.begin(); i != map.end(); ++i) {
+        WebCLTransformation *transformation = i->second;
+        status = status && transformation->rewrite(cfg_, rewriter);
+    }
+
+    return status;
 }
 
 bool WebCLTransformer::rewritePrologue(clang::Rewriter &rewriter)
@@ -502,17 +533,8 @@ bool WebCLTransformer::rewriteTransformations(clang::Rewriter &rewriter)
         status = status && rewriteKernelPrologue(kernel, rewriter);
     }
 
-    for (DeclTransformations::iterator i = declTransformations_.begin();
-         i != declTransformations_.end(); ++i) {
-        WebCLTransformation *transformation = i->second;
-        status = status && transformation->rewrite(cfg_, rewriter);
-    }
-
-    for (ExprTransformations::iterator i = exprTransformations_.begin();
-         i != exprTransformations_.end(); ++i) {
-        WebCLTransformation *transformation = i->second;
-        status = status && transformation->rewrite(cfg_, rewriter);
-    }
+    status = status && rewriteTransformations(declTransformations_, rewriter);
+    status = status && rewriteTransformations(exprTransformations_, rewriter);
 
     return status;
 }
@@ -545,42 +567,6 @@ void WebCLTransformer::addCheckedType(CheckedTypes &types, clang::QualType type)
 {
     const CheckedType checked(cfg_.getNameOfAddressSpace(type), cfg_.getNameOfType(type));
     types.insert(checked);
-}
-
-void WebCLTransformer::addTransformation(
-    const clang::Decl *decl, WebCLTransformation *transformation)
-{
-    if (!transformation) {
-        error(decl->getLocStart(), "Internal error. Can't create declaration transformation.");
-        return;
-    }
-
-    const std::pair<DeclTransformations::iterator, bool> status =
-        declTransformations_.insert(
-            DeclTransformations::value_type(decl, transformation));
-
-    if (!status.second) {
-        error(decl->getLocStart(), "Declaration transformation has been already created.");
-        return;
-    }
-}
-
-void WebCLTransformer::addTransformation(
-    const clang::Expr *expr, WebCLTransformation *transformation)
-{
-    if (!transformation) {
-        error(expr->getLocStart(), "Internal error. Can't create expression transformation.");
-        return;
-    }
-
-    const std::pair<ExprTransformations::iterator, bool> status =
-        exprTransformations_.insert(
-            ExprTransformations::value_type(expr, transformation));
-
-    if (!status.second) {
-        error(expr->getLocStart(), "Expression transformation has been already created.");
-        return;
-    }
 }
 
 void WebCLTransformer::addRelocatedVariable(clang::VarDecl *decl)

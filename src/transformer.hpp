@@ -293,6 +293,13 @@ private:
     typedef std::set<const clang::VarDecl*> VariableDeclarations;
     typedef std::set<const clang::FunctionDecl*> Kernels;
 
+    template <typename NodeMap, typename Node>
+    void addTransformation(NodeMap &map, const Node *node, WebCLTransformation *transformation);
+    template <typename NodeMap>
+    void deleteTransformations(NodeMap &map);
+    template <typename NodeMap>
+    bool rewriteTransformations(NodeMap &map, clang::Rewriter &rewriter);
+
     bool rewritePrologue(clang::Rewriter &rewriter);
     bool rewriteKernelPrologue(const clang::FunctionDecl *kernel, clang::Rewriter &rewriter);
     bool rewriteTransformations(clang::Rewriter &rewriter);
@@ -300,8 +307,7 @@ private:
     clang::ParmVarDecl *getDeclarationOfArray(clang::ArraySubscriptExpr *expr);
 
     void addCheckedType(CheckedTypes &types, clang::QualType type);
-    void addTransformation(const clang::Decl *decl, WebCLTransformation *transformation);
-    void addTransformation(const clang::Expr *expr, WebCLTransformation *transformation);
+
     void addRelocatedVariable(clang::VarDecl *decl);
 
     void emitVariable(std::ostream& out, const clang::VarDecl *decl);
