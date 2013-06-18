@@ -33,19 +33,32 @@ __kernel void relocate_variables(
     // CHECK: __global int *result, unsigned long wcl_result_size)
     __global int *result)
 {
-    // CHECK: WclPrivates wcl_ps;
-    // CHECK: WclLocals wcl_ls;
-    // CHECK: WclConstants wcl_cs;
+    // CHECK: WclPrivates wcl_ps = {
+    // CHECK:     0,
+    // CHECK:     { 0 },
+    // CHECK:     0,
+    // CHECK:     { 0 }
+    // CHECK: };
+    // CHECK: WclLocals wcl_ls = {
+    // CHECK:     0,
+    // CHECK:     { 0 }
+    // CHECK: };
+    // CHECK: WclConstants wcl_cs = {
+    // CHECK:     1,
+    // CHECK:     { 2 }
+    // CHECK: };
     // CHECK: WclAddressSpaces wcl_as = { &wcl_ps, &wcl_ls, &wcl_cs, 0 };
 
     // CHECK: #if 0
     // CHECK: int value = constant_value;
     // CHECK: #endif
+    // CHECK: wcl_ps.value = constant_value;
     int value = constant_value;
     int *pointer = &value;
     // CHECK: #if 0
     // CHECK: int array[1] = { *pointer };
     // CHECK: #endif
+    // CHECK: wcl_ps.array[0] = *pointer;
     int array[1] = { *pointer };
 
     // CHECK: #if 0
@@ -64,11 +77,13 @@ __kernel void relocate_variables(
     // CHECK: #if 0
     // CHECK: __private int private_value = local_value + 1;
     // CHECK: #endif
+    // CHECK: wcl_ps.private_value = local_value + 1;
     __private int private_value = local_value + 1;
     __private int *private_pointer = &private_value;
     // CHECK: #if 0
     // CHECK: __private int private_array[1] = { *private_pointer };
     // CHECK: #endif
+    // CHECK: wcl_ps.private_array[0] = *private_pointer;
     __private int private_array[1] = { *private_pointer };
 
     result[value] = array[0] + local_array[0] +

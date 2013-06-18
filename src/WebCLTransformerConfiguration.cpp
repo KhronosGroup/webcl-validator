@@ -7,6 +7,7 @@ WebCLTransformerConfiguration::WebCLTransformerConfiguration()
     : prefix_("wcl")
     , pointerSuffix_("ptr")
     , indexSuffix_("idx")
+    , invalid_("???")
     , indentation_("    ")
     , sizeParameterType_("unsigned long")
     , privateAddressSpace_("private")
@@ -45,11 +46,29 @@ const std::string WebCLTransformerConfiguration::getNameOfAddressSpace(clang::Qu
         case clang::LangAS::opencl_constant:
             return constantAddressSpace_;
         default:
-            return "???";
+            return invalid_;
         }
     }
 
     return privateAddressSpace_;
+}
+
+const std::string WebCLTransformerConfiguration::getNameOfAddressSpaceRecord(clang::QualType type) const
+{
+    if (const unsigned int space = type.getAddressSpace()) {
+        switch (space) {
+        case clang::LangAS::opencl_global:
+            return globalRecordName_;
+        case clang::LangAS::opencl_local:
+            return localRecordName_;
+        case clang::LangAS::opencl_constant:
+            return constantRecordName_;
+        default:
+            return invalid_;
+        }
+    }
+
+    return privateRecordName_;
 }
 
 const std::string WebCLTransformerConfiguration::getNameOfType(clang::QualType type) const
@@ -80,6 +99,11 @@ const std::string WebCLTransformerConfiguration::getNameOfSizeParameter(clang::P
 {
     const std::string name = decl->getName();
     return prefix_ + "_" + name + "_size";
+}
+
+const std::string WebCLTransformerConfiguration::getNameOfRelocatedVariable(const clang::VarDecl *decl) const
+{
+    return decl->getName();
 }
 
 const std::string WebCLTransformerConfiguration::getIndentation(unsigned int levels) const

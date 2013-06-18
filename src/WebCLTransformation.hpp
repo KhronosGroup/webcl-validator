@@ -35,15 +35,29 @@ public:
 
 protected:
 
+    /// \return Whether a transformation has already removed a range
+    /// that contains the location.
     bool hasBeenRemoved(clang::SourceLocation location);
 
+    /// \brief Add text before location.
     bool prepend(clang::SourceLocation begin, const std::string &prologue,
                  clang::Rewriter &rewriter);
+
+    /// \brief Add text after location.
     bool append(clang::SourceLocation end, const std::string &epilogue,
                 clang::Rewriter &rewriter);
+
+    /// \brief Replace range with given text.
     bool replace(clang::SourceRange range, const std::string &replacement,
                  clang::Rewriter &rewriter);
-    bool remove(clang::SourceRange range, clang::Rewriter &rewriter);
+
+    /// \brief Remove range by commenting it out.
+    ///
+    /// Additionally a replacement text can be given that will be
+    /// inserted right next to the region that was commented out. Pass
+    /// empty replacement text if you only want to remove code.
+    bool remove(clang::SourceRange range, const std::string &replacement,
+                clang::Rewriter &rewriter);
 
     typedef std::vector<clang::SourceRange> Removals;
     static Removals removals_;
@@ -65,6 +79,12 @@ public:
         WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
 
 protected:
+
+    const std::string initializePrimitive(
+        const std::string &prefix, const clang::Expr *expr, clang::Rewriter &rewriter);
+    const std::string initializeArray(
+        const llvm::APInt &size,
+        const std::string &prefix, const clang::Expr *expr, clang::Rewriter &rewriter);
 
     clang::DeclStmt *stmt_;
     clang::VarDecl *decl_;

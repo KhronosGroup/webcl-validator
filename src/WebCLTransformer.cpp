@@ -174,7 +174,7 @@ bool WebCLTransformer::rewriteKernelPrologue(
     }
 
     std::ostringstream out;
-    emitKernelPrologue(out);
+    emitKernelPrologue(out, rewriter);
     // Rewriter returns false on success.
     return !rewriter.InsertTextAfter(
         body->getLocStart().getLocWithOffset(1), out.str());
@@ -254,7 +254,8 @@ void WebCLTransformer::emitVariable(std::ostream &out, const clang::VarDecl *dec
     llvm::raw_string_ostream stream(variable);
     clang::PrintingPolicy policy(instance_.getLangOpts());
     clang::QualType::print(
-        type.getTypePtrOrNull(), qualifiers, stream, policy, decl->getName());
+        type.getTypePtrOrNull(), qualifiers, stream, policy,
+        cfg_.getNameOfRelocatedVariable(decl));
     out << stream.str();
 }
 
@@ -422,15 +423,59 @@ void WebCLTransformer::emitPrologue(std::ostream &out)
     emitPrologueCheckers(out);
 }
 
-void WebCLTransformer::emitKernelPrologue(std::ostream &out)
+void WebCLTransformer::emitTypeInitialization(
+    std::ostream &out, clang::QualType qualType)
+{
+    const clang::Type *type = qualType.getTypePtrOrNull();
+    if (type && type->isArrayType()) {
+        out << "{ 0 }";
+        return;
+    }
+
+    out << "0";
+}
+
+void WebCLTransformer::emitVariableInitialization(
+    std::ostream &out, const clang::VarDecl *decl,
+    const clang::Rewriter &rewriter)
+{
+    const clang::Expr *init = decl->getInit();
+    if (!init || !init->isConstantInitializer(instance_.getASTContext(), false)) {
+        emitTypeInitialization(out, decl->getType());
+        return;
+    }
+
+    const std::string original = rewriter.getRewrittenText(init->getSourceRange());
+    out << original;
+}
+
+void WebCLTransformer::emitRecordInitialization(
+    std::ostream &out, const std::string &type, const std::string &name,
+    VariableDeclarations &relocations, const clang::Rewriter &rewriter)
+{
+    out << cfg_.indentation_ << type << " " << name << " = {\n";
+
+    for (VariableDeclarations::iterator i = relocations.begin();
+         i != relocations.end(); ++i) {
+        if (i != relocations.begin())
+            out << ",\n";
+        out << cfg_.getIndentation(2);
+        const clang::VarDecl *decl = (*i);
+        emitVariableInitialization(out, decl, rewriter);
+    }
+
+    out << "\n" << cfg_.indentation_ << "};\n";
+}
+
+void WebCLTransformer::emitKernelPrologue(
+    std::ostream &out, const clang::Rewriter& rewriter)
 {
     out << "\n";
 
     std::string privateString = cfg_.privateRecordName_;
     if (relocatedPrivates_.size()) {
-        out << cfg_.indentation_
-            << cfg_.privateRecordType_ << " " << privateString
-            << ";\n";
+        emitRecordInitialization(
+            out, cfg_.privateRecordType_, privateString, relocatedPrivates_, rewriter);
         privateString = "&" + privateString;
     } else {
         privateString = "0";
@@ -438,9 +483,8 @@ void WebCLTransformer::emitKernelPrologue(std::ostream &out)
 
     std::string localString = cfg_.localRecordName_;
     if (relocatedLocals_.size()) {
-        out << cfg_.indentation_
-            << cfg_.localRecordType_ << " " << localString
-            << ";\n";
+        emitRecordInitialization(
+            out, cfg_.localRecordType_, localString, relocatedLocals_, rewriter);
         localString = "&" + localString;
     } else {
         localString = "0";
@@ -448,9 +492,8 @@ void WebCLTransformer::emitKernelPrologue(std::ostream &out)
 
     std::string constantString = cfg_.constantRecordName_;
     if (relocatedConstants_.size()) {
-        out << cfg_.indentation_
-            << cfg_.constantRecordType_ << " " << constantString
-            << ";\n";
+        emitRecordInitialization(
+            out, cfg_.constantRecordType_, constantString, relocatedConstants_, rewriter);
         constantString = "&" + constantString;
     } else {
         constantString = "0";
@@ -458,9 +501,8 @@ void WebCLTransformer::emitKernelPrologue(std::ostream &out)
 
     std::string globalString = cfg_.globalRecordName_;
     if (relocatedGlobals_.size()) {
-        out << cfg_.indentation_
-            << cfg_.globalRecordType_ << " " << globalString
-            << ";\n";
+        emitRecordInitialization(
+            out, cfg_.globalRecordType_, globalString, relocatedGlobals_, rewriter);
         globalString = "&" + globalString;
     } else {
         globalString = "0";

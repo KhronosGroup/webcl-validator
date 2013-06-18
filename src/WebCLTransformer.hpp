@@ -117,7 +117,16 @@ private:
 
     void emitPrologue(std::ostream &out);
 
-    void emitKernelPrologue(std::ostream &out);
+    void emitTypeInitialization(
+        std::ostream &out, clang::QualType qualType);
+    void emitVariableInitialization(
+        std::ostream &out, const clang::VarDecl *decl,
+        const clang::Rewriter &rewriter);
+    void emitRecordInitialization(
+        std::ostream &out, const std::string &type, const std::string &name,
+        VariableDeclarations &relocations, const clang::Rewriter &rewriter);
+    void emitKernelPrologue(
+        std::ostream &out, const clang::Rewriter &rewriter);
 
     DeclTransformations declTransformations_;
     ExprTransformations exprTransformations_;

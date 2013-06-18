@@ -5,6 +5,9 @@ int get_indexed_value(
     // CHECK: WclAddressSpaces *wcl_as,
     __global int *array, int index)
 {
+    // CHECK: #if 0
+    // CHECK: const int triple[3] = { 0, 1, 2 };
+    // CHECK: #endif
     const int triple[3] = { 0, 1, 2 };
     // CHECK: const int sum1 = array[wcl_global_int_idx(wcl_as, array, index)] + array[wcl_global_int_idx(wcl_as, array, 0)] + triple[wcl_idx(index, 3UL)];
     const int sum1 = array[index] + array[0] + triple[index];
@@ -33,7 +36,9 @@ __kernel void access_array(
     // CHECK: __global int *array, unsigned long wcl_array_size)
     __global int *array)
 {
-    // CHECK: WclPrivates wcl_ps;
+    // CHECK: WclPrivates wcl_ps = {
+    // CHECK:     { 0, 1, 2 }
+    // CHECK: };
     // CHECK: WclAddressSpaces wcl_as = { &wcl_ps, 0, 0, 0 };
     const int i = get_global_id(0);
 

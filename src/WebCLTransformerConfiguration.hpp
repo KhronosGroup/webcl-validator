@@ -7,6 +7,7 @@
 
 namespace clang {
     class ParmVarDecl;
+    class VarDecl;
 }
 
 /// \brief A helper structure that configures strings that occur
@@ -19,17 +20,20 @@ public:
     ~WebCLTransformerConfiguration();
 
     const std::string getNameOfAddressSpace(clang::QualType type) const;
+    const std::string getNameOfAddressSpaceRecord(clang::QualType type) const;
     const std::string getNameOfType(clang::QualType type) const;
     const std::string getNameOfPointerChecker(clang::QualType type) const;
     const std::string getNameOfIndexChecker(clang::QualType type) const;
     const std::string getNameOfIndexChecker() const;
     const std::string getNameOfSizeParameter(clang::ParmVarDecl *decl) const;
+    const std::string getNameOfRelocatedVariable(const clang::VarDecl *decl) const;
     const std::string getIndentation(unsigned int levels) const;
 
     const std::string prefix_;
     const std::string pointerSuffix_;
     const std::string indexSuffix_;
 
+    const std::string invalid_;
     const std::string indentation_;
     const std::string sizeParameterType_;
 

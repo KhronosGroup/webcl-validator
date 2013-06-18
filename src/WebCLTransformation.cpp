@@ -1,8 +1,12 @@
 #include "WebCLTransformation.hpp"
 #include "WebCLTransformerConfiguration.hpp"
 
+#include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
+#include "clang/Frontend/CompilerInstance.h"
 #include "clang/Rewrite/Core/Rewriter.h"
+
+#include <sstream>
 
 // WebCLTransformation
 
@@ -56,7 +60,8 @@ bool WebCLTransformation::replace(
     return !rewriter.ReplaceText(range, replacement);
 }
 
-bool WebCLTransformation::remove(clang::SourceRange range, clang::Rewriter &rewriter)
+bool WebCLTransformation::remove(
+    clang::SourceRange range, const std::string &replacement, clang::Rewriter &rewriter)
 {
     if (hasBeenRemoved(range.getBegin()) || hasBeenRemoved(range.getEnd()))
         return true;
@@ -68,7 +73,7 @@ bool WebCLTransformation::remove(clang::SourceRange range, clang::Rewriter &rewr
 
     bool status = true;
     status = status && prepend(range.getBegin(), prologue, rewriter);
-    status = status && append(range.getEnd(), epilogue, rewriter);
+    status = status && append(range.getEnd(), epilogue + replacement, rewriter);
     return status;
 }
 
@@ -95,7 +100,68 @@ bool WebCLVariableRelocation::rewrite(
     const int offset = stmt_ ? 1 : 2;
     range.setEnd(range.getEnd().getLocWithOffset(offset));
 
-    return remove(range, rewriter);
+    std::string replacement;
+    if (const clang::Expr *init = decl_->getInit()) {
+        clang::ASTContext &context = instance_.getASTContext();
+        clang::QualType type = decl_->getType();
+
+        if (!init->isConstantInitializer(context, false)) {
+            const std::string prefix =
+                cfg.indentation_ +
+                cfg.getNameOfAddressSpaceRecord(type) + "." +
+                cfg.getNameOfRelocatedVariable(decl_);
+
+            const clang::ConstantArrayType *arrayType = context.getAsConstantArrayType(type);
+            if (arrayType) {
+                replacement = initializeArray(
+                    arrayType->getSize(), prefix, init, rewriter);
+            } else {
+                replacement = initializePrimitive(
+                    prefix, init, rewriter);
+            }
+
+            if (!replacement.size())
+                return false;
+        }
+    }
+
+    return remove(range, replacement, rewriter);
+}
+
+const std::string WebCLVariableRelocation::initializePrimitive(
+    const std::string &prefix, const clang::Expr *expr, clang::Rewriter &rewriter)
+{
+    std::ostringstream result;
+    result << prefix << " = " << rewriter.getRewrittenText(expr->getSourceRange()) << ";";
+    return result.str();
+}
+
+const std::string WebCLVariableRelocation::initializeArray(
+    const llvm::APInt &size,
+    const std::string &prefix, const clang::Expr *expr, clang::Rewriter &rewriter)
+{
+    std::ostringstream result;
+
+    const clang::InitListExpr *initializers =
+        llvm::dyn_cast<const clang::InitListExpr>(expr);
+
+    if (!initializers) {
+        error(expr->getLocStart(), "Invalid array initializer.");
+        return result.str();
+    }
+
+    const uint64_t numElements = size.getZExtValue();
+    const uint64_t numInitializers = initializers->getNumInits();
+    for (uint64_t element = 0; element < numElements; ++element) {
+        const uint64_t initializer =
+            (element < numInitializers) ? element : (numInitializers - 1);
+        expr = initializers->getInit(initializer);
+        result << prefix << "[" << element << "] = "
+               << rewriter.getRewrittenText(expr->getSourceRange())
+               << ";\n";
+    }
+
+    return result.str();
 }
 
 // WebCLRecordParameterInsertion
