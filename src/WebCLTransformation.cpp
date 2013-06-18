@@ -6,6 +6,8 @@
 
 // WebCLTransformation
 
+WebCLTransformation::Removals WebCLTransformation::removals_;
+
 WebCLTransformation::WebCLTransformation(clang::CompilerInstance &instance)
     : WebCLReporter(instance)
 {
@@ -13,6 +15,61 @@ WebCLTransformation::WebCLTransformation(clang::CompilerInstance &instance)
 
 WebCLTransformation::~WebCLTransformation()
 {
+}
+
+bool WebCLTransformation::hasBeenRemoved(clang::SourceLocation location)
+{
+    // We don't want to transform code that has been commented out by
+    // previous transformations.
+    for (Removals::iterator i = removals_.begin(); i != removals_.end(); ++i) {
+        clang::SourceRange range = (*i);
+        if ((range.getBegin() < location) && (location < range.getEnd()))
+            return true;
+    }
+    return false;
+}
+
+bool WebCLTransformation::prepend(
+    clang::SourceLocation begin, const std::string &prologue, clang::Rewriter &rewriter)
+{
+    if (hasBeenRemoved(begin))
+        return true;
+    // Rewriter returns false on success.
+    return !rewriter.InsertTextBefore(begin, prologue);
+}
+
+bool WebCLTransformation::append(
+    clang::SourceLocation end, const std::string &epilogue, clang::Rewriter &rewriter)
+{
+    if (hasBeenRemoved(end))
+        return true;
+    // Rewriter returns false on success.
+    return !rewriter.InsertTextAfter(end, epilogue);
+}
+
+bool WebCLTransformation::replace(
+    clang::SourceRange range, const std::string &replacement, clang::Rewriter &rewriter)
+{
+    if (hasBeenRemoved(range.getBegin()) || hasBeenRemoved(range.getEnd()))
+        return true;
+    // Rewriter returns false on success.
+    return !rewriter.ReplaceText(range, replacement);
+}
+
+bool WebCLTransformation::remove(clang::SourceRange range, clang::Rewriter &rewriter)
+{
+    if (hasBeenRemoved(range.getBegin()) || hasBeenRemoved(range.getEnd()))
+        return true;
+
+    removals_.push_back(range);
+
+    static const std::string prologue = "\n#if 0\n";
+    static const std::string epilogue = "\n#endif\n";
+
+    bool status = true;
+    status = status && prepend(range.getBegin(), prologue, rewriter);
+    status = status && append(range.getEnd(), epilogue, rewriter);
+    return status;
 }
 
 // WebCLVariableRelocation
@@ -33,16 +90,12 @@ bool WebCLVariableRelocation::rewrite(
     WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
 {
     clang::SourceRange range = stmt_ ? stmt_->getSourceRange() : decl_->getSourceRange();
-    if (!stmt_) {
-        range.setEnd(range.getEnd().getLocWithOffset(1));
-    }
+    // I have no justification for these magical offsets. However,
+    // they are required for correct positioning.
+    const int offset = stmt_ ? 1 : 2;
+    range.setEnd(range.getEnd().getLocWithOffset(offset));
 
-    static const std::string prologue = "\n#if 0\n";
-    static const std::string epilogue = "\n#endif\n";
-    const std::string replacement =
-        prologue + rewriter.getRewrittenText(range) + epilogue;
-    // Rewriter returns false on success.
-    return !rewriter.ReplaceText(range, replacement);
+    return remove(range, rewriter);
 }
 
 // WebCLRecordParameterInsertion
@@ -62,9 +115,7 @@ bool WebCLRecordParameterInsertion::rewrite(
 {
     const std::string parameter =
         cfg.addressSpaceRecordType_ + " *" + cfg.addressSpaceRecordName_;
-    // Rewriter returns false on success.
-    return !rewriter.InsertTextBefore(
-        decl_->getParamDecl(0)->getLocStart(), parameter + ", ");
+    return prepend(decl_->getParamDecl(0)->getLocStart(), parameter + ", ", rewriter);
 }
 
 // WebCLRecordArgumentInsertion
@@ -97,8 +148,7 @@ bool WebCLRecordArgumentInsertion::rewrite(
     const std::string comma = (numArguments > 0) ? ", " : "";
     const std::string argument = cfg.addressSpaceRecordName_ + comma;
 
-    // Rewriter returns false on success.
-    return !rewriter.InsertTextBefore(location, argument);
+    return prepend(location, argument, rewriter);
 }
 
 // WebCLSizeParameterInsertion
@@ -122,10 +172,9 @@ bool WebCLSizeParameterInsertion::rewrite(
     // Doesn't work as expected:
     //return !rewriter.InsertTextAfter(decl_->getLocEnd(), ", " + parameter);
 
-    // Rewriter returns false on success.
     const std::string replacement =
         rewriter.getRewrittenText(decl_->getSourceRange()) + ", " + parameter;
-    return !rewriter.ReplaceText(decl_->getSourceRange(), replacement);
+    return replace(decl_->getSourceRange(), replacement, rewriter);
 }
 
 // WebCLArraySubscriptTransformation
@@ -177,8 +226,7 @@ bool WebCLArraySubscriptTransformation::rewrite(
         base + "[" + cfg.getNameOfIndexChecker(expr_->getType()) + "(" +
         cfg.addressSpaceRecordName_ + ", " + base + ", " + index +
         ")]";
-    // Rewriter returns false on success.
-    return !rewriter.ReplaceText(expr_->getSourceRange(), replacement);
+    return replace(expr_->getSourceRange(), replacement, rewriter);
 }
 
 // WebCLConstantArraySubscriptTransformation
@@ -205,8 +253,7 @@ bool WebCLConstantArraySubscriptTransformation::rewrite(
         base + "[" + cfg.getNameOfIndexChecker() + "("
         + index + ", " + bound_.toString(10, false) + "UL" +
         ")]";
-    // Rewriter returns false on success.
-    return !rewriter.ReplaceText(expr_->getSourceRange(), replacement);
+    return replace(expr_->getSourceRange(), replacement, rewriter);
 }
 
 // WebCLKernelArraySubscriptTransformation
@@ -231,8 +278,7 @@ bool WebCLKernelArraySubscriptTransformation::rewrite(
 
     const std::string replacement =
         base + "[" + cfg.getNameOfIndexChecker() + "(" + index + ", " + bound_ + ")]";
-    // Rewriter returns false on success.
-    return !rewriter.ReplaceText(expr_->getSourceRange(), replacement);
+    return replace(expr_->getSourceRange(), replacement, rewriter);
 }
 
 // WebCLPointerDereferenceTransformation
@@ -254,6 +300,5 @@ bool WebCLPointerDereferenceTransformation::rewrite(
         cfg.getNameOfPointerChecker(getPointeeType(expr_)) + "(" +
         cfg.addressSpaceRecordName_ + ", " + rewriter.getRewrittenText(expr_->getSourceRange()) +
         ")";
-    // Rewriter returns false on success.
-    return !rewriter.ReplaceText(expr_->getSourceRange(), replacement);
+    return replace(expr_->getSourceRange(), replacement, rewriter);
 }

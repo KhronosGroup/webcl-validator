@@ -261,16 +261,15 @@ void WebCLTransformer::emitVariable(std::ostream &out, const clang::VarDecl *dec
 void WebCLTransformer::emitAddressSpaceRecord(
     std::ostream &out, const VariableDeclarations &variables, const std::string &name)
 {
-    out << "typedef struct {";
+    out << "typedef struct {\n";
 
     for (VariableDeclarations::iterator i = variables.begin(); i != variables.end(); ++i) {
-        if (i != variables.begin())
-            out << ",";
-        out << "\n" <<  cfg_.indentation_;
+        out << cfg_.indentation_;
         emitVariable(out, (*i));
+        out << ";\n";
     }
 
-    out << "\n} " << name << ";\n"
+    out << "} " << name << ";\n"
         << "\n";
 }
 

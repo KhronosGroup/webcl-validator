@@ -6,6 +6,8 @@
 
 #include "llvm/ADT/APInt.h"
 
+#include <vector>
+
 namespace clang {
     class ArraySubscriptExpr;
     class CallExpr;
@@ -30,6 +32,21 @@ public:
 
     virtual bool rewrite(
         WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter) = 0;
+
+protected:
+
+    bool hasBeenRemoved(clang::SourceLocation location);
+
+    bool prepend(clang::SourceLocation begin, const std::string &prologue,
+                 clang::Rewriter &rewriter);
+    bool append(clang::SourceLocation end, const std::string &epilogue,
+                clang::Rewriter &rewriter);
+    bool replace(clang::SourceRange range, const std::string &replacement,
+                 clang::Rewriter &rewriter);
+    bool remove(clang::SourceRange range, clang::Rewriter &rewriter);
+
+    typedef std::vector<clang::SourceRange> Removals;
+    static Removals removals_;
 };
 
 /// \brief Relocate a variable into a corresponding address space

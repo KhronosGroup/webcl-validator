@@ -33,7 +33,8 @@ __kernel void access_array(
     // CHECK: __global int *array, unsigned long wcl_array_size)
     __global int *array)
 {
-    // CHECK: WclAddressSpaces wcl_as = { 0, 0, 0, 0 };
+    // CHECK: WclPrivates wcl_ps;
+    // CHECK: WclAddressSpaces wcl_as = { &wcl_ps, 0, 0, 0 };
     const int i = get_global_id(0);
 
     // CHECK: const int indexed_value = get_indexed_value(wcl_as, array, i);

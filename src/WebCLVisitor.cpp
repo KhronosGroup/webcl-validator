@@ -216,7 +216,19 @@ bool WebCLRelocator::handleDeclStmt(clang::DeclStmt *stmt)
 
 bool WebCLRelocator::handleVarDecl(clang::VarDecl *decl)
 {
+    const clang::Type *type = decl->getType().getTypePtrOrNull();
+    if (!type) {
+        error(decl->getLocStart(), "Invalid variable type.");
+        return true;
+    }
+
     // In global scope 'current_' is NULL.
+
+    if (type->isConstantArrayType()) {
+        getTransformer().addRelocatedVariable(current_, decl);
+        return true;
+    }
+
     RelocationCandidate candidate(decl, current_);
     relocationCandidates_.insert(candidate);
     return true;
