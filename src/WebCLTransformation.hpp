@@ -33,7 +33,17 @@ public:
     virtual bool rewrite(
         WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter) = 0;
 
+    /// \return Whether the transformation can be successfully
+    /// represented as a text confined to some range.
+    virtual bool getAsText(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
+        std::string &text, clang::SourceRange &range);
+
 protected:
+
+    /// Helper function to implement 'rewrite' with 'getAsText'.
+    virtual bool rewriteAsText(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
 
     /// \return Whether a transformation has already removed a range
     /// that contains the location.
@@ -121,6 +131,11 @@ public:
     virtual bool rewrite(
         WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
 
+    /// \see WebCLTransformation::getAsText
+    virtual bool getAsText(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
+        std::string &text, clang::SourceRange &range);
+
 protected:
 
     clang::CallExpr *expr_;
@@ -159,6 +174,11 @@ public:
     virtual bool rewrite(
         WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
 
+    /// \see WebCLTransformation::getAsText
+    virtual bool getAsText(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
+        std::string &text, clang::SourceRange &range);
+
 protected:
 
     std::string getBaseAsText(clang::Rewriter &rewriter);
@@ -178,9 +198,10 @@ public:
         llvm::APInt &bound);
     virtual ~WebCLConstantArraySubscriptTransformation();
 
-    /// \see WebCLTransformation::rewrite
-    virtual bool rewrite(
-        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
+    /// \see WebCLTransformation::getAsText
+    virtual bool getAsText(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
+        std::string &text, clang::SourceRange &range);
 
 protected:
 
@@ -197,9 +218,10 @@ public:
         const std::string &bound);
     virtual ~WebCLKernelArraySubscriptTransformation();
 
-    /// \see WebCLTransformation::rewrite
-    virtual bool rewrite(
-        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
+    /// \see WebCLTransformation::getAsText
+    virtual bool getAsText(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
+        std::string &text, clang::SourceRange &range);
 
 protected:
 
@@ -219,6 +241,11 @@ public:
     /// \see WebCLTransformation::rewrite
     virtual bool rewrite(
         WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
+
+    /// \see WebCLTransformation::getAsText
+    virtual bool getAsText(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
+        std::string &text, clang::SourceRange &range);
 
 protected:
 

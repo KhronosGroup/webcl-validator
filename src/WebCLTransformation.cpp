@@ -21,6 +21,23 @@ WebCLTransformation::~WebCLTransformation()
 {
 }
 
+bool WebCLTransformation::getAsText(
+    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
+    std::string &text, clang::SourceRange &range)
+{
+    return false;
+}
+
+bool WebCLTransformation::rewriteAsText(
+    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
+{
+    std::string text;
+    clang::SourceRange range;
+    if (!getAsText(cfg, rewriter, text, range))
+        return false;
+    return replace(range, text, rewriter);
+}
+
 bool WebCLTransformation::hasBeenRemoved(clang::SourceLocation location)
 {
     // We don't want to transform code that has been commented out by
@@ -199,6 +216,13 @@ WebCLRecordArgumentInsertion::~WebCLRecordArgumentInsertion()
 bool WebCLRecordArgumentInsertion::rewrite(
     WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
 {
+    return rewriteAsText(cfg, rewriter);
+}
+
+bool WebCLRecordArgumentInsertion::getAsText(
+    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
+    std::string &text, clang::SourceRange &range)
+{
     const unsigned int numArguments = expr_->getNumArgs();
 
     clang::SourceLocation location = expr_->getRParenLoc();
@@ -214,7 +238,11 @@ bool WebCLRecordArgumentInsertion::rewrite(
     const std::string comma = (numArguments > 0) ? ", " : "";
     const std::string argument = cfg.addressSpaceRecordName_ + comma;
 
-    return prepend(location, argument, rewriter);
+    clang::SourceRange head(expr_->getLocStart(), location.getLocWithOffset(-1));
+    clang::SourceRange tail(location, expr_->getLocEnd());
+    text = rewriter.getRewrittenText(head) + argument + rewriter.getRewrittenText(tail);
+    range = expr_->getSourceRange();
+    return true;
 }
 
 // WebCLSizeParameterInsertion
@@ -285,6 +313,13 @@ std::string WebCLArraySubscriptTransformation::getIndexAsText(clang::Rewriter &r
 bool WebCLArraySubscriptTransformation::rewrite(
     WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
 {
+    return rewriteAsText(cfg, rewriter);
+}
+
+bool WebCLArraySubscriptTransformation::getAsText(
+    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
+    std::string &text, clang::SourceRange &range)
+{
     const std::string base = getBaseAsText(rewriter);
     const std::string index = getIndexAsText(rewriter);
 
@@ -292,7 +327,10 @@ bool WebCLArraySubscriptTransformation::rewrite(
         base + "[" + cfg.getNameOfIndexChecker(expr_->getType()) + "(" +
         cfg.addressSpaceRecordName_ + ", " + base + ", " + index +
         ")]";
-    return replace(expr_->getSourceRange(), replacement, rewriter);
+
+    text = replacement;
+    range = expr_->getSourceRange();
+    return true;
 }
 
 // WebCLConstantArraySubscriptTransformation
@@ -309,8 +347,9 @@ WebCLConstantArraySubscriptTransformation::~WebCLConstantArraySubscriptTransform
 {
 }
 
-bool WebCLConstantArraySubscriptTransformation::rewrite(
-    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
+bool WebCLConstantArraySubscriptTransformation::getAsText(
+    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
+    std::string &text, clang::SourceRange &range)
 {
     const std::string base = getBaseAsText(rewriter);
     const std::string index = getIndexAsText(rewriter);
@@ -319,7 +358,10 @@ bool WebCLConstantArraySubscriptTransformation::rewrite(
         base + "[" + cfg.getNameOfIndexChecker() + "("
         + index + ", " + bound_.toString(10, false) + "UL" +
         ")]";
-    return replace(expr_->getSourceRange(), replacement, rewriter);
+
+    text = replacement;
+    range = expr_->getSourceRange();
+    return true;
 }
 
 // WebCLKernelArraySubscriptTransformation
@@ -336,15 +378,19 @@ WebCLKernelArraySubscriptTransformation::~WebCLKernelArraySubscriptTransformatio
 {
 }
 
-bool WebCLKernelArraySubscriptTransformation::rewrite(
-    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
+bool WebCLKernelArraySubscriptTransformation::getAsText(
+    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
+    std::string &text, clang::SourceRange &range)
 {
     const std::string base = getBaseAsText(rewriter);
     const std::string index = getIndexAsText(rewriter);
 
     const std::string replacement =
         base + "[" + cfg.getNameOfIndexChecker() + "(" + index + ", " + bound_ + ")]";
-    return replace(expr_->getSourceRange(), replacement, rewriter);
+
+    text = replacement;
+    range = expr_->getSourceRange();
+    return true;
 }
 
 // WebCLPointerDereferenceTransformation
@@ -362,9 +408,20 @@ WebCLPointerDereferenceTransformation::~WebCLPointerDereferenceTransformation()
 bool WebCLPointerDereferenceTransformation::rewrite(
     WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
 {
+    return rewriteAsText(cfg, rewriter);
+}
+
+bool WebCLPointerDereferenceTransformation::getAsText(
+    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
+    std::string &text, clang::SourceRange &range)
+
+{
     const std::string replacement =
         cfg.getNameOfPointerChecker(getPointeeType(expr_)) + "(" +
         cfg.addressSpaceRecordName_ + ", " + rewriter.getRewrittenText(expr_->getSourceRange()) +
         ")";
-    return replace(expr_->getSourceRange(), replacement, rewriter);
+
+    text = replacement;
+    range = expr_->getSourceRange();
+    return true;
 }
