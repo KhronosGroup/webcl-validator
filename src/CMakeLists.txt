@@ -8,6 +8,7 @@ add_clang_executable(
   WebCLPrinter.cpp
   WebCLReporter.cpp
   WebCLTransformation.cpp
+  WebCLTransformations.cpp
   WebCLTransformer.cpp
   WebCLTransformerConfiguration.cpp
   WebCLVisitor.cpp

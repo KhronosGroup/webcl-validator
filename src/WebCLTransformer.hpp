@@ -3,6 +3,7 @@
 
 #include "WebCLHelper.hpp"
 #include "WebCLReporter.hpp"
+#include "WebCLTransformations.hpp"
 #include "WebCLTransformerConfiguration.hpp"
 
 #include <map>
@@ -73,20 +74,11 @@ public:
 
 private:
 
-    typedef std::map<const clang::Decl*, WebCLTransformation*> DeclTransformations;
-    typedef std::map<const clang::Expr*, WebCLTransformation*> ExprTransformations;
     // address space, name
     typedef std::pair<const std::string, const std::string> CheckedType;
     typedef std::set<CheckedType> CheckedTypes;
     typedef std::set<const clang::VarDecl*> VariableDeclarations;
     typedef std::set<const clang::FunctionDecl*> Kernels;
-
-    template <typename NodeMap, typename Node>
-    void addTransformation(NodeMap &map, const Node *node, WebCLTransformation *transformation);
-    template <typename NodeMap>
-    void deleteTransformations(NodeMap &map);
-    template <typename NodeMap>
-    bool rewriteTransformations(NodeMap &map, clang::Rewriter &rewriter);
 
     bool rewritePrologue(clang::Rewriter &rewriter);
     bool rewriteKernelPrologue(const clang::FunctionDecl *kernel, clang::Rewriter &rewriter);
@@ -128,8 +120,6 @@ private:
     void emitKernelPrologue(
         std::ostream &out, const clang::Rewriter &rewriter);
 
-    DeclTransformations declTransformations_;
-    ExprTransformations exprTransformations_;
     CheckedTypes checkedPointerTypes_;
     CheckedTypes checkedIndexTypes_;
     VariableDeclarations relocatedGlobals_;
@@ -139,6 +129,7 @@ private:
     Kernels kernels_;
 
     WebCLTransformerConfiguration cfg_;
+    WebCLTransformations transformations_;
 };
 
 /// \brief Mixin class for making AST transformations available after

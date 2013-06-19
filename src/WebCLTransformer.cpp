@@ -10,8 +10,6 @@
 
 WebCLTransformer::WebCLTransformer(clang::CompilerInstance &instance)
     : WebCLReporter(instance)
-    , declTransformations_()
-    , exprTransformations_()
     , checkedPointerTypes_()
     , checkedIndexTypes_()
     , relocatedGlobals_()
@@ -20,13 +18,12 @@ WebCLTransformer::WebCLTransformer(clang::CompilerInstance &instance)
     , relocatedPrivates_()
     , kernels_()
     , cfg_()
+    , transformations_(instance)
 {
 }
 
 WebCLTransformer::~WebCLTransformer()
 {
-    deleteTransformations(declTransformations_);
-    deleteTransformations(exprTransformations_);
 }
 
 bool WebCLTransformer::rewrite(clang::Rewriter &rewriter)
@@ -46,8 +43,8 @@ void WebCLTransformer::addKernel(clang::FunctionDecl *decl)
 
 void WebCLTransformer::addRelocatedVariable(clang::DeclStmt *stmt, clang::VarDecl *decl)
 {
-    addTransformation(
-        declTransformations_, decl,
+    transformations_.addTransformation(
+        decl,
         new WebCLVariableRelocation(
             instance_, stmt, decl));
     addRelocatedVariable(decl);
@@ -55,24 +52,24 @@ void WebCLTransformer::addRelocatedVariable(clang::DeclStmt *stmt, clang::VarDec
 
 void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)
 {
-    addTransformation(
-        declTransformations_, decl,
+    transformations_.addTransformation(
+        decl,
         new WebCLRecordParameterInsertion(
             instance_, decl));
 }
 
 void WebCLTransformer::addRecordArgument(clang::CallExpr *expr)
 {
-    addTransformation(
-        exprTransformations_, expr,
+    transformations_.addTransformation(
+        expr,
         new WebCLRecordArgumentInsertion(
             instance_, expr));
 }
 
 void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
 {
-    addTransformation(
-        declTransformations_, decl,
+    transformations_.addTransformation(
+        decl,
         new WebCLSizeParameterInsertion(
             instance_, decl));
 }
@@ -80,8 +77,8 @@ void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
 void WebCLTransformer::addArrayIndexCheck(
     clang::ArraySubscriptExpr *expr, llvm::APInt &bound)
 {
-    addTransformation(
-        exprTransformations_, expr,
+    transformations_.addTransformation(
+        expr,
         new WebCLConstantArraySubscriptTransformation(
             instance_, expr, bound));
 }
@@ -89,15 +86,15 @@ void WebCLTransformer::addArrayIndexCheck(
 void WebCLTransformer::addArrayIndexCheck(clang::ArraySubscriptExpr *expr)
 {
     if (clang::ParmVarDecl *var = getDeclarationOfArray(expr)) {
-        addTransformation(
-            exprTransformations_, expr,
+        transformations_.addTransformation(
+            expr,
             new WebCLKernelArraySubscriptTransformation(
                 instance_, expr, cfg_.getNameOfSizeParameter(var)));
     } else {
         addCheckedType(checkedIndexTypes_, expr->getType());
 
-        addTransformation(
-            exprTransformations_, expr,
+        transformations_.addTransformation(
+            expr,
             new WebCLArraySubscriptTransformation(
                 instance_, expr));
     }
@@ -107,50 +104,10 @@ void WebCLTransformer::addPointerCheck(clang::Expr *expr)
 {
     addCheckedType(checkedPointerTypes_, getPointeeType(expr));
 
-    addTransformation(
-        exprTransformations_, expr,
+    transformations_.addTransformation(
+        expr,
         new WebCLPointerDereferenceTransformation(
             instance_, expr));
-}
-
-template <typename NodeMap, typename Node>
-void WebCLTransformer::addTransformation(
-    NodeMap &map, const Node *node, WebCLTransformation *transformation)
-{
-    if (!transformation) {
-        error(node->getLocStart(), "Internal error. Can't create transformation.");
-        return;
-    }
-
-    const std::pair<typename NodeMap::iterator, bool> status =
-        map.insert(typename NodeMap::value_type(node, transformation));
-
-    if (!status.second) {
-        error(node->getLocStart(), "Transformation has been already created.");
-        return;
-    }
-}
-
-template <typename NodeMap>
-void WebCLTransformer::deleteTransformations(NodeMap &map)
-{
-    for (typename NodeMap::iterator i = map.begin(); i != map.end(); ++i) {
-        WebCLTransformation *transformation = i->second;
-        delete transformation;
-    }
-}
-
-template <typename NodeMap>
-bool WebCLTransformer::rewriteTransformations(NodeMap &map, clang::Rewriter &rewriter)
-{
-    bool status = true;
-
-    for (typename NodeMap::iterator i = map.begin(); i != map.end(); ++i) {
-        WebCLTransformation *transformation = i->second;
-        status = status && transformation->rewrite(cfg_, rewriter);
-    }
-
-    return status;
 }
 
 bool WebCLTransformer::rewritePrologue(clang::Rewriter &rewriter)
@@ -189,8 +146,7 @@ bool WebCLTransformer::rewriteTransformations(clang::Rewriter &rewriter)
         status = status && rewriteKernelPrologue(kernel, rewriter);
     }
 
-    status = status && rewriteTransformations(declTransformations_, rewriter);
-    status = status && rewriteTransformations(exprTransformations_, rewriter);
+    status = status && transformations_.rewriteTransformations(cfg_, rewriter);
 
     return status;
 }
@@ -209,7 +165,7 @@ clang::ParmVarDecl *WebCLTransformer::getDeclarationOfArray(clang::ArraySubscrip
     if (!var)
         return NULL;
 
-    if (!declTransformations_.count(var))
+    if (!transformations_.contains(var))
         return NULL;
 
     return var;
