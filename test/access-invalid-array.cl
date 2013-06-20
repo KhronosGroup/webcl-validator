@@ -5,6 +5,10 @@
 // CHECK-NOT: error: Array index is too large.
 // CHECK-NOT: error: Invalid array index.
 
+//prototypes for apple driver
+int get_incorrectly_indexed_value(const int triple[6], int index);
+void set_incorrectly_indexed_value(__global int *array, int index, int value);
+
 int get_incorrectly_indexed_value(const int triple[6], int index)
 {
     const int sum1 = triple[0] + triple[1] + triple[2];

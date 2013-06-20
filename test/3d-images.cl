@@ -4,6 +4,9 @@
 // We don't want complaints from builtin function declarations.
 // CHECK-NOT: error: WebCL doesn't support 3D images.
 
+// prototypes for apple driver
+int function_with_3d_image_parameters(image3d_t m, typedef_image t);
+
 typedef image3d_t typedef_image;
 
 int function_with_3d_image_parameters(

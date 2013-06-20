@@ -1,6 +1,10 @@
 // RUN: cat %s | grep -v DRIVER-MAY-REJECT %opencl-validator
 // RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>&1 | grep -v CHECK | %FileCheck %s
 
+// prototypes for apple driver
+int get_indexed_value(__global int *array, int index);
+void set_indexed_value(__global int *array, int index, int value);
+
 int get_indexed_value(
     // CHECK: WclAddressSpaces *wcl_as,
     __global int *array, int index)

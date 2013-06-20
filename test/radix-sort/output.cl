@@ -58,6 +58,8 @@ typedef struct {
 
 #define WCL_PTR_CHECKER(name, field, type)                              \
     name type *wcl_##name##_##type##_ptr(                               \
+        WclAddressSpaces *as, name type *ptr);                          \
+    name type *wcl_##name##_##type##_ptr(                               \
         WclAddressSpaces *as, name type *ptr)                           \
     {                                                                   \
         return WCL_CLAMP(WCL_MIN_PTR(name, type, as->field),            \
@@ -66,17 +68,21 @@ typedef struct {
     }
 #define WCL_IDX_CHECKER(name, field, type)                              \
     size_t wcl_##name##_##type##_idx(                                   \
+        WclAddressSpaces *as, name type *ptr, size_t idx);              \
+    size_t wcl_##name##_##type##_idx(                                   \
         WclAddressSpaces *as, name type *ptr, size_t idx)               \
     {                                                                   \
-        return WCL_CLAMP(WCL_MIN_IDX(name, type, as->field, ptr),       \
+        return WCL_CLAMP((size_t)WCL_MIN_IDX(name, type, as->field, ptr),       \
                          idx,                                           \
-                         WCL_MAX_IDX(name, type, as->field, ptr));      \
+                         (size_t)WCL_MAX_IDX(name, type, as->field, ptr));      \
     }
 
 WCL_PTR_CHECKER(private, privates, uint)
 WCL_PTR_CHECKER(private, privates, uint4)
 WCL_IDX_CHECKER(private, privates, uint4)
 WCL_IDX_CHECKER(local, locals, uint)
+
+size_t wcl_idx(size_t idx, size_t limit);
 
 size_t wcl_idx(size_t idx, size_t limit)
 {
@@ -90,6 +96,12 @@ size_t wcl_idx(size_t idx, size_t limit)
 #define STREAM_COUNT_WORKGROUP_SIZE 64
 #define BITS_PER_PASS 4
 #define VALUES_PER_PASS (1 << BITS_PER_PASS)
+
+// prototypes for apple
+uint get_histogram_index(uint value);
+void set_histogram(WclAddressSpaces *wcl_as, __local uint *histogram, uint value, uint count);
+void clear_histogram(WclAddressSpaces *wcl_as, __local uint *histogram);
+void inc_histogram(WclAddressSpaces *wcl_as, __local uint *histogram, uint value);
 
 uint get_histogram_index(
     uint value)
@@ -188,6 +200,11 @@ void stream_count_kernel(
 // PHASE 2: Calculate prefix sum. //
 ////////////////////////////////////
 
+// prototypes for apple driver
+uint prefix_scan_lanes(WclAddressSpaces *wcl_as, uint4 *vector_data);
+uint prefix_scan_vectors(WclAddressSpaces *wcl_as, const uint lane_level_prefix_sum, uint *total_sum, __local uint *total_sums, const size_t num_work_items);
+uint4 prefix_scan_128(WclAddressSpaces *wcl_as, uint4 vector_histogram, uint *total_sum, __local uint *total_sums);
+
 uint prefix_scan_lanes( // lane level prefix sum
     WclAddressSpaces *wcl_as,
     uint4 *vector_data) // lane counts -> lane prefix sums
@@ -228,7 +245,7 @@ uint prefix_scan_vectors(
     barrier(CLK_LOCAL_MEM_FENCE);
 
     // [128..255]: total prefix sums
-    for (int i = 1; i <= (num_work_items / 2); i *= 2) {
+    for (uint i = 1; i <= (num_work_items / 2); i *= 2) {
 //        const uint partial_sum = total_sums[wcl_local_uint_idx(wcl_as, total_sums, index - i)];
         const uint partial_sum = total_sums[index - i];
         barrier(CLK_LOCAL_MEM_FENCE);

@@ -1,6 +1,10 @@
 // RUN: cat %s | %opencl-validator
 // RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>&1 | grep -v CHECK | %FileCheck %s
 
+// prototypes for apple driver
+int get_pointed_value(__global int *pointer);
+void set_pointed_value(__global int *pointer, int value);
+
 int get_pointed_value(
     // CHECK: WclAddressSpaces *wcl_as,
     __global int *pointer)

@@ -1,15 +1,20 @@
 // RUN: cat %s | %opencl-validator
 // RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>&1 | grep -v CHECK | %FileCheck %s
 
-// CHECK-NOT: WclAddressSpaces *wcl_as,
-int no_parameters()
+// prototypes for apple driver
+int no_parameters(void);
+int value_parameters(int index);
+int unused_parameters(__global int *global_array, __local int *local_array, __constant int *constant_array, __private int *private_array);
+int used_parameters(__global int *global_array, __local int *local_array, __constant int *constant_array, __private int *private_array);
+
+// CHECK: int no_parameters(void)
+int no_parameters(void)
 {
     return 0;
 }
 
 int value_parameters(
-    // CHECK: WclAddressSpaces *wcl_as,
-    // CHECK: int index)
+    // CHECK: WclAddressSpaces *wcl_as, int index)
     int index)
 {
     return index + 1;
@@ -37,14 +42,8 @@ int used_parameters(
         constant_array[index] + private_array[index];
 }
 
-__kernel void insert_parameters(
-    // CHECK-NOT: WclAddressSpaces *wcl_as,
-    // CHECK: __global int *global_array, unsigned long wcl_global_array_size,
-    __global int *global_array,
-    // CHECK: __local int *local_array, unsigned long wcl_local_array_size,
-    __local int *local_array,
-    // CHECK: __constant int *constant_array, unsigned long wcl_constant_array_size)
-    __constant int *constant_array)
+// CHECK: __kernel void insert_parameters(__global int *global_array, unsigned long wcl_global_array_size, __local int *local_array, unsigned long wcl_local_array_size, __constant int *constant_array, unsigned long wcl_constant_array_size)
+__kernel void insert_parameters(__global int *global_array, __local int *local_array, __constant int *constant_array)
 {
     const int i = get_global_id(0);
 
