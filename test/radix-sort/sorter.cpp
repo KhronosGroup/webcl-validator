@@ -179,15 +179,25 @@ bool RadixSorter::runStreamCountKernel(cl_event *streamCountEvent)
     if (clEnqueueWriteBuffer(queue_, unsortedValuesBuffer_, CL_FALSE,
                              0, numUnsortedBytes_, unsortedValues_,
                              0, NULL, &unsortedValuesEvent) != CL_SUCCESS) {
-        return false;
+      std::cerr << "Could not enqueue write buffer!\n";
+      return false;
     }
 
     const size_t localWorkSize = numStreamCountItems_;
     const size_t globalWorkSize = numUnsortedElements_ /
         (numStreamCountElementsPerItem_ * numStreamCountBlocksPerGroup_);
-    return clEnqueueNDRangeKernel(queue_, streamCountKernel_, 1,
-                                  NULL, &globalWorkSize, &localWorkSize,
-                                  1, &unsortedValuesEvent, streamCountEvent) == CL_SUCCESS;
+
+    std::cerr << "Local work group size: " << localWorkSize << "\n";
+    std::cerr << "Global work group size: " << globalWorkSize << "\n";
+  
+    cl_int retVal = clEnqueueNDRangeKernel(queue_, streamCountKernel_, 1,
+                                           NULL, &globalWorkSize, &localWorkSize,
+                                           1, &unsortedValuesEvent, streamCountEvent);
+    if (retVal != CL_SUCCESS) {
+      std::cerr << "clEnqueueNDRangeKernel got error code: " << retVal << "\n";
+      return false;
+    };
+    return true;
 }
 
 bool RadixSorter::runPrefixScanKernel(cl_event streamCountEvent, cl_event *prefixScanEvent)
@@ -198,9 +208,14 @@ bool RadixSorter::runPrefixScanKernel(cl_event streamCountEvent, cl_event *prefi
     if (numHistogramElements_ != (localWorkSize * 20))
         return false;
 
-    return clEnqueueNDRangeKernel(queue_, prefixScanKernel_, 1,
-                                  NULL, &globalWorkSize, &localWorkSize,
-                                  1, &streamCountEvent, prefixScanEvent) == CL_SUCCESS;
+    cl_int retVal = clEnqueueNDRangeKernel(queue_, prefixScanKernel_, 1,
+                                           NULL, &globalWorkSize, &localWorkSize,
+                                           1, &streamCountEvent, prefixScanEvent);
+    if (retVal != CL_SUCCESS) {
+      std::cerr << "clEnqueueNDRangeKernel got error code: " << retVal << "\n";
+      return false;
+    };
+    return true;
 }
 
 bool RadixSorter::waitForStreamCountResults(cl_event streamCountEvent)
