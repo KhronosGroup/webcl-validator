@@ -3,10 +3,14 @@
 
 #include "clang/AST/Expr.h"
 
-WebCLTransformations::WebCLTransformations(clang::CompilerInstance &instance)
+WebCLTransformations::WebCLTransformations(
+    clang::CompilerInstance &instance, clang::Rewriter &rewriter,
+    WebCLTransformerConfiguration &cfg)
     : WebCLReporter(instance)
     , declTransformations_()
     , exprTransformations_()
+    , rewriter_(rewriter)
+    , cfg_(cfg)
 {
 }
 
@@ -14,6 +18,21 @@ WebCLTransformations::~WebCLTransformations()
 {
     deleteTransformations(declTransformations_);
     deleteTransformations(exprTransformations_);
+}
+
+clang::CompilerInstance &WebCLTransformations::getCompilerInstance()
+{
+    return instance_;
+}
+
+clang::Rewriter &WebCLTransformations::getRewriter()
+{
+    return rewriter_;
+}
+
+WebCLTransformerConfiguration &WebCLTransformations::getConfiguration()
+{
+    return cfg_;
 }
 
 void WebCLTransformations::addTransformation(
@@ -40,13 +59,12 @@ WebCLRecursiveTransformation* WebCLTransformations::getTransformation(const clan
         exprTransformations_, expr);
 }
 
-bool WebCLTransformations::rewriteTransformations(
-    WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
+bool WebCLTransformations::rewriteTransformations()
 {
     bool status = true;
 
-    status = status && rewriteTransformations(declTransformations_, cfg, rewriter);
-    status = status && rewriteTransformations(exprTransformations_, cfg, rewriter);
+    status = status && rewriteTransformations(declTransformations_);
+    status = status && rewriteTransformations(exprTransformations_);
 
     return status;
 }
@@ -93,14 +111,13 @@ void WebCLTransformations::deleteTransformations(NodeMap &map)
 }
 
 template <typename NodeMap>
-bool WebCLTransformations::rewriteTransformations(
-    NodeMap &map, WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter)
+bool WebCLTransformations::rewriteTransformations(NodeMap &map)
 {
     bool status = true;
 
     for (typename NodeMap::iterator i = map.begin(); i != map.end(); ++i) {
         WebCLTransformation *transformation = i->second;
-        status = status && transformation->rewrite(cfg, rewriter);
+        status = status && transformation->rewrite();
     }
 
     return status;

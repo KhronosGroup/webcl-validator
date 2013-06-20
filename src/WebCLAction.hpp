@@ -36,6 +36,7 @@ private:
     WebCLPreprocessor *preprocessor_;
     WebCLConsumer *consumer_;
     WebCLTransformer *transformer_;
+    clang::Rewriter *rewriter_;
     clang::Sema *sema_;
 };
 

@@ -20,8 +20,14 @@ class WebCLTransformations : public WebCLReporter
 {
 public:
 
-    explicit WebCLTransformations(clang::CompilerInstance &instance);
+    WebCLTransformations(
+        clang::CompilerInstance &instance, clang::Rewriter &rewriter,
+        WebCLTransformerConfiguration &cfg);
     ~WebCLTransformations();
+
+    clang::CompilerInstance &getCompilerInstance();
+    clang::Rewriter &getRewriter();
+    WebCLTransformerConfiguration &getConfiguration();
 
     void addTransformation(clang::Decl *decl, WebCLTransformation *transformation);
     void addTransformation(clang::Expr *expr, WebCLRecursiveTransformation *transformation);
@@ -29,8 +35,7 @@ public:
     WebCLTransformation* getTransformation(const clang::Decl *decl);
     WebCLRecursiveTransformation* getTransformation(const clang::Expr *expr);
 
-    bool rewriteTransformations(
-        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
+    bool rewriteTransformations();
     bool contains(clang::Decl *decl);
 
 private:
@@ -42,13 +47,15 @@ private:
     template <typename NodeMap>
     void deleteTransformations(NodeMap &map);
     template <typename NodeMap>
-    bool rewriteTransformations(
-        NodeMap &map, WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
+    bool rewriteTransformations(NodeMap &map);
 
     typedef std::map<const clang::Decl*, WebCLTransformation*> DeclTransformations;
     DeclTransformations declTransformations_;
     typedef std::map<const clang::Expr*, WebCLRecursiveTransformation*> ExprTransformations;
     ExprTransformations exprTransformations_;
+
+    clang::Rewriter &rewriter_;
+    WebCLTransformerConfiguration &cfg_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLTRANSFORMATIONS

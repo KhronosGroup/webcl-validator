@@ -6,6 +6,7 @@
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendOptions.h"
 #include "clang/Parse/ParseAST.h"
+#include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Sema/Sema.h"
 
 #include "llvm/ADT/OwningPtr.h"
@@ -16,6 +17,7 @@ WebCLAction::WebCLAction()
     , preprocessor_(0)
     , consumer_(0)
     , transformer_(0)
+    , rewriter_(0)
     , sema_(0)
 {
 }
@@ -28,6 +30,8 @@ WebCLAction::~WebCLAction()
     // consumer_ not deleted intentionally
     delete transformer_;
     transformer_ = 0;
+    delete rewriter_;
+    rewriter_ = 0;
     // sema_ not deleted intentionally
 }
 
@@ -59,9 +63,15 @@ clang::ASTConsumer* WebCLAction::CreateASTConsumer(clang::CompilerInstance &inst
     clang::Preprocessor &preprocessor = instance.getPreprocessor();
     preprocessor.addPPCallbacks(preprocessor_);
 
+    rewriter_ = new clang::Rewriter(instance.getSourceManager(), instance.getLangOpts());
+    if (!rewriter_) {
+        reporter_->fatal("Internal error. Can't create rewriter.\n");
+        return 0;
+    }
+
     // Consumer must be allocated dynamically. The framework deletes
     // it.
-    consumer_ = new WebCLConsumer(instance);
+    consumer_ = new WebCLConsumer(instance, *rewriter_);
     if (!consumer_) {
         reporter_->fatal("Internal error. Can't create AST consumer.\n");
         return 0;
@@ -73,7 +83,7 @@ clang::ASTConsumer* WebCLAction::CreateASTConsumer(clang::CompilerInstance &inst
         return 0;
     }
 
-    transformer_ = new WebCLTransformer(instance);
+    transformer_ = new WebCLTransformer(instance, *rewriter_);
     if (!transformer_) {
         reporter_->fatal("Internal error. Can't create AST transformer.\n");
         return 0;

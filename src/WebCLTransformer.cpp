@@ -8,7 +8,8 @@
 
 #include <sstream>
 
-WebCLTransformer::WebCLTransformer(clang::CompilerInstance &instance)
+WebCLTransformer::WebCLTransformer(
+    clang::CompilerInstance &instance, clang::Rewriter &rewriter)
     : WebCLReporter(instance)
     , checkedPointerTypes_()
     , checkedIndexTypes_()
@@ -18,7 +19,7 @@ WebCLTransformer::WebCLTransformer(clang::CompilerInstance &instance)
     , relocatedPrivates_()
     , kernels_()
     , cfg_()
-    , transformations_(instance)
+    , transformations_(instance, rewriter, cfg_)
 {
 }
 
@@ -26,12 +27,12 @@ WebCLTransformer::~WebCLTransformer()
 {
 }
 
-bool WebCLTransformer::rewrite(clang::Rewriter &rewriter)
+bool WebCLTransformer::rewrite()
 {
     bool status = true;
 
-    status = status && rewritePrologue(rewriter);
-    status = status && rewriteTransformations(rewriter);
+    status = status && rewritePrologue();
+    status = status && rewriteTransformations();
 
     return status;
 }
@@ -45,8 +46,7 @@ void WebCLTransformer::addRelocatedVariable(clang::DeclStmt *stmt, clang::VarDec
 {
     transformations_.addTransformation(
         decl,
-        new WebCLVariableRelocation(
-            instance_, transformations_, stmt, decl));
+        new WebCLVariableRelocation(transformations_, stmt, decl));
     addRelocatedVariable(decl);
 }
 
@@ -55,7 +55,7 @@ void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)
     transformations_.addTransformation(
         decl,
         new WebCLRecordParameterInsertion(
-            instance_, decl));
+            transformations_, decl));
 }
 
 void WebCLTransformer::addRecordArgument(clang::CallExpr *expr)
@@ -63,7 +63,7 @@ void WebCLTransformer::addRecordArgument(clang::CallExpr *expr)
     transformations_.addTransformation(
         expr,
         new WebCLRecordArgumentInsertion(
-            instance_, expr));
+            transformations_, expr));
 }
 
 void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
@@ -71,7 +71,7 @@ void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
     transformations_.addTransformation(
         decl,
         new WebCLSizeParameterInsertion(
-            instance_, decl));
+            transformations_, decl));
 }
 
 void WebCLTransformer::addArrayIndexCheck(
@@ -80,7 +80,7 @@ void WebCLTransformer::addArrayIndexCheck(
     transformations_.addTransformation(
         expr,
         new WebCLConstantArraySubscriptTransformation(
-            instance_, expr, bound));
+            transformations_, expr, bound));
 }
 
 void WebCLTransformer::addArrayIndexCheck(clang::ArraySubscriptExpr *expr)
@@ -89,14 +89,14 @@ void WebCLTransformer::addArrayIndexCheck(clang::ArraySubscriptExpr *expr)
         transformations_.addTransformation(
             expr,
             new WebCLKernelArraySubscriptTransformation(
-                instance_, expr, cfg_.getNameOfSizeParameter(var)));
+                transformations_, expr, cfg_.getNameOfSizeParameter(var)));
     } else {
         addCheckedType(checkedIndexTypes_, expr->getType());
 
         transformations_.addTransformation(
             expr,
             new WebCLArraySubscriptTransformation(
-                instance_, expr));
+                transformations_, expr));
     }
 }
 
@@ -107,11 +107,12 @@ void WebCLTransformer::addPointerCheck(clang::Expr *expr)
     transformations_.addTransformation(
         expr,
         new WebCLPointerDereferenceTransformation(
-            instance_, expr));
+            transformations_, expr));
 }
 
-bool WebCLTransformer::rewritePrologue(clang::Rewriter &rewriter)
+bool WebCLTransformer::rewritePrologue()
 {
+    clang::Rewriter &rewriter = transformations_.getRewriter();
     clang::SourceManager &manager = rewriter.getSourceMgr();
     clang::FileID file = manager.getMainFileID();
     clang::SourceLocation start = manager.getLocForStartOfFile(file);
@@ -121,8 +122,7 @@ bool WebCLTransformer::rewritePrologue(clang::Rewriter &rewriter)
     return !rewriter.InsertTextAfter(start, out.str());
 }
 
-bool WebCLTransformer::rewriteKernelPrologue(
-    const clang::FunctionDecl *kernel, clang::Rewriter &rewriter)
+bool WebCLTransformer::rewriteKernelPrologue(const clang::FunctionDecl *kernel)
 {
     clang::Stmt *body = kernel->getBody();
     if (!body) {
@@ -131,22 +131,24 @@ bool WebCLTransformer::rewriteKernelPrologue(
     }
 
     std::ostringstream out;
-    emitKernelPrologue(out, rewriter);
+    emitKernelPrologue(out);
+
+    clang::Rewriter &rewriter = transformations_.getRewriter();
     // Rewriter returns false on success.
     return !rewriter.InsertTextAfter(
         body->getLocStart().getLocWithOffset(1), out.str());
 }
 
-bool WebCLTransformer::rewriteTransformations(clang::Rewriter &rewriter)
+bool WebCLTransformer::rewriteTransformations()
 {
     bool status = true;
 
     for (Kernels::iterator i = kernels_.begin(); i != kernels_.end(); ++i) {
         const clang::FunctionDecl *kernel = (*i);
-        status = status && rewriteKernelPrologue(kernel, rewriter);
+        status = status && rewriteKernelPrologue(kernel);
     }
 
-    status = status && transformations_.rewriteTransformations(cfg_, rewriter);
+    status = status && transformations_.rewriteTransformations();
 
     return status;
 }
@@ -397,8 +399,7 @@ void WebCLTransformer::emitTypeInitialization(
 }
 
 void WebCLTransformer::emitVariableInitialization(
-    std::ostream &out, const clang::VarDecl *decl,
-    const clang::Rewriter &rewriter)
+    std::ostream &out, const clang::VarDecl *decl)
 {
     const clang::Expr *init = decl->getInit();
     if (!init || !init->isConstantInitializer(instance_.getASTContext(), false)) {
@@ -406,13 +407,14 @@ void WebCLTransformer::emitVariableInitialization(
         return;
     }
 
+    clang::Rewriter &rewriter = transformations_.getRewriter();
     const std::string original = rewriter.getRewrittenText(init->getSourceRange());
     out << original;
 }
 
 void WebCLTransformer::emitRecordInitialization(
     std::ostream &out, const std::string &type, const std::string &name,
-    VariableDeclarations &relocations, const clang::Rewriter &rewriter)
+    VariableDeclarations &relocations)
 {
     out << cfg_.indentation_ << type << " " << name << " = {\n";
 
@@ -422,21 +424,20 @@ void WebCLTransformer::emitRecordInitialization(
             out << ",\n";
         out << cfg_.getIndentation(2);
         const clang::VarDecl *decl = (*i);
-        emitVariableInitialization(out, decl, rewriter);
+        emitVariableInitialization(out, decl);
     }
 
     out << "\n" << cfg_.indentation_ << "};\n";
 }
 
-void WebCLTransformer::emitKernelPrologue(
-    std::ostream &out, const clang::Rewriter& rewriter)
+void WebCLTransformer::emitKernelPrologue(std::ostream &out)
 {
     out << "\n";
 
     std::string privateString = cfg_.privateRecordName_;
     if (relocatedPrivates_.size()) {
         emitRecordInitialization(
-            out, cfg_.privateRecordType_, privateString, relocatedPrivates_, rewriter);
+            out, cfg_.privateRecordType_, privateString, relocatedPrivates_);
         privateString = "&" + privateString;
     } else {
         privateString = "0";
@@ -445,7 +446,7 @@ void WebCLTransformer::emitKernelPrologue(
     std::string localString = cfg_.localRecordName_;
     if (relocatedLocals_.size()) {
         emitRecordInitialization(
-            out, cfg_.localRecordType_, localString, relocatedLocals_, rewriter);
+            out, cfg_.localRecordType_, localString, relocatedLocals_);
         localString = "&" + localString;
     } else {
         localString = "0";
@@ -454,7 +455,7 @@ void WebCLTransformer::emitKernelPrologue(
     std::string constantString = cfg_.constantRecordName_;
     if (relocatedConstants_.size()) {
         emitRecordInitialization(
-            out, cfg_.constantRecordType_, constantString, relocatedConstants_, rewriter);
+            out, cfg_.constantRecordType_, constantString, relocatedConstants_);
         constantString = "&" + constantString;
     } else {
         constantString = "0";
@@ -463,7 +464,7 @@ void WebCLTransformer::emitKernelPrologue(
     std::string globalString = cfg_.globalRecordName_;
     if (relocatedGlobals_.size()) {
         emitRecordInitialization(
-            out, cfg_.globalRecordType_, globalString, relocatedGlobals_, rewriter);
+            out, cfg_.globalRecordType_, globalString, relocatedGlobals_);
         globalString = "&" + globalString;
     } else {
         globalString = "0";

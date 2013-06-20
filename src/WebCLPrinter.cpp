@@ -1,10 +1,11 @@
 #include "WebCLPrinter.hpp"
 
 #include "clang/Frontend/CompilerInstance.h"
+#include "clang/Rewrite/Core/Rewriter.h"
 
-WebCLPrinter::WebCLPrinter(clang::CompilerInstance &instance)
-    : WebCLTransformingVisitor(instance)
-    , rewriter_(instance.getSourceManager(), instance.getLangOpts())
+WebCLPrinter::WebCLPrinter(
+    clang::CompilerInstance &instance, clang::Rewriter &rewriter)
+    : WebCLTransformingVisitor(instance), rewriter_(rewriter)
 {
 }
 
@@ -25,7 +26,7 @@ bool WebCLPrinter::handleTranslationUnitDecl(clang::TranslationUnitDecl *decl)
 
     // Apply transformer modifications.
     WebCLTransformer &transformer = getTransformer();
-    if (!transformer.rewrite(rewriter_))
+    if (!transformer.rewrite())
         return false;
 
     return print();

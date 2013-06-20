@@ -2,14 +2,15 @@
 
 #include "clang/AST/ASTContext.h"
 
-WebCLConsumer::WebCLConsumer(clang::CompilerInstance &instance)
+WebCLConsumer::WebCLConsumer(
+    clang::CompilerInstance &instance, clang::Rewriter &rewriter)
     : clang::ASTConsumer()
     , restrictor_(instance)
     , checkingVisitors_()
     , relocator_(instance)
     , parameterizer_(instance)
     , accessor_(instance)
-    , printer_(instance)
+    , printer_(instance, rewriter)
     , transformingVisitors_()
 {
     // Push in reverse order.

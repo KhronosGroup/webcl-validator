@@ -10,7 +10,8 @@ class WebCLConsumer : public clang::ASTConsumer
 {
 public:
 
-    explicit WebCLConsumer(clang::CompilerInstance &instance);
+    explicit WebCLConsumer(
+        clang::CompilerInstance &instance, clang::Rewriter &rewriter);
     ~WebCLConsumer();
 
     /// \see ASTConsumer::HandleTranslationUnit

@@ -33,11 +33,12 @@ class WebCLTransformer : public WebCLReporter
 {
 public:
 
-    explicit WebCLTransformer(clang::CompilerInstance &instance);
+    WebCLTransformer(
+        clang::CompilerInstance &instance, clang::Rewriter &rewriter);
     ~WebCLTransformer();
 
     /// Applies all AST transformations.
-    bool rewrite(clang::Rewriter &rewriter);
+    bool rewrite();
 
     // Inform about a kernels so that kernel prologues can be emitted.
     void addKernel(clang::FunctionDecl *decl);
@@ -80,9 +81,9 @@ private:
     typedef std::set<const clang::VarDecl*> VariableDeclarations;
     typedef std::set<const clang::FunctionDecl*> Kernels;
 
-    bool rewritePrologue(clang::Rewriter &rewriter);
-    bool rewriteKernelPrologue(const clang::FunctionDecl *kernel, clang::Rewriter &rewriter);
-    bool rewriteTransformations(clang::Rewriter &rewriter);
+    bool rewritePrologue();
+    bool rewriteKernelPrologue(const clang::FunctionDecl *kernel);
+    bool rewriteTransformations();
 
     clang::ParmVarDecl *getDeclarationOfArray(clang::ArraySubscriptExpr *expr);
 
@@ -112,13 +113,11 @@ private:
     void emitTypeInitialization(
         std::ostream &out, clang::QualType qualType);
     void emitVariableInitialization(
-        std::ostream &out, const clang::VarDecl *decl,
-        const clang::Rewriter &rewriter);
+        std::ostream &out, const clang::VarDecl *decl);
     void emitRecordInitialization(
         std::ostream &out, const std::string &type, const std::string &name,
-        VariableDeclarations &relocations, const clang::Rewriter &rewriter);
-    void emitKernelPrologue(
-        std::ostream &out, const clang::Rewriter &rewriter);
+        VariableDeclarations &relocations);
+    void emitKernelPrologue(std::ostream &out);
 
     CheckedTypes checkedPointerTypes_;
     CheckedTypes checkedIndexTypes_;
