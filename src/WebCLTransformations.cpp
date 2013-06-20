@@ -23,9 +23,21 @@ void WebCLTransformations::addTransformation(
 }
 
 void WebCLTransformations::addTransformation(
-    clang::Expr *expr, WebCLTransformation *transformation)
+    clang::Expr *expr, WebCLRecursiveTransformation *transformation)
 {
     addTransformation(exprTransformations_, expr, transformation);
+}
+
+WebCLTransformation* WebCLTransformations::getTransformation(const clang::Decl *decl)
+{
+    return getTransformation<DeclTransformations, clang::Decl, WebCLTransformation>(
+        declTransformations_, decl);
+}
+
+WebCLRecursiveTransformation* WebCLTransformations::getTransformation(const clang::Expr *expr)
+{
+    return getTransformation<ExprTransformations, clang::Expr, WebCLRecursiveTransformation>(
+        exprTransformations_, expr);
 }
 
 bool WebCLTransformations::rewriteTransformations(
@@ -44,19 +56,9 @@ bool WebCLTransformations::contains(clang::Decl *decl)
     return declTransformations_.count(decl) > 0;
 }
 
-WebCLTransformations::DeclTransformations &WebCLTransformations::getDeclarationTransformations()
-{
-    return declTransformations_;
-}
-
-WebCLTransformations::ExprTransformations &WebCLTransformations::getExpressionTransformations()
-{
-    return exprTransformations_;
-}
-
-template <typename NodeMap, typename Node>
+template <typename NodeMap, typename Node, typename NodeTransformation>
 void WebCLTransformations::addTransformation(
-    NodeMap &map, const Node *node, WebCLTransformation *transformation)
+    NodeMap &map, const Node *node, NodeTransformation *transformation)
 {
     if (!transformation) {
         error(node->getLocStart(), "Internal error. Can't create transformation.");
@@ -70,6 +72,15 @@ void WebCLTransformations::addTransformation(
         error(node->getLocStart(), "Transformation has been already created.");
         return;
     }
+}
+
+template <typename NodeMap, typename Node, typename NodeTransformation>
+NodeTransformation *WebCLTransformations::getTransformation(NodeMap &map, const Node *node)
+{
+    typename NodeMap::iterator i = map.find(node);
+    if (i == map.end())
+        return NULL;
+    return i->second;
 }
 
 template <typename NodeMap>

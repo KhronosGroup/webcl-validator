@@ -4,6 +4,8 @@
 #include "WebCLHelper.hpp"
 #include "WebCLReporter.hpp"
 
+#include "clang/AST/RecursiveASTVisitor.h"
+
 #include "llvm/ADT/APInt.h"
 
 #include <vector>
@@ -19,6 +21,7 @@ namespace clang {
     class VarDecl;
 }
 
+class WebCLTransformations;
 class WebCLTransformerConfiguration;
 
 /// \brief Transforms an AST node by rewriting its contents in the
@@ -33,17 +36,7 @@ public:
     virtual bool rewrite(
         WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter) = 0;
 
-    /// \return Whether the transformation can be successfully
-    /// represented as a text confined to some range.
-    virtual bool getAsText(
-        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
-        std::string &text, clang::SourceRange &range);
-
 protected:
-
-    /// Helper function to implement 'rewrite' with 'getAsText'.
-    virtual bool rewriteAsText(
-        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
 
     /// \return Whether a transformation has already removed a range
     /// that contains the location.
@@ -73,6 +66,25 @@ protected:
     static Removals removals_;
 };
 
+/// \brief A transformation that may contain other transformations
+/// recursively.
+class WebCLRecursiveTransformation : public WebCLTransformation
+{
+public:
+
+    WebCLRecursiveTransformation(clang::CompilerInstance &instance);
+    virtual ~WebCLRecursiveTransformation();
+
+    virtual bool rewrite(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
+
+    /// \return Whether the transformation can be successfully
+    /// represented as a text confined to some range.
+    virtual bool getAsText(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
+        std::string &text, clang::SourceRange &range) = 0;
+};
+
 /// \brief Relocate a variable into a corresponding address space
 /// record.
 class WebCLVariableRelocation : public WebCLTransformation
@@ -80,7 +92,7 @@ class WebCLVariableRelocation : public WebCLTransformation
 public:
 
     WebCLVariableRelocation(
-        clang::CompilerInstance &instance,
+        clang::CompilerInstance &instance, WebCLTransformations &transformations,
         clang::DeclStmt *stmt, clang::VarDecl *decl);
     virtual ~WebCLVariableRelocation();
 
@@ -90,12 +102,17 @@ public:
 
 protected:
 
+    const std::string getTransformedInitializer(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
+        clang::Expr *expr);
     const std::string initializePrimitive(
-        const std::string &prefix, const clang::Expr *expr, clang::Rewriter &rewriter);
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
+        const std::string &prefix, clang::Expr *expr);
     const std::string initializeArray(
-        const llvm::APInt &size,
-        const std::string &prefix, const clang::Expr *expr, clang::Rewriter &rewriter);
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
+        const llvm::APInt &size, const std::string &prefix, clang::Expr *expr);
 
+    WebCLTransformations &transformations_;
     clang::DeclStmt *stmt_;
     clang::VarDecl *decl_;
 };
@@ -119,7 +136,7 @@ protected:
     clang::FunctionDecl *decl_;
 };
 
-class WebCLRecordArgumentInsertion : public WebCLTransformation
+class WebCLRecordArgumentInsertion : public WebCLRecursiveTransformation
 {
 public:
 
@@ -127,11 +144,7 @@ public:
         clang::CompilerInstance &instance, clang::CallExpr *expr);
     virtual ~WebCLRecordArgumentInsertion();
 
-    /// \see WebCLTransformation::rewrite
-    virtual bool rewrite(
-        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
-
-    /// \see WebCLTransformation::getAsText
+    /// \see WebCLRecursiveTransformation::getAsText
     virtual bool getAsText(
         WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
         std::string &text, clang::SourceRange &range);
@@ -162,7 +175,7 @@ protected:
 
 /// \brief Adds an index check to array subscription when the limits
 /// are unknown at compile time.
-class WebCLArraySubscriptTransformation : public WebCLTransformation
+class WebCLArraySubscriptTransformation : public WebCLRecursiveTransformation
 {
 public:
 
@@ -170,11 +183,7 @@ public:
         clang::CompilerInstance &instance, clang::ArraySubscriptExpr *expr);
     virtual ~WebCLArraySubscriptTransformation();
 
-    /// \see WebCLTransformation::rewrite
-    virtual bool rewrite(
-        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
-
-    /// \see WebCLTransformation::getAsText
+    /// \see WebCLRecursiveTransformation::getAsText
     virtual bool getAsText(
         WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
         std::string &text, clang::SourceRange &range);
@@ -198,7 +207,7 @@ public:
         llvm::APInt &bound);
     virtual ~WebCLConstantArraySubscriptTransformation();
 
-    /// \see WebCLTransformation::getAsText
+    /// \see WebCLRecursiveTransformation::getAsText
     virtual bool getAsText(
         WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
         std::string &text, clang::SourceRange &range);
@@ -218,7 +227,7 @@ public:
         const std::string &bound);
     virtual ~WebCLKernelArraySubscriptTransformation();
 
-    /// \see WebCLTransformation::getAsText
+    /// \see WebCLRecursiveTransformation::getAsText
     virtual bool getAsText(
         WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
         std::string &text, clang::SourceRange &range);
@@ -229,7 +238,7 @@ protected:
 };
 
 /// \brief Adds pointer limit check.
-class WebCLPointerDereferenceTransformation : public WebCLTransformation
+class WebCLPointerDereferenceTransformation : public WebCLRecursiveTransformation
                                             , public WebCLHelper
 {
 public:
@@ -238,11 +247,7 @@ public:
         clang::CompilerInstance &instance, clang::Expr *expr);
     virtual ~WebCLPointerDereferenceTransformation();
 
-    /// \see WebCLTransformation::rewrite
-    virtual bool rewrite(
-        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
-
-    /// \see WebCLTransformation::getAsText
+    /// \see WebCLRecursiveTransformation::getAsText
     virtual bool getAsText(
         WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
         std::string &text, clang::SourceRange &range);
@@ -250,6 +255,37 @@ public:
 protected:
 
     clang::Expr *expr_;
+};
+
+/// \brief Helper for transforming expressions recursively.
+class WebCLExpressionTransformation : public WebCLRecursiveTransformation
+                                    , public clang::RecursiveASTVisitor<WebCLExpressionTransformation>
+
+{
+public:
+
+    explicit WebCLExpressionTransformation(
+        clang::CompilerInstance &instance, WebCLTransformations &transformations,
+        clang::Expr *expr);
+    virtual ~WebCLExpressionTransformation();
+
+    /// \see WebCLRecursiveTransformation::getAsText
+    virtual bool getAsText(
+        WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter,
+        std::string &text, clang::SourceRange &range);
+
+    /// \see clang::RecursiveASTVisitor::VisitExpr
+    bool VisitExpr(clang::Expr *expr);
+
+protected:
+
+    WebCLTransformations &transformations_;
+    clang::Expr *expr_;
+    bool status_;
+    std::string text_;
+
+    WebCLTransformerConfiguration *cfg_;
+    clang::Rewriter *rewriter_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLTRANSFORMATION

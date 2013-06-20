@@ -58,7 +58,7 @@ __kernel void relocate_variables(
     // CHECK: #if 0
     // CHECK: int array[1] = { *pointer };
     // CHECK: #endif
-    // CHECK: wcl_ps.array[0] = *pointer;
+    // CHECK: wcl_ps.array[0] = *wcl_private_int_ptr(wcl_as, pointer);
     int array[1] = { *pointer };
 
     // CHECK: #if 0
@@ -83,7 +83,7 @@ __kernel void relocate_variables(
     // CHECK: #if 0
     // CHECK: __private int private_array[1] = { *private_pointer };
     // CHECK: #endif
-    // CHECK: wcl_ps.private_array[0] = *private_pointer;
+    // CHECK: wcl_ps.private_array[0] = *wcl_private_int_ptr(wcl_as, private_pointer);
     __private int private_array[1] = { *private_pointer };
 
     result[value] = array[0] + local_array[0] +

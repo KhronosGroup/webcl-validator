@@ -12,6 +12,7 @@ namespace clang {
 }
 
 class WebCLTransformation;
+class WebCLRecursiveTransformation;
 class WebCLTransformerConfiguration;
 
 /// \brief Container for all transformations.
@@ -23,27 +24,30 @@ public:
     ~WebCLTransformations();
 
     void addTransformation(clang::Decl *decl, WebCLTransformation *transformation);
-    void addTransformation(clang::Expr *expr, WebCLTransformation *transformation);
+    void addTransformation(clang::Expr *expr, WebCLRecursiveTransformation *transformation);
+
+    WebCLTransformation* getTransformation(const clang::Decl *decl);
+    WebCLRecursiveTransformation* getTransformation(const clang::Expr *expr);
+
     bool rewriteTransformations(
         WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
     bool contains(clang::Decl *decl);
 
-    typedef std::map<const clang::Decl*, WebCLTransformation*> DeclTransformations;
-    DeclTransformations &getDeclarationTransformations();
-    typedef std::map<const clang::Expr*, WebCLTransformation*> ExprTransformations;
-    ExprTransformations &getExpressionTransformations();
-
 private:
 
-    template <typename NodeMap, typename Node>
-    void addTransformation(NodeMap &map, const Node *node, WebCLTransformation *transformation);
+    template <typename NodeMap, typename Node, typename NodeTransformation>
+    void addTransformation(NodeMap &map, const Node *node, NodeTransformation *transformation);
+    template <typename NodeMap, typename Node, typename NodeTransformation>
+    NodeTransformation *getTransformation(NodeMap &map, const Node *node);
     template <typename NodeMap>
     void deleteTransformations(NodeMap &map);
     template <typename NodeMap>
     bool rewriteTransformations(
         NodeMap &map, WebCLTransformerConfiguration &cfg, clang::Rewriter &rewriter);
 
+    typedef std::map<const clang::Decl*, WebCLTransformation*> DeclTransformations;
     DeclTransformations declTransformations_;
+    typedef std::map<const clang::Expr*, WebCLRecursiveTransformation*> ExprTransformations;
     ExprTransformations exprTransformations_;
 };
 

@@ -46,7 +46,7 @@ void WebCLTransformer::addRelocatedVariable(clang::DeclStmt *stmt, clang::VarDec
     transformations_.addTransformation(
         decl,
         new WebCLVariableRelocation(
-            instance_, stmt, decl));
+            instance_, transformations_, stmt, decl));
     addRelocatedVariable(decl);
 }
 
