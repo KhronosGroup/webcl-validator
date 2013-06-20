@@ -281,10 +281,10 @@ void WebCLTransformer::emitPointerLimitMacros(std::ostream &out)
 void WebCLTransformer::emitIndexLimitMacros(std::ostream &out)
 {
     out << "#define WCL_MIN_IDX(name, type, field, ptr) \\\n"
-        << cfg_.indentation_ << "0\n"
+        << cfg_.indentation_ << "(size_t)0\n"
 
         << "#define WCL_MAX_IDX(name, type, field, ptr) \\\n"
-        << cfg_.indentation_ << "(WCL_MAX_PTR(name, type, field) - ptr)\n"
+        << cfg_.indentation_ << "(size_t)(WCL_MAX_PTR(name, type, field) - ptr)\n"
         << "\n";
 }
 
@@ -296,8 +296,10 @@ void WebCLTransformer::emitPointerCheckerMacro(std::ostream &out)
         cfg_.addressSpaceRecordType_ + " *" + cfg_.addressSpaceRecordName_;
     static const std::string asField =
         cfg_.addressSpaceRecordName_ + "->field";
-    
+  
     out << "#define WCL_PTR_CHECKER(name, field, type) \\\n"
+        << cfg_.getIndentation(1) << "name type *" << functionName << "( \\\n"
+        << cfg_.getIndentation(2) << asParameter << ", name type *ptr);\\\n"
         << cfg_.getIndentation(1) << "name type *" << functionName << "( \\\n"
         << cfg_.getIndentation(2) << asParameter << ", name type *ptr) \\\n"
         << cfg_.getIndentation(1) << "{ \\\n"
@@ -320,6 +322,8 @@ void WebCLTransformer::emitIndexCheckerMacro(std::ostream &out)
 
     out << "#define WCL_IDX_CHECKER(name, field, type) \\\n"
         << cfg_.getIndentation(1) << "size_t " << functionName << "( \\\n"
+        << cfg_.getIndentation(2) << asParameter << ", name type *ptr, size_t idx); \\\n"
+        << cfg_.getIndentation(1) << "size_t " << functionName << "( \\\n"
         << cfg_.getIndentation(2) << asParameter << ", name type *ptr, size_t idx) \\\n"
         << cfg_.getIndentation(1) << "{ \\\n"
         << cfg_.getIndentation(2) << "return WCL_CLAMP( \\\n"
@@ -341,6 +345,7 @@ void WebCLTransformer::emitPrologueMacros(std::ostream &out)
 
 void WebCLTransformer::emitConstantIndexChecker(std::ostream &out)
 {
+    out << "size_t " << cfg_.getNameOfIndexChecker() << "(size_t idx, size_t limit);\n";
     out << "size_t " << cfg_.getNameOfIndexChecker() << "(size_t idx, size_t limit)\n"
         << "{\n"
         << cfg_.getIndentation(1) << "return idx % limit;\n"

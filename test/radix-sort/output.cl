@@ -50,11 +50,11 @@ typedef struct {
 #define WCL_MAX_PTR(name, type, field)          \
     (WCL_MIN_PTR(name, type, (field) + 1) - 1)
 #define WCL_MIN_IDX(name, type, field, ptr)     \
-    0
+    (size_t)0
     // negative indices need to be taken into account
     // (ptr - WCL_MIN_PTR(name, type, field))
 #define WCL_MAX_IDX(name, type, field, ptr)     \
-    (WCL_MAX_PTR(name, type, field) - ptr)
+    (size_t)(WCL_MAX_PTR(name, type, field) - ptr)
 
 #define WCL_PTR_CHECKER(name, field, type)                              \
     name type *wcl_##name##_##type##_ptr(                               \
@@ -72,9 +72,9 @@ typedef struct {
     size_t wcl_##name##_##type##_idx(                                   \
         WclAddressSpaces *as, name type *ptr, size_t idx)               \
     {                                                                   \
-        return WCL_CLAMP((size_t)WCL_MIN_IDX(name, type, as->field, ptr),       \
+        return WCL_CLAMP(WCL_MIN_IDX(name, type, as->field, ptr),       \
                          idx,                                           \
-                         (size_t)WCL_MAX_IDX(name, type, as->field, ptr));      \
+                         WCL_MAX_IDX(name, type, as->field, ptr));      \
     }
 
 WCL_PTR_CHECKER(private, privates, uint)
