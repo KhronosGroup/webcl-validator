@@ -23,9 +23,9 @@
 #define VALUES_PER_PASS (1 << BITS_PER_PASS)
 
 uint get_histogram_index(uint value);
-void set_histogram(WclAddressSpaces *wcl_as, __local uint *histogram, uint value, uint count);
-void clear_histogram(WclAddressSpaces *wcl_as, __local uint *histogram);
-void inc_histogram(WclAddressSpaces *wcl_as, __local uint *histogram, uint value);
+void set_histogram(__local uint *histogram, uint value, uint count);
+void clear_histogram(__local uint *histogram);
+void inc_histogram(__local uint *histogram, uint value);
 
 uint get_histogram_index(
     uint value)
@@ -114,9 +114,9 @@ void stream_count_kernel(
 // PHASE 2: Calculate prefix sum. //
 ////////////////////////////////////
 
-uint prefix_scan_lanes(WclAddressSpaces *wcl_as, uint4 *vector_data);
-uint prefix_scan_vectors(WclAddressSpaces *wcl_as, const uint lane_level_prefix_sum, uint *total_sum, __local uint *total_sums, const size_t num_work_items);
-uint4 prefix_scan_128(WclAddressSpaces *wcl_as, uint4 vector_histogram, uint *total_sum, __local uint *total_sums);
+uint prefix_scan_lanes(uint4 *vector_data);
+uint prefix_scan_vectors(const uint lane_level_prefix_sum, uint *total_sum, __local uint *total_sums, const size_t num_work_items);
+uint4 prefix_scan_128(uint4 vector_histogram, uint *total_sum, __local uint *total_sums);
 
 uint prefix_scan_lanes( // lane level prefix sum
     uint4 *vector_data) // lane counts -> lane prefix sums
