@@ -25,12 +25,14 @@ are accepted by some drivers, but rejected by at least one driver.
   need to use "uint4 *p = &v; (*p).x = 0;" instead of "p->x = 0;".
 - AMD: Compiler segfaults if array is indexed with "index[array]"
   instead of "array[index]".
+- Apple: requires prototype declarations for each helper function
+- Apple: gives error on e.g. signed vs. unsigned comparisons
 
 OpenCL Linux Driver Bugs
 ------------------------
 
-We have also found nasty bugs in Linux OpenCL drivers. For this reason
-we suggest that POCL is used on Linux as the Linux binary drivers of
+We have also found nasty bugs in OpenCL drivers. For this reason
+we suggest that POCL is used for now as the binary drivers of
 hardware vendors seem to cause a lot of problems.
 
 - POCL doesn't support image3d_t. We use image3d_t in a test case to
@@ -42,6 +44,12 @@ hardware vendors seem to cause a lot of problems.
   haven't tested the new stable drivers yet.
 - AMD provides CPU driver for Linux. However, it started to corrupt
   vector variable contents when barriers were used.
+- Apple CPU driver was not able to run radix test case at all
+  when unsortedValues_ buffer is created with CL_MEM_USE_HOST_PTR
+  calling clEnqueueNDRangeKernel() fails stating 
+  CL_INVALID_WORK_GROUP_SIZE if the same buffer is created with
+  CL_MEM_COPY_HOST_PTR then running the kernel causes 
+  CL_OUT_OF_RESOURCES error.
 
 
 

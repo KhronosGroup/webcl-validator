@@ -41,6 +41,15 @@ You can now create a build directory and build all three components:
         # run regression tests
         make -j4 check-webcl-validator
 
+To get more verbose output:
+
+        make VERBOSE=1 -j4 check-webcl-validator
+
+Linking tests directly with pocl opencl driver (please fix to work without need to recompile the whole thing):
+
+        rm CMakeCache.txt
+        make USE_POCL=1 -j4 check-webcl-validator
+
 Running
 -------
 

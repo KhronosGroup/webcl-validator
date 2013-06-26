@@ -9,24 +9,35 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/../include
 )
 
-IF (APPLE)
+IF (LINK_DIRECTLY_WITH_POCL)
 
-  target_link_libraries(
-    radix-sort
-  )
-  set_target_properties(
-    radix-sort PROPERTIES
-    LINK_FLAGS "-framework OpenCL"
-  )
+    target_link_libraries(
+      radix-sort
+      pocl
+    )  
 
-ELSE (APPLE)
+ELSE (LINK_DIRECTLY_WITH_POCL)
 
-  target_link_libraries(
-    radix-sort
-    OpenCL
-  )
+  IF (APPLE)
 
-ENDIF (APPLE)
+    target_link_libraries(
+      radix-sort
+    )  
+    set_target_properties(
+      radix-sort PROPERTIES
+      LINK_FLAGS "-framework OpenCL"
+    )
+
+  ELSE (APPLE)
+
+    target_link_libraries(
+      radix-sort
+      OpenCL
+    )
+
+  ENDIF (APPLE)
+
+ENDIF (LINK_DIRECTLY_WITH_POCL)
 
 install(
   TARGETS radix-sort RUNTIME

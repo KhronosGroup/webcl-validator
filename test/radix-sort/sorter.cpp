@@ -51,6 +51,8 @@ bool RadixSorter::createUnsortedElements()
     if (!unsortedValues_)
         return false;
 
+    // CL_MEM_USE_HOST_PTR causes invalid work group size error on OSX
+    // just allocate mem to be able to fill it later on...
     unsortedValuesBuffer_ = clCreateBuffer(
         context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
         numUnsortedBytes_, unsortedValues_, NULL);
@@ -183,17 +185,27 @@ bool RadixSorter::runStreamCountKernel(cl_event *streamCountEvent)
       return false;
     }
 
-    const size_t localWorkSize = numStreamCountItems_;
-    const size_t globalWorkSize = numUnsortedElements_ /
+    size_t localWorkSize = numStreamCountItems_;
+    size_t globalWorkSize = numUnsortedElements_ /
         (numStreamCountElementsPerItem_ * numStreamCountBlocksPerGroup_);
 
-    std::cerr << "Local work group size: " << localWorkSize << "\n";
+    // query work group size from kernel attrbutes
+    size_t wgs[3];
+    clGetKernelWorkGroupInfo(streamCountKernel_, device_, CL_KERNEL_COMPILE_WORK_GROUP_SIZE, sizeof(wgs), wgs, NULL);
+    size_t maxSize;
+    clGetDeviceInfo(device_, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(maxSize), &maxSize, NULL);
+
+    std::cerr << "Local work group max size: " << maxSize << "\n";
+    std::cerr << "Local work group size: " << localWorkSize << " Queried wgs: " << wgs[0] << "," << wgs[1] << "," << wgs[2] << "\n";
     std::cerr << "Global work group size: " << globalWorkSize << "\n";
-  
+
     cl_int retVal = clEnqueueNDRangeKernel(queue_, streamCountKernel_, 1,
                                            NULL, &globalWorkSize, &localWorkSize,
                                            1, &unsortedValuesEvent, streamCountEvent);
+
     if (retVal != CL_SUCCESS) {
+      std::cerr << "CL_INVALID_WORK_GROUP_SIZE code: " << CL_INVALID_WORK_GROUP_SIZE << "\n";
+      std::cerr << "CL_OUT_OF_RESOURCES code: " << CL_OUT_OF_RESOURCES << "\n";
       std::cerr << "clEnqueueNDRangeKernel got error code: " << retVal << "\n";
       return false;
     };

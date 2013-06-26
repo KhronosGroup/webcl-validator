@@ -7,24 +7,33 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/../include
 )
 
-IF (APPLE)
+IF (LINK_DIRECTLY_WITH_POCL)
 
-  target_link_libraries(
-    opencl-validator
-  )
-  set_target_properties(
-    opencl-validator PROPERTIES
-    LINK_FLAGS "-framework OpenCL"
-  )
+    target_link_libraries(
+      opencl-validator
+      pocl
+    )  
 
-ELSE (APPLE)
+ELSE (LINK_DIRECTLY_WITH_POCL)
 
-  target_link_libraries(
-    opencl-validator
-    OpenCL
-  )
+  IF (APPLE)
+    target_link_libraries(
+      opencl-validator
+    )  
+    set_target_properties(
+      opencl-validator PROPERTIES
+      LINK_FLAGS "-framework OpenCL"
+    )
 
-ENDIF (APPLE)
+  ELSE (APPLE)
+    target_link_libraries(
+      opencl-validator
+      OpenCL
+    )
+
+  ENDIF (APPLE)
+
+ENDIF (LINK_DIRECTLY_WITH_POCL)
 
 install(
   TARGETS opencl-validator RUNTIME
