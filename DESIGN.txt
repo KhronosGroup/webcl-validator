@@ -1,0 +1,119 @@
+Some notes about the system and how does it work
+================================================
+
+
+What memory accesses are recognized and how are they made safe
+--------------------------------------------------------------
+
+First all types of accesses are recognized and normalized to *() access
+
+table[index]; -> (*(table + index));
+
+struct_ptr->field; -> (*(struct_ptr)).field;
+
+vector_type_ptr->x -> (*(vector_type_ptr)).x;
+
+*(any_pointer); -> *(any_pointer);
+
+Then the address inside *() notation is clamped to correct range:
+
+*(WCL_CLAMP((type), ptr, min_ptr, max_ptr))
+
+
+Which variable declarations must be collected to address space
+--------------------------------------------------------------
+
+1. In the first phase all of them.
+
+2. Also if function argument is passed to other function as pointer,
+new variable must be created for it to address space struct.
+
+e.g. void foo(int bar) {
+    foo2(&bar);
+}
+
+
+What other information analysis pass should collect
+----------------------------------------------------
+
+1. Find out which calls are builtin calls and which ones
+   are calls to internal functions.
+
+2. Find out type of each pointer that is accessed by * operator
+   to be able to figure out the worst case limits.
+
+
+What kind of other checks are done
+-----------------------------------
+
+* Check that only list of preprocessor directives that we allow 
+  pass through.
+
+* 3d image type is not supported.
+
+* TODO: double underscore is not allowed in kernel arguments (because of our naming scheme)
+
+*. TODO: add some more info about checks 
+
+
+
+TODO:
+
+* Fix limit and address space initialization so that also in kernel
+  we will have wcl_limits pointer.
+
+* Add trivial local memory zeroing code to the start of kernel.
+  Trivial zeroing code can just zero all the space in start of every kernel
+  and have barrier after it is done.
+
+* Also add zero initializer to limits structure.
+
+* Find out type of each pointer that is accessed and
+  create WCL_CLAMP implementations to many separate limits.
+
+* Write test case, which is used to recognize all the different
+  mamory accessing ways.
+
+* Collect information what kind of checks we need to do in addition
+  to memory protection to meet the requirements (already wrote mail to webcl list about it).
+
+* Add list / checks of allowed preprocessor directives 
+
+FUTURE:
+
+* Add dependecy analysis to follow dependencies of limits to respect
+  between function calls.
+
+* Inject safe builtin implementations, for the builtin functions which
+  might access memory evil ways (probably we need to generate code on the fly if multiple limits to check). 
+
+* Add separate version of helper functions for each kernel and create
+  different limit structures for each kernel. 
+
+* Find worst case scenario from call graph about needed private memory
+  and write stack emulation, instead of having all the private variables
+  separately in provate address space struct
+
+
+
+Implementation details and brief intro to code base
+====================================================
+
+Magic starts with 
+
+main.cpp: We create our WebCLAction and run it with webclTool.
+
+    clang::tooling::ClangTool webclTool(optionsParser.GetCompilations(),
+                                        optionsParser.GetSourcePathList());
+
+    clang::tooling::FrontendActionFactory *webCLActionFactory = 
+        clang::tooling::newFrontendActionFactory<WebCLAction>();
+
+    const int status = webclTool.run(webCLActionFactory);
+
+TODO: what webclTool (ClangTool) does?
+
+TODO: what webCLActionFactory does?
+    
+    class WebCLAction : public clang::FrontendAction
+
