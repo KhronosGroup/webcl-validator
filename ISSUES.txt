@@ -35,7 +35,7 @@ We have also found nasty bugs in OpenCL drivers. For this reason
 we suggest that POCL is used for now as the binary drivers of
 hardware vendors seem to cause a lot of problems.
 
-- POCL doesn't support image3d_t. We use image3d_t in a test case to
+- POCL 0.8 doesn't support image3d_t. We use image3d_t in a test case to
   verify that WebCL Validator doesn't accept it.
 - Intel provides stable Core iX drivers only for Windows and Xeon
   drivers only for Linux. Older Linux beta driver, that worked on

@@ -1,5 +1,6 @@
 // RUN: cat %s | %opencl-validator
 // RUN: cat %s | %radix-sort -original
+// DISABLED RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>&1 | grep -v "Processing:" | %radix-sort -transform
 
 // Code derives (very loosely) from example in "Heterogeneous
 // Computing with OpenCL" published 2011 by Morgan Kaufmann.
@@ -72,8 +73,7 @@ void stream_count_kernel(
 {
     // histogram_matrix[VALUES_PER_PASS][STREAM_COUNT_WORKGROUP_SIZE];
     __local uint histogram_matrix[VALUES_PER_PASS * STREAM_COUNT_WORKGROUP_SIZE];
-    clear_histogram(
-        histogram_matrix);
+    clear_histogram(histogram_matrix);
     barrier(CLK_LOCAL_MEM_FENCE);
 
     const int num_total_blocks = num_elements / ELEMENTS_PER_BLOCK;
@@ -87,12 +87,9 @@ void stream_count_kernel(
     for (int block = 0; block < num_remaining_blocks; ++block, element_base += ELEMENTS_PER_BLOCK) {
         for (size_t element_index = 0; element_index < ELEMENTS_PER_WORK_ITEM; ++element_index) {
             const size_t index = element_base + element_index;
-            const uint value =
-                unsorted_elements[index];
+            const uint value = unsorted_elements[index];
             const uint pass_value = (value >> bit_offset) & VALUE_MASK;
-            inc_histogram(
-                histogram_matrix,
-                pass_value);
+            inc_histogram(histogram_matrix, pass_value);
         }
     }
     barrier(CLK_LOCAL_MEM_FENCE);
@@ -122,20 +119,23 @@ uint prefix_scan_lanes( // lane level prefix sum
     uint4 *vector_data) // lane counts -> lane prefix sums
 {
     uint sum = 0;
-    uint tmp = (*vector_data).x;
-    (*vector_data).x = sum;
+    uint4 vector_temp = *vector_data;
+    uint tmp = vector_temp.x;
+    vector_temp.x = sum;
 
     sum += tmp;
-    tmp = (*vector_data).y;
-    (*vector_data).y = sum;
+    tmp = vector_temp.y;
+    vector_temp.y = sum;
 
     sum += tmp;
-    tmp = vector_data[0].z;
-    vector_data[0].z = sum;
+    tmp = vector_temp.z;
+    vector_temp.z = sum;
 
     sum += tmp;
-    tmp = vector_data[0].w;
-    vector_data[0].w = sum;
+    tmp = vector_temp.w;
+    vector_temp.w = sum;
+
+    *vector_data = vector_temp;
 
     sum += tmp;
     return sum;

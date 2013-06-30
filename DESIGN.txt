@@ -1,6 +1,15 @@
 Some notes about the system and how does it work
 ================================================
 
+Coding guidelines for programmer to avoid checks
+------------------------------------------------
+
+Avoid having to use unneccessary amount of 
+*(), -> or [] operators, each of them causes check to be added to
+code.
+
+NOTE: in the future dependecy analysis can help to remove checks if many cases  
+
 
 What memory accesses are recognized and how are they made safe
 --------------------------------------------------------------
@@ -19,6 +28,26 @@ Then the address inside *() notation is clamped to correct range:
 
 *(WCL_CLAMP((type), ptr, min_ptr, max_ptr))
 
+ISSUE: How to make access safe in case where ((type)max_ptr) - 1 < min_ptr
+       is it ok to allow accessing NULL or should we define some fallback
+       area for each address space? Clamp solution cannot just ignore 
+       store/return 0. Branch/jump implementation is harder to do in source 
+       level because we would have to do the checks for a whole block and
+       then deside if that will be executed at all...
+
+Memory zero initialization
+--------------------------
+
+* local memory is zeroed in start of each workitem
+
+* private memory is zeroed in start of each workitem, if secure way
+  is found for statically allocated constant memory initialization, 
+  that method should be able to be used for private memory as well. 
+
+ISSUE: How to avoid padding leakage for global variable initialization 
+       without making assumptions of device architecture:
+
+https://www.securecoding.cert.org/confluence/display/seccode/DCL39-C.+Avoid+information+leak+in+structure+padding
 
 Which variable declarations must be collected to address space
 --------------------------------------------------------------
