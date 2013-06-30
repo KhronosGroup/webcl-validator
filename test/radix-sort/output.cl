@@ -495,12 +495,12 @@ void prefix_scan_kernel(
     // Copy work item result into work group result.
     for (size_t i = 0; i < PREFIX_SCAN_ELEMENTS; ++i) {
         const size_t index = work_item_base + i;
-      // TODO: add WCL_ADDR
         // Was: histogram[index] = wcl_allocs->pa.prefix_scan_kernel__scalar_histogram[i];
+        // histogram[index] = wcl_allocs->pa.prefix_scan_kernel__scalar_histogram[i];
         (*(WCL_ADDR(__global uint *,
                 histogram + (index),
                 wcl_allocs->gl.prefix_scan_kernel__histogram_min,
-                wcl_allocs->gl.prefix_scan_kernel__histogram_min))) =
+                wcl_allocs->gl.prefix_scan_kernel__histogram_max))) =
             (*(WCL_ADDR(uint*, 
                 wcl_allocs->pa.prefix_scan_kernel__scalar_histogram + (i),
                 &wcl_allocs->pa, (&wcl_allocs->pa + 1))));
