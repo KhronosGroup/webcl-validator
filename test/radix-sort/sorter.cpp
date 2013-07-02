@@ -192,12 +192,15 @@ bool RadixSorter::runStreamCountKernel(cl_event *streamCountEvent)
     // query work group size from kernel attrbutes
     size_t wgs[3];
     clGetKernelWorkGroupInfo(streamCountKernel_, device_, CL_KERNEL_COMPILE_WORK_GROUP_SIZE, sizeof(wgs), wgs, NULL);
-    size_t maxSize;
+    size_t maxSize, kernelMaxSize;
     clGetDeviceInfo(device_, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(maxSize), &maxSize, NULL);
+    clGetKernelWorkGroupInfo(streamCountKernel_, device_, CL_KERNEL_WORK_GROUP_SIZE, sizeof(kernelMaxSize), &kernelMaxSize, NULL);
 
-    std::cerr << "Local work group max size: " << maxSize << "\n";
+    std::cerr << "Local work group max size (CL_DEVICE_MAX_WORK_GROUP_SIZE): " << maxSize << "\n";
+    std::cerr << "Kernel work group max size (CL_KERNEL_WORK_GROUP_SIZE): " << kernelMaxSize << "\n";
     std::cerr << "Local work group size: " << localWorkSize << " Queried wgs: " << wgs[0] << "," << wgs[1] << "," << wgs[2] << "\n";
     std::cerr << "Global work group size: " << globalWorkSize << "\n";
+
 
     cl_int retVal = clEnqueueNDRangeKernel(queue_, streamCountKernel_, 1,
                                            NULL, &globalWorkSize, &localWorkSize,
@@ -214,12 +217,19 @@ bool RadixSorter::runStreamCountKernel(cl_event *streamCountEvent)
 
 bool RadixSorter::runPrefixScanKernel(cl_event streamCountEvent, cl_event *prefixScanEvent)
 {
+    // must be 128 and 20 (defined in kernel code)
     const size_t localWorkSize = 128;
     const size_t globalWorkSize = localWorkSize;
 
-    if (numHistogramElements_ != (localWorkSize * 20))
+    if (numHistogramElements_ != localWorkSize*20) {
+        std::cerr << "Fail: Fix this to work on bigger element count.\n";
         return false;
+    }
 
+    std::cerr << "Going to run prefix scan kernel:\n";
+    std::cerr << "Local work size: " << localWorkSize << "\n";
+    std::cerr << "Global work size: " << globalWorkSize << "\n";
+    
     cl_int retVal = clEnqueueNDRangeKernel(queue_, prefixScanKernel_, 1,
                                            NULL, &globalWorkSize, &localWorkSize,
                                            1, &streamCountEvent, prefixScanEvent);
