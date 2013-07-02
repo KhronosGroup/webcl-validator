@@ -52,28 +52,36 @@ https://www.securecoding.cert.org/confluence/display/seccode/DCL39-C.+Avoid+info
 Which variable declarations must be collected to address space
 --------------------------------------------------------------
 
-1. In the first phase all of them.
+* In the first phase all of them.
 
-2. Also if function argument is passed to other function as pointer,
-new variable must be created for it to address space struct.
+* Also if function argument is passed to other function as pointer,
+new variable must be created for it to address space struct and 
+add assignment to start of function
 
 e.g. void foo(int bar) {
     foo2(&bar);
+}
+
+- transformed to ->
+
+void foo(int bar) {
+    wcl_allocs->pa.foo__bar = bar;
+    foo2(&wcl_allocs->pa.foo__bar);
 }
 
 
 What other information analysis pass should collect
 ----------------------------------------------------
 
-1. Find out which calls are builtin calls and which ones
-   are calls to internal functions.
+* Find out which calls are builtin calls and which ones
+  are calls to internal functions.
 
-2. Find out type of each pointer that is accessed by * operator
-   to be able to figure out the worst case limits.
+* Find out type of each pointer that is accessed by * operator
+  to be able to figure out the worst case limits.
 
 
-What kind of other checks are done
------------------------------------
+What kind of other checks are done to validate the webcl
+----------------------------------------------------------
 
 * Check that only list of preprocessor directives that we allow 
   pass through.
@@ -84,6 +92,12 @@ What kind of other checks are done
 
 *. TODO: add some more info about checks 
 
+
+What additional transformations are needed
+------------------------------------------
+
+* all typedefs and #defines are collected and located to start of source in the 
+original order (our own typedefs needs to be injected after originals)
 
 
 TODO:
@@ -107,6 +121,15 @@ TODO:
   to memory protection to meet the requirements (already wrote mail to webcl list about it).
 
 * Add list / checks of allowed preprocessor directives 
+
+* Recognize the case if we know how big value we are going to load
+  and if we know that value might be bigger that [min,max] range, then add 
+  additional checks and make reference to point address space specific "NULL"
+  which is big enough to all loads / stores if the program. If we could just
+  kill the program before memory access, it would be nice too.
+
+* system should move all typedefs to be in start of program in correct order
+  and add our structures after those.
 
 FUTURE:
 

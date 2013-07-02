@@ -43,8 +43,15 @@ public:
     bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr *expr);
     /// \see clang::RecursiveASTVisitor::VisitUnaryOperator
     bool VisitUnaryOperator(clang::UnaryOperator *expr);
+    /// \see clang::RecursiveASTVisitor::MemberExpr
+    bool VisitMemberExpr(clang::MemberExpr *expr);
+    /// \see clang::RecursiveASTVisitor::ExtVectorElementExpr
+    bool VisitExtVectorElementExpr(clang::ExtVectorElementExpr *expr);
     /// \see clang::RecursiveASTVisitor::VisitCallExpr
     bool VisitCallExpr(clang::CallExpr *expr);
+
+    /// \see clang::RecursiveASTVisitor::VisitTypedefDecl
+    bool VisitTypedefDecl(clang::TypedefDecl *decl);
 
 protected:
 
@@ -55,7 +62,10 @@ protected:
     virtual bool handleDeclStmt(clang::DeclStmt *stmt);
     virtual bool handleArraySubscriptExpr(clang::ArraySubscriptExpr *expr);
     virtual bool handleUnaryOperator(clang::UnaryOperator *expr);
+    virtual bool handleMemberExpr(clang::MemberExpr *expr);
+    virtual bool handleExtVectorElementExpr(clang::ExtVectorElementExpr *expr);
     virtual bool handleCallExpr(clang::CallExpr *expr);
+    virtual bool handleTypedefDecl(clang::TypedefDecl *decl);
 };
 
 /// \brief Complains about WebCL limitations in OpenCL C code.
@@ -82,6 +92,82 @@ private:
         clang::SourceLocation typeLocation, const clang::Type *type);
 };
 
+/// \brief Collects all the information about the source code required for transformations.
+class WebCLAnalyser : public WebCLVisitor
+{
+public:
+  explicit WebCLAnalyser(clang::CompilerInstance &instance);
+  virtual ~WebCLAnalyser();
+
+  /// Collect all static variable allocations
+  ///
+  /// \see WebCLVisitor::handleVarDecl
+  virtual bool handleVarDecl(clang::VarDecl *decl);
+
+  /// Collect structure pointer -> access
+  ///
+  /// \see WebCLVisitor::handleMemberExpr
+  virtual bool handleMemberExpr(clang::MemberExpr *expr);
+  
+  /// Collect vector pointer -> access
+  ///
+  /// \see WebCLVisitor::handleExtVectorElementExpr
+  virtual bool handleExtVectorElementExpr(clang::ExtVectorElementExpr *expr);
+  
+  /// Collect array indexing 
+  ///
+  /// \see WebCLVisitor::handleArraySubscriptExpr
+  virtual bool handleArraySubscriptExpr(clang::ArraySubscriptExpr *expr);
+  
+  /// Collect * and & operator uses
+  ///
+  /// \see WebCLVisitor::handleUnaryOperator
+  virtual bool handleUnaryOperator(clang::UnaryOperator *expr);
+
+  /// Collects lists of functions, whose signature must be changed
+  ///
+  /// - Collects kernels and all pointer arguments
+  /// - Collects all other functions, which will requires wcl_alloc
+  ///   argument to be added
+  ///
+  /// \see WebCLVisitor::handleFunctionDecl
+  virtual bool handleFunctionDecl(clang::FunctionDecl *decl);
+
+  /// Collect calls and later on this instance will know if call is made to
+  /// builtin or internal helper.
+  ///
+  /// - If internal helper need to add wcl_alloc arg to first parameter
+  /// - If not internal helper do not touch
+  /// - FUTURE: if in unsafe builtin list, need to fix to call
+  ///           safe implementation with all possible limits in arguments
+  ///           and create corresponding safe implementation to start of code
+  ///
+  /// \see WebCLVisitor::handleCallExpr
+  virtual bool handleCallExpr(clang::CallExpr *expr);
+  
+  /// Collects all typedef declarations to move them to start of source
+  ///
+  /// - Typedefs needs to be moved up to be able to use them in our
+  ///   address space structures.
+  ///
+  /// \see WebCLVisitor::handleTypedefDecl
+  virtual bool handleTypedefDecl(clang::TypedefDecl *decl);
+  
+private:
+  
+  /// TODO: add logic to get mapping between node address and variable declaration
+
+  /// TODO: add context to know where in tree we are at the time e.g. to know in
+  ///       function arguments that if function is kernel or prototype or what?
+  
+  /// TODO: add function which decides if variable must be put to address space
+  ///       or not.
+  ///       * All constant address space variables
+  ///       * All local address space variables
+  ///       * All private address space variables, which has either pointer access or their address is fetched with & operator
+};
+
+
 /// \brief Common base for transforming visitors.
 class WebCLTransformingVisitor : public WebCLVisitor
                                , public WebCLTransformerClient
@@ -93,7 +179,7 @@ public:
 };
 
 /// \brief Finds variables that need to be relocated into address
-/// space records.
+/// space records and all the kernel arguments, which contain limits.
 class WebCLRelocator : public WebCLTransformingVisitor
                      , public WebCLHelper
 {
@@ -102,12 +188,22 @@ public:
     explicit WebCLRelocator(clang::CompilerInstance &instance);
     virtual ~WebCLRelocator();
 
+  
     /// \see WebCLVisitor::handleDeclStmt
     virtual bool handleDeclStmt(clang::DeclStmt *stmt);
+  
     /// \see WebCLVisitor::handleVarDecl
     virtual bool handleVarDecl(clang::VarDecl *decl);
+  
     /// \see WebCLVisitor::handleUnaryOperator
     virtual bool handleUnaryOperator(clang::UnaryOperator *expr);
+
+    /// Collects list of kernel arguments, which require limits
+    /// - Later on this information is combined with information
+    ///   in WebCLParameterizer to be able to write initialization
+    ///   code for kernel.
+    /// \see WebCLVisitor::handleFunctionDecl
+    virtual bool handleFunctionDecl(clang::FunctionDecl *decl);
 
 private:
 
@@ -142,6 +238,12 @@ public:
     /// - Add address space argument for functions that need to do
     ///  pointer and index checking.
     ///
+    /// - TODO: Knows if the called function is builtin, or builtin that
+    ///   needs to be replaced with safe implementation.
+    ///
+    /// - TODO: If builtin is replaced, with safe version, add it to bookkeeping
+    ///   to be able to emit safe implementation afterwards.
+    ///
     /// \see WebCLVisitor::handleCallExpr
     virtual bool handleCallExpr(clang::CallExpr *expr);
 
@@ -165,13 +267,23 @@ private:
     bool isNonPrivateOpenCLAddressSpace(unsigned int addressSpace) const;
 };
 
-/// \brief Finds array subscriptions and pointer dereferences.
+/// \brief Finds array subscriptions and all other pointer dereferences.
+///
+/// Handled access types: table[index];, struct_ptr->field;, *(any_pointer);
+/// For the transformation all accesses are normalized to (*()) format.
+/// i.e. (*(table + (index))) and (*(struct_ptr)).field
 class WebCLAccessor : public WebCLTransformingVisitor
 {
 public:
 
     explicit WebCLAccessor(clang::CompilerInstance &instance);
     virtual ~WebCLAccessor();
+
+    /// \see WebCLVisitor::handleMemberExpr
+    virtual bool handleMemberExpr(clang::MemberExpr *expr);
+  
+    /// \see WebCLVisitor::handleExtVectorElementExpr
+    virtual bool handleExtVectorElementExpr(clang::ExtVectorElementExpr *expr);
 
     /// \see WebCLVisitor::handleArraySubscriptExpr
     virtual bool handleArraySubscriptExpr(clang::ArraySubscriptExpr *expr);

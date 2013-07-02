@@ -11,6 +11,11 @@ WebCLReporter::~WebCLReporter()
 {
 }
 
+clang::DiagnosticBuilder WebCLReporter::info(                                                clang::SourceLocation location, const char *format)
+{
+  return message(clang::DiagnosticsEngine::Warning, format, &location);
+}
+
 clang::DiagnosticBuilder WebCLReporter::warning(
     clang::SourceLocation location, const char *format)
 {

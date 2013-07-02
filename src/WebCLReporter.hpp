@@ -15,6 +15,8 @@ public:
     explicit WebCLReporter(clang::CompilerInstance &instance);
     ~WebCLReporter();
 
+  clang::DiagnosticBuilder info(
+        clang::SourceLocation location, const char *format);
     clang::DiagnosticBuilder warning(
         clang::SourceLocation location, const char *format);
     clang::DiagnosticBuilder error(

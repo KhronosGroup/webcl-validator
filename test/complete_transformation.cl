@@ -45,7 +45,7 @@ __kernel void awesomize(
     barrier(CLK_LOCAL_MEM_FENCE);
 
     if (gid == 0) {
-        output[0] = lottery_winner;
+        output[0] = lottery_winner + input->x + private_struct.table[2];
     } else {
         output[gid] = (*flip_to_awesomeness(wgid, wgsize, scratch))*base_factor;
     }

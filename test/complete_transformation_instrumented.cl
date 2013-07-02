@@ -186,7 +186,16 @@ __kernel void awesomize(
     barrier(CLK_LOCAL_MEM_FENCE);
 
     if (wcl_allocs->pa.awesomize__gid == 0) {
-        (*(output + (0))) = wcl_locals.lottery_winner;
+        (*(WCL_ADDR(__global float4*,
+            output + (0),
+            wcl_allocs->gl.awesomize__output_min, 
+            wcl_allocs->gl.awesomize__output_max))) = wcl_locals.lottery_winner + 
+                    (*(WCL_ADDR(__global float4*, input,
+                        wcl_allocs->gl.awesomize__input_min, 
+                        wcl_allocs->gl.awesomize__input_max))).x +
+            (*(WCL_ADDR(float*,
+                wcl_allocs->pa.awesomize__private_struct.table + (2),
+                &wcl_allocs->pa, (&wcl_allocs->pa + 1))));
     } else {
         (*(WCL_ADDR(__global float4*,
             output + (wcl_allocs->pa.awesomize__gid), 

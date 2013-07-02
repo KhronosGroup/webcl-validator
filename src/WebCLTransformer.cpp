@@ -267,31 +267,40 @@ void WebCLTransformer::emitLimitMacros(std::ostream &out)
 
         << "#define WCL_CLAMP(low, value, high) \\\n"
         << cfg_.indentation_ << "WCL_MAX((low), WCL_MIN((value), (high)))\n"
-        << "\n";
+        << "\n"
+
+        << "#define WCL_ADDR(type, ptr, min_ptr, max_ptr) \\\n"
+        << cfg_.indentation_ <<  "WCL_CLAMP( ((type)min_ptr), (ptr), (((type)max_ptr)-1) )\n\n";
 }
 
 void WebCLTransformer::emitPointerLimitMacros(std::ostream &out)
 {
+  /*
     out << "#define WCL_MIN_PTR(name, type, field) \\\n"
         << cfg_.indentation_ << "((name type *)(field))\n"
 
         << "#define WCL_MAX_PTR(name, type, field) \\\n"
         << cfg_.indentation_ << "(WCL_MIN_PTR(name, type, (field) + 1) - 1)\n"
         << "\n";
+   */
 }
 
 void WebCLTransformer::emitIndexLimitMacros(std::ostream &out)
 {
+  /*
     out << "#define WCL_MIN_IDX(name, type, field, ptr) \\\n"
         << cfg_.indentation_ << "(size_t)0\n"
 
         << "#define WCL_MAX_IDX(name, type, field, ptr) \\\n"
         << cfg_.indentation_ << "(size_t)(WCL_MAX_PTR(name, type, field) - ptr)\n"
         << "\n";
+   
+   */
 }
 
 void WebCLTransformer::emitPointerCheckerMacro(std::ostream &out)
 {
+  /*
     static const std::string functionName =
         cfg_.prefix_ + "_##name##_##type##_" + cfg_.pointerSuffix_;
     static const std::string asParameter =
@@ -311,10 +320,12 @@ void WebCLTransformer::emitPointerCheckerMacro(std::ostream &out)
         << cfg_.getIndentation(3) << "WCL_MAX_PTR(name, type, " << asField << ")); \\\n"
         << cfg_.getIndentation(1) << "}\n"
         << "\n";
+   */
 }
 
 void WebCLTransformer::emitIndexCheckerMacro(std::ostream &out)
 {
+  /*
     static const std::string functionName =
         cfg_.prefix_ + "_##name##_##type##_" + cfg_.indexSuffix_;
     static const std::string asParameter =
@@ -334,6 +345,7 @@ void WebCLTransformer::emitIndexCheckerMacro(std::ostream &out)
         << cfg_.getIndentation(3) << "WCL_MAX_IDX(name, type, " << asField << ", ptr)); \\\n"
         << cfg_.getIndentation(1) << "}\n"
         << "\n";
+*/
 }
 
 void WebCLTransformer::emitPrologueMacros(std::ostream &out)
@@ -347,36 +359,44 @@ void WebCLTransformer::emitPrologueMacros(std::ostream &out)
 
 void WebCLTransformer::emitConstantIndexChecker(std::ostream &out)
 {
-    out << "size_t " << cfg_.getNameOfIndexChecker() << "(size_t idx, size_t limit);\n";
+/*
+  out << "size_t " << cfg_.getNameOfIndexChecker() << "(size_t idx, size_t limit);\n";
     out << "size_t " << cfg_.getNameOfIndexChecker() << "(size_t idx, size_t limit)\n"
         << "{\n"
         << cfg_.getIndentation(1) << "return idx % limit;\n"
         << "}\n"
         << "\n";
+*/
 }
 
 void WebCLTransformer::emitChecker(std::ostream &out, const CheckedType &type,
                                    const std::string &kind)
 {
-    out << "WCL_" << kind << "_CHECKER("
+/*
+  out << "WCL_" << kind << "_CHECKER("
         << type.first << ", " << type.first << "s, " << type.second
         << ")\n";
-}
+*/
+ }
 
 void WebCLTransformer::emitCheckers(std::ostream &out, const CheckedTypes &types,
                                     const std::string &kind)
 {
-    for (CheckedTypes::iterator i = types.begin(); i != types.end(); ++i)
+/*
+  for (CheckedTypes::iterator i = types.begin(); i != types.end(); ++i)
         emitChecker(out, (*i), kind);
     if (types.size())
         out << "\n";
-}
+*/
+ }
 
 void WebCLTransformer::emitPrologueCheckers(std::ostream &out)
 {
+/*
     emitConstantIndexChecker(out);
     emitCheckers(out, checkedPointerTypes_, "PTR");
     emitCheckers(out, checkedIndexTypes_, "IDX");
+*/
 }
 
 void WebCLTransformer::emitPrologue(std::ostream &out)

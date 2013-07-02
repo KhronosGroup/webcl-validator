@@ -50,10 +50,24 @@ bool WebCLVisitor::VisitUnaryOperator(clang::UnaryOperator *expr)
 {
     return handleUnaryOperator(expr);
 }
+bool WebCLVisitor::VisitMemberExpr(clang::MemberExpr *expr)
+{
+  return handleMemberExpr(expr);
+}
+
+bool WebCLVisitor::VisitExtVectorElementExpr(clang::ExtVectorElementExpr *expr)
+{
+  return handleExtVectorElementExpr(expr);
+}
 
 bool WebCLVisitor::VisitCallExpr(clang::CallExpr *expr)
 {
     return handleCallExpr(expr);
+}
+
+bool WebCLVisitor::VisitTypedefDecl(clang::TypedefDecl *decl)
+{
+  return handleTypedefDecl(decl);
 }
 
 bool WebCLVisitor::handleTranslationUnitDecl(clang::TranslationUnitDecl *decl)
@@ -91,9 +105,24 @@ bool WebCLVisitor::handleUnaryOperator(clang::UnaryOperator *expr)
     return true;
 }
 
+bool WebCLVisitor::handleMemberExpr(clang::MemberExpr *expr)
+{
+  return true;
+}
+
+bool WebCLVisitor::handleExtVectorElementExpr(clang::ExtVectorElementExpr *expr)
+{
+  return true;
+}
+
 bool WebCLVisitor::handleCallExpr(clang::CallExpr *expr)
 {
     return true;
+}
+
+bool WebCLVisitor::handleTypedefDecl(clang::TypedefDecl *decl)
+{
+  return true;
 }
 
 // WebCLTransformingVisitor
@@ -195,6 +224,113 @@ void WebCLRestrictor::check3dImageParameter(
     }
 }
 
+// WebCLAnalyser
+
+WebCLAnalyser::WebCLAnalyser(clang::CompilerInstance &instance)
+: WebCLVisitor(instance)
+{
+}
+
+WebCLAnalyser::~WebCLAnalyser()
+{
+}
+
+bool WebCLAnalyser::handleVarDecl(clang::VarDecl *decl)
+{
+  if (!isFromMainFile(decl->getLocStart())) return true;
+  
+  if (decl->hasLocalStorage()) {
+    if (decl->isFunctionOrMethodVarDecl()) {
+      info(decl->getLocStart(), "Local variable declaration. Collect!");
+    } else {
+      info(decl->getLocStart(), "Function argument variable! Might be needed so collect these too, but to different bookkeeping than normal local variables.");
+    }
+  } else if (decl->hasGlobalStorage()) {
+    info(decl->getLocStart(), "Global/Local address space variable! Collect to corresponding address space.");
+  } else {
+    info(decl->getLocStart(), "Filter these, so that only globals are left. And maybe some function arguments.");
+  }
+  
+  return true;
+}
+
+bool WebCLAnalyser::handleMemberExpr(clang::MemberExpr *expr)
+{
+  if (!isFromMainFile(expr->getLocStart())) return true;
+
+  if (expr->isArrow()) {
+    info(expr->getLocStart(), "Pointer access!");
+  }
+  return true;
+}
+
+bool WebCLAnalyser::handleExtVectorElementExpr(clang::ExtVectorElementExpr *expr)
+{
+  if (!isFromMainFile(expr->getLocStart())) return true;
+
+  // handle only arrow accesses
+  if (expr->isArrow()) {
+    info(expr->getLocStart(), "Pointer access!");
+  }
+  return true;
+}
+
+bool WebCLAnalyser::handleArraySubscriptExpr(clang::ArraySubscriptExpr *expr)
+{
+  if (!isFromMainFile(expr->getLocStart())) return true;
+  info(expr->getLocStart(), "Pointer access!");
+  return true;
+}
+
+bool WebCLAnalyser::handleUnaryOperator(clang::UnaryOperator *expr)
+{
+  if (!isFromMainFile(expr->getLocStart())) return true;
+
+  if (expr->getOpcode() == clang::UO_Deref) {
+    clang::Expr *pointer = expr->getSubExpr();
+    if (!pointer) {
+      error(expr->getLocStart(), "Invalid pointer dereference.\n");
+      return false;
+    }
+    info(expr->getLocStart(), "Pointer access!");
+  } else if(expr->getOpcode() == clang::UO_AddrOf) {
+    info(expr->getLocStart(), "Address of something, might require some handling.");
+  }
+  return true;
+}
+
+bool WebCLAnalyser::handleFunctionDecl(clang::FunctionDecl *decl)
+{
+  if (!isFromMainFile(decl->getLocStart())) return true;
+
+  if (decl->hasAttr<clang::OpenCLKernelAttr>()) {
+    // TODO: go through arguments and collect pointers to bookkeeping
+    //       create names for limit struct as:
+    //       function__argument_name__min and function__argument_name__max
+    //       and organize to lists according to address space of argument
+    info(decl->getLocStart(), "This is kernel, go through arguments to collect pointers etc.");
+  } else {
+    info(decl->getLocStart(), "This is prototype/function, add to list to add wcl_allocs arg and add to list to recognize internal functions for call conversion.");
+  }
+  return true;
+}
+
+
+bool WebCLAnalyser::handleCallExpr(clang::CallExpr *expr)
+{
+  if (!isFromMainFile(expr->getLocStart())) return true;
+  info(expr->getLocStart(), "Found call, adding to bookkeeping to decide later if parameterlist needs fixing.");
+  return true;
+}
+
+bool WebCLAnalyser::handleTypedefDecl(clang::TypedefDecl *decl)
+{
+  if (!isFromMainFile(decl->getLocStart())) return true;
+  info(decl->getLocStart(), "Found typedef, add to list to move to start of source.");
+  return true;
+}
+
+
 // WebCLRelocator
 
 WebCLRelocator::WebCLRelocator(clang::CompilerInstance &instance)
@@ -216,6 +352,11 @@ bool WebCLRelocator::handleDeclStmt(clang::DeclStmt *stmt)
 
 bool WebCLRelocator::handleVarDecl(clang::VarDecl *decl)
 {
+  
+    if (!decl->isLocalVarDecl()) {
+      return true;
+    }
+  
     const clang::Type *type = decl->getType().getTypePtrOrNull();
     if (!type) {
         error(decl->getLocStart(), "Invalid variable type.");
@@ -224,6 +365,7 @@ bool WebCLRelocator::handleVarDecl(clang::VarDecl *decl)
 
     // In global scope 'current_' is NULL.
 
+  
     if (type->isConstantArrayType()) {
         getTransformer().addRelocatedVariable(current_, decl);
         return true;
@@ -236,7 +378,9 @@ bool WebCLRelocator::handleVarDecl(clang::VarDecl *decl)
 
 bool WebCLRelocator::handleUnaryOperator(clang::UnaryOperator *expr)
 {
-    if (!isFromMainFile(expr->getLocStart()))
+  // TODO: why would we handle unary operator here...? to see if
+  //       argument is passed as address somewhere?
+  if (!isFromMainFile(expr->getLocStart()))
         return true;
 
     if (expr->getOpcode() != clang::UO_AddrOf)
@@ -244,7 +388,6 @@ bool WebCLRelocator::handleUnaryOperator(clang::UnaryOperator *expr)
 
     clang::Expr *variable = expr->getSubExpr();
     if (!variable) {
-        error(expr->getLocStart(), "Invalid variable addressing.\n");
         return true;
     }
 
@@ -261,6 +404,18 @@ bool WebCLRelocator::handleUnaryOperator(clang::UnaryOperator *expr)
     clang::DeclStmt *stmt = i->second;
     getTransformer().addRelocatedVariable(stmt, relocated);
     return true;
+}
+
+bool WebCLRelocator::handleFunctionDecl(clang::FunctionDecl *decl)
+{
+  if (decl->hasAttr<clang::OpenCLKernelAttr>()) {
+    // TODO: go through arguments and collect pointers to bookkeeping
+    //       create names for limit struct as:
+    //       function__argument_name__min and function__argument_name__max
+    //       and organize to lists according to address space of argument
+    return true;
+  }
+  return true;
 }
 
 clang::VarDecl *WebCLRelocator::getRelocatedVariable(clang::Expr *expr)
@@ -394,6 +549,62 @@ WebCLAccessor::~WebCLAccessor()
 {
 }
 
+#include <iostream>
+
+// TODO: Handle all memory accesses:
+
+// ExtVectorElementExpr 0x7fd220cd57a8 <col:38, col:45> 'float' lvalue vectorcomponent x
+// (MemberExpr 0x7fd220cd3b80 <col:45, col:65> 'float [3]' lvalue ->table 0x7fd220cd2850
+// (ArraySubscriptExpr 0x7fd220cd3970 <col:5, col:17> '__local float4':'float __local __attribute__((ext_vector_type(4)))' lvalue
+// (UnaryOperator 0x7fd220cd5ae8 <col:24, col:66> '__local float4':'float __local __attribute__((ext_vector_type(4)))' lvalue prefix '*'
+
+bool WebCLAccessor::handleMemberExpr(clang::MemberExpr *expr)
+{
+  if (expr->isArrow()) {
+    // std::cerr << "handleMemberExpr:\n";
+    // expr->dump();
+    // TODO: put this to bookkeeping that it must be fixed
+  }
+  return true;
+}
+
+bool WebCLAccessor::handleExtVectorElementExpr(clang::ExtVectorElementExpr *expr)
+{
+  // handle only arrow accesses
+  if (expr->isArrow()) {
+    // std::cerr << "handleExtVectorElementExpr:\n";
+    // expr->dump();
+    // TODO: put this to bookkeeping that it must be fixed
+  }
+  return true;
+}
+
+bool WebCLAccessor::handleArraySubscriptExpr(clang::ArraySubscriptExpr *expr)
+{
+  //std::cerr << "handleArraySubscriptExpr:\n";
+  //const clang::Expr *base = expr->getBase();
+  //const clang::Expr *index = expr->getIdx();
+  // expr->dump();
+  // TODO: put this to bookkeeping that it must be fixed
+  return true;
+}
+
+bool WebCLAccessor::handleUnaryOperator(clang::UnaryOperator *expr)
+{
+  if (expr->getOpcode() == clang::UO_Deref) {
+    clang::Expr *pointer = expr->getSubExpr();
+    if (!pointer) {
+      error(expr->getLocStart(), "Invalid pointer dereference.\n");
+      return false;
+    }
+    // std::cerr << "handleUnaryOperator: " << expr->getLocStart() << "\n";
+    // expr->dump();
+    // TODO: put this to bookkeeping that it must be fixed
+  }
+  return true;
+}
+
+/*
 bool WebCLAccessor::handleArraySubscriptExpr(clang::ArraySubscriptExpr *expr)
 {
     if (!isFromMainFile(expr->getLocStart()))
@@ -469,6 +680,7 @@ bool WebCLAccessor::handleUnaryOperator(clang::UnaryOperator *expr)
 
     return true;
 }
+*/
 
 bool WebCLAccessor::getIndexedArraySize(const clang::Expr *base, llvm::APSInt &size)
 {

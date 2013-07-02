@@ -6,6 +6,7 @@ WebCLConsumer::WebCLConsumer(
     clang::CompilerInstance &instance, clang::Rewriter &rewriter)
     : clang::ASTConsumer()
     , restrictor_(instance)
+    , analyser_(instance)
     , checkingVisitors_()
     , relocator_(instance)
     , parameterizer_(instance)
@@ -14,7 +15,9 @@ WebCLConsumer::WebCLConsumer(
     , transformingVisitors_()
 {
     // Push in reverse order.
+    checkingVisitors_.push_front(&analyser_);
     checkingVisitors_.push_front(&restrictor_);
+
     // Push in reverse order.
     transformingVisitors_.push_front(&printer_);
     transformingVisitors_.push_front(&accessor_);

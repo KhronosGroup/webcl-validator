@@ -30,6 +30,7 @@ private:
     bool hasErrors(clang::ASTContext &context) const;
 
     WebCLRestrictor restrictor_;
+    WebCLAnalyser analyser_;
     Visitors checkingVisitors_;
 
     WebCLRelocator relocator_;
