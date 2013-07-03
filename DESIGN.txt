@@ -102,9 +102,6 @@ original order (our own typedefs needs to be injected after originals)
 
 TODO:
 
-* Fix limit and address space initialization so that also in kernel
-  we will have wcl_limits pointer.
-
 * Add trivial local memory zeroing code to the start of kernel.
   Trivial zeroing code can just zero all the space in start of every kernel
   and have barrier after it is done.
@@ -113,9 +110,6 @@ TODO:
 
 * Find out type of each pointer that is accessed and
   create WCL_CLAMP implementations to many separate limits.
-
-* Write test case, which is used to recognize all the different
-  mamory accessing ways.
 
 * Collect information what kind of checks we need to do in addition
   to memory protection to meet the requirements (already wrote mail to webcl list about it).
@@ -128,8 +122,15 @@ TODO:
   which is big enough to all loads / stores if the program. If we could just
   kill the program before memory access, it would be nice too.
 
+* Address space specific null pointers to return if no other valid area could have
+  been clamped for access
+
 * system should move all typedefs to be in start of program in correct order
   and add our structures after those.
+
+* add converter which adds padding to constant address space struct initializer
+
+* add rewriter, which converts private struct initializations to assignments (or at least give failure of private struct initializer at start)
 
 FUTURE:
 
@@ -169,3 +170,8 @@ TODO: what webCLActionFactory does?
     
     class WebCLAction : public clang::FrontendAction
 
+TODO: explain what analyser collects
+ 
+TODO: explain what data is extracted form analysed nodes
+
+TODO: explain how transformations were done.

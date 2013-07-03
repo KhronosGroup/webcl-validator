@@ -4,6 +4,8 @@
 #include "clang/AST/Decl.h"
 #include "clang/Frontend/CompilerInstance.h"
 
+#include <iostream>
+
 // WebCLVisitor
 
 WebCLVisitor::WebCLVisitor(clang::CompilerInstance &instance)
@@ -70,6 +72,11 @@ bool WebCLVisitor::VisitTypedefDecl(clang::TypedefDecl *decl)
   return handleTypedefDecl(decl);
 }
 
+bool WebCLVisitor::VisitDeclRefExpr(clang::DeclRefExpr *expr)
+{
+  return handleDeclRefExpr(expr);
+}
+
 bool WebCLVisitor::handleTranslationUnitDecl(clang::TranslationUnitDecl *decl)
 {
     return true;
@@ -122,6 +129,10 @@ bool WebCLVisitor::handleCallExpr(clang::CallExpr *expr)
 
 bool WebCLVisitor::handleTypedefDecl(clang::TypedefDecl *decl)
 {
+  return true;
+}
+
+bool WebCLVisitor::handleDeclRefExpr(clang::DeclRefExpr *expr) {
   return true;
 }
 
@@ -238,15 +249,42 @@ WebCLAnalyser::~WebCLAnalyser()
 bool WebCLAnalyser::handleVarDecl(clang::VarDecl *decl)
 {
   if (!isFromMainFile(decl->getLocStart())) return true;
+ 
+  switch (decl->getType().getAddressSpace()) {
+    case clang::LangAS::opencl_local:
+      info(decl->getLocStart(), "Local variable declaration. Collect!");
+      localVariables_.insert(decl);
+      break;
+    case clang::LangAS::opencl_constant:
+      info(decl->getLocStart(), "Constant variable declaration. Collect!");
+      constantVariables_.insert(decl);
+      break;
+    default:
+      assert(decl->getType().getAddressSpace() == 0);
+      if (decl->isFunctionOrMethodVarDecl()) {
+        info(decl->getLocStart(), "Private variable declaration. Collect!");
+        privateVariables_.insert(decl);
+      } else {
+        info(decl->getLocStart(), "Function parameter... skip for now.");
+      }
+  }
+  
+  return true;
   
   if (decl->hasLocalStorage()) {
     if (decl->isFunctionOrMethodVarDecl()) {
-      info(decl->getLocStart(), "Local variable declaration. Collect!");
+      info(decl->getLocStart(), "Private variable declaration. Collect!");
+      privateVariables_.insert(decl);
+      if (decl->hasInit() && decl->getType().getTypePtr()->isStructureOrClassType() ) {
+          // TODO: move this restriction to restrictor...
+          info(decl->getInit()->getLocStart(), "Struct got initializer fail for now!");
+      }
     } else {
       info(decl->getLocStart(), "Function argument variable! Might be needed so collect these too, but to different bookkeeping than normal local variables.");
     }
   } else if (decl->hasGlobalStorage()) {
     info(decl->getLocStart(), "Global/Local address space variable! Collect to corresponding address space.");
+    std::cerr << "######## Woot:" << decl->getType().getAddressSpace() << "\n";
   } else {
     info(decl->getLocStart(), "Filter these, so that only globals are left. And maybe some function arguments.");
   }
@@ -260,6 +298,10 @@ bool WebCLAnalyser::handleMemberExpr(clang::MemberExpr *expr)
 
   if (expr->isArrow()) {
     info(expr->getLocStart(), "Pointer access!");
+    if (clang::DeclRefExpr *declRef = llvm::dyn_cast<clang::DeclRefExpr>(expr->getBase())) {
+      std::cerr << "Jackpot found decl:\n";
+      info(declRef->getDecl()->getLocStart(), "-- -- Corresponding decl.");
+    }
   }
   return true;
 }
@@ -271,6 +313,10 @@ bool WebCLAnalyser::handleExtVectorElementExpr(clang::ExtVectorElementExpr *expr
   // handle only arrow accesses
   if (expr->isArrow()) {
     info(expr->getLocStart(), "Pointer access!");
+    if (clang::DeclRefExpr *declRef = llvm::dyn_cast<clang::DeclRefExpr>(expr->getBase())) {
+      std::cerr << "Jackpot found decl:\n";
+      info(declRef->getDecl()->getLocStart(), "-- -- Corresponding decl.");
+    }
   }
   return true;
 }
@@ -279,6 +325,24 @@ bool WebCLAnalyser::handleArraySubscriptExpr(clang::ArraySubscriptExpr *expr)
 {
   if (!isFromMainFile(expr->getLocStart())) return true;
   info(expr->getLocStart(), "Pointer access!");
+
+  clang::Expr *base = expr->getBase();
+  clang::Expr *idx = expr->getIdx();
+  
+  // in case if we are abse to trace actual base declaration we can optimize more in future
+  if (clang::ImplicitCastExpr *implicitCast = llvm::dyn_cast<clang::ImplicitCastExpr>(base)) {
+    if (clang::DeclRefExpr *declRef = llvm::dyn_cast<clang::DeclRefExpr>(implicitCast->getSubExpr())) {
+      std::cerr << "Jackpot found decl:\n";
+      info(declRef->getDecl()->getLocStart(), "-- -- Corresponding decl.");
+    }
+  }
+  
+   std::cerr << "Base type: " << base->getType().getAsString()
+            << " address number space: " << base->getType().getAddressSpace() <<  "\n";
+
+  std::cerr << "Index type: " << idx->getType().getAsString()
+            << " address number space: " << idx->getType().getAddressSpace() <<  "\n\n";
+
   return true;
 }
 
@@ -293,8 +357,25 @@ bool WebCLAnalyser::handleUnaryOperator(clang::UnaryOperator *expr)
       return false;
     }
     info(expr->getLocStart(), "Pointer access!");
+    clang::Expr *addr = expr->getSubExpr();
+    if (clang::DeclRefExpr *declRef = llvm::dyn_cast<clang::DeclRefExpr>(expr->getSubExpr())) {
+      std::cerr << "Jackpot found decl:\n";
+      info(declRef->getDecl()->getLocStart(), "-- -- Corresponding decl.");
+    }
+    
+    std::cerr << "expr type:" << addr->getType().getAsString()
+              << " address number space: " << addr->getType().getAddressSpace() <<  "\n\n";
   } else if(expr->getOpcode() == clang::UO_AddrOf) {
     info(expr->getLocStart(), "Address of something, might require some handling.");
+    if (clang::DeclRefExpr *declRef = llvm::dyn_cast<clang::DeclRefExpr>(expr->getSubExpr())) {
+      std::cerr << "Jackpot found decl:\n";
+      info(declRef->getDecl()->getLocStart(), "-- -- Corresponding decl.");
+      clang::VarDecl *decl = llvm::dyn_cast<clang::VarDecl>(declRef->getDecl());
+      assert(decl);
+      declarationsWithAddressOfAccess_.insert(decl);
+      // also add veriable to address space in this special case
+      privateVariables_.insert(decl);
+    }
   }
   return true;
 }
@@ -302,6 +383,9 @@ bool WebCLAnalyser::handleUnaryOperator(clang::UnaryOperator *expr)
 bool WebCLAnalyser::handleFunctionDecl(clang::FunctionDecl *decl)
 {
   if (!isFromMainFile(decl->getLocStart())) return true;
+  
+  // information for e.g. when running through function arguments to which function they belong
+  contextFunction_ = decl;
 
   if (decl->hasAttr<clang::OpenCLKernelAttr>()) {
     // TODO: go through arguments and collect pointers to bookkeeping
@@ -309,8 +393,10 @@ bool WebCLAnalyser::handleFunctionDecl(clang::FunctionDecl *decl)
     //       function__argument_name__min and function__argument_name__max
     //       and organize to lists according to address space of argument
     info(decl->getLocStart(), "This is kernel, go through arguments to collect pointers etc.");
+    kernelFunctions_.insert(decl);
   } else {
     info(decl->getLocStart(), "This is prototype/function, add to list to add wcl_allocs arg and add to list to recognize internal functions for call conversion.");
+    helperFunctions_.insert(decl);
   }
   return true;
 }
@@ -320,6 +406,15 @@ bool WebCLAnalyser::handleCallExpr(clang::CallExpr *expr)
 {
   if (!isFromMainFile(expr->getLocStart())) return true;
   info(expr->getLocStart(), "Found call, adding to bookkeeping to decide later if parameterlist needs fixing.");
+
+  if (helperFunctions_.count(expr->getDirectCallee()) > 0) {
+    std::cerr << "Looks like it is call to internal function!\n";
+    internalCalls_.insert(expr);
+  } else {
+    std::cerr << "Looks like it is call to builtin!\n";
+    builtinCalls_.insert(expr);
+  }
+  
   return true;
 }
 
@@ -327,6 +422,16 @@ bool WebCLAnalyser::handleTypedefDecl(clang::TypedefDecl *decl)
 {
   if (!isFromMainFile(decl->getLocStart())) return true;
   info(decl->getLocStart(), "Found typedef, add to list to move to start of source.");
+  return true;
+}
+
+bool WebCLAnalyser::handleDeclRefExpr(clang::DeclRefExpr *expr) {
+  if (!isFromMainFile(expr->getLocStart())) return true;
+  info(expr->getLocStart(), "Found variable use!");
+  variableUses_.insert(expr);
+
+  // we should be able to get parent map from here:
+  // instance_.getASTContext();
   return true;
 }
 
@@ -395,14 +500,14 @@ bool WebCLRelocator::handleUnaryOperator(clang::UnaryOperator *expr)
     if (!relocated)
         return true;
 
-    RelocationCandidates::iterator i = relocationCandidates_.find(relocated);
-    if (i == relocationCandidates_.end()) {
-        error(relocated->getLocStart(), "Haven't seen enclosing statement yet.");
-        return true;
-    }
-
-    clang::DeclStmt *stmt = i->second;
-    getTransformer().addRelocatedVariable(stmt, relocated);
+//    RelocationCandidates::iterator i = relocationCandidates_.find(relocated);
+//    if (i == relocationCandidates_.end()) {
+//        error(relocated->getLocStart(), "Haven't seen enclosing statement yet.");
+//        return true;
+//    }
+//
+//    clang::DeclStmt *stmt = i->second;
+//    getTransformer().addRelocatedVariable(stmt, relocated);
     return true;
 }
 

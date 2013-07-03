@@ -38,6 +38,8 @@ private:
     WebCLAccessor accessor_;
     WebCLPrinter printer_;
     TransformingVisitors transformingVisitors_;
+
+    WebCLTransformer *transformer_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLCONSUMER

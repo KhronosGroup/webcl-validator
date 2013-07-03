@@ -38,6 +38,7 @@ WebCLAction::~WebCLAction()
 clang::ASTConsumer* WebCLAction::CreateASTConsumer(clang::CompilerInstance &instance,
                                                    llvm::StringRef)
 {
+  
     if (!reporter_) {
         reporter_ = new WebCLReporter(instance);
         if (!reporter_) {

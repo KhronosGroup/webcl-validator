@@ -49,9 +49,10 @@ public:
     bool VisitExtVectorElementExpr(clang::ExtVectorElementExpr *expr);
     /// \see clang::RecursiveASTVisitor::VisitCallExpr
     bool VisitCallExpr(clang::CallExpr *expr);
-
     /// \see clang::RecursiveASTVisitor::VisitTypedefDecl
     bool VisitTypedefDecl(clang::TypedefDecl *decl);
+    /// \see clang::RecursiveASTVisitor::VisitDeclRefExpr
+    bool VisitDeclRefExpr(clang::DeclRefExpr *decl);
 
 protected:
 
@@ -66,6 +67,7 @@ protected:
     virtual bool handleExtVectorElementExpr(clang::ExtVectorElementExpr *expr);
     virtual bool handleCallExpr(clang::CallExpr *expr);
     virtual bool handleTypedefDecl(clang::TypedefDecl *decl);
+    virtual bool handleDeclRefExpr(clang::DeclRefExpr *expr);
 };
 
 /// \brief Complains about WebCL limitations in OpenCL C code.
@@ -96,6 +98,7 @@ private:
 class WebCLAnalyser : public WebCLVisitor
 {
 public:
+  
   explicit WebCLAnalyser(clang::CompilerInstance &instance);
   virtual ~WebCLAnalyser();
 
@@ -153,18 +156,48 @@ public:
   /// \see WebCLVisitor::handleTypedefDecl
   virtual bool handleTypedefDecl(clang::TypedefDecl *decl);
   
+  
+  /// Go through all decl references to see
+  virtual bool handleDeclRefExpr(clang::DeclRefExpr *expr);
+  
+  /// Accessors for data collected by analyser
+  typedef std::set<clang::FunctionDecl*> FunctionDeclSet;
+  typedef std::set<clang::CallExpr*> CallExprSet;
+  typedef std::set<clang::VarDecl*> VarDeclSet;
+  typedef std::set<clang::DeclRefExpr*> DeclRefExprSet;
+
+  
+  FunctionDeclSet& getKernelFunctions()  { return kernelFunctions_; };
+  FunctionDeclSet& getHelperFunctions()  { return helperFunctions_; };
+  CallExprSet&    getInternalCalls()     { return internalCalls_; };
+  CallExprSet&    getBuiltinCalls()      { return builtinCalls_; };
+  VarDeclSet&     getConstantVariables() { return constantVariables_; };
+  VarDeclSet&     getLocalVariables()    { return localVariables_; };
+  VarDeclSet&     getPrivateVariables()  { return privateVariables_; };
+  DeclRefExprSet& getVariableUses()      { return variableUses_; };
+  
+  bool hasAddressReferences(clang::VarDecl *decl) {
+    return declarationsWithAddressOfAccess_.count(decl) > 0;
+  }
+  
 private:
   
-  /// TODO: add logic to get mapping between node address and variable declaration
-
-  /// TODO: add context to know where in tree we are at the time e.g. to know in
-  ///       function arguments that if function is kernel or prototype or what?
+  clang::FunctionDecl *contextFunction_;
   
-  /// TODO: add function which decides if variable must be put to address space
-  ///       or not.
-  ///       * All constant address space variables
-  ///       * All local address space variables
-  ///       * All private address space variables, which has either pointer access or their address is fetched with & operator
+  FunctionDeclSet kernelFunctions_;
+  FunctionDeclSet helperFunctions_;
+  CallExprSet     internalCalls_;
+  CallExprSet     builtinCalls_;
+  VarDeclSet      constantVariables_;
+  VarDeclSet      localVariables_;
+  VarDeclSet      privateVariables_;
+  // set of variables, which has been accessed with &-operator
+  VarDeclSet      declarationsWithAddressOfAccess_;
+  DeclRefExprSet  variableUses_;
+  
+  // TODO: maybe I need to keep track of variable names of declarations to
+  //       be able to trace them in expressions.
+  
 };
 
 
