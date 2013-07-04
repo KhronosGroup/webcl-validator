@@ -146,8 +146,16 @@ void stream_count_kernel(
     const int num_blocks_in_workgroup)
 {
     __local WclLocals wcl_locals;
+
     WclProgramAllocations wcl_allocations_allocation;
+    // = {  
+    //    {&(&wcl_constant_allocations)[0],&(&wcl_constant_allocations)[1],&unsorted_elements[0], &unsorted_elements[wcl_unsorted_elements_size]}, 
+    //    {&element_counts[0],&element_counts[wcl_element_counts_size],NULL,NULL}, 
+    //    {&(&wcl_locals)[0],&(&wcl_locals)[1]}, 
+    //    {{0}, (uint4)(0,0,0,0), 0 }
+    //};
     for (uint i = 0; i < sizeof(WclProgramAllocations); i++) ((uchar*)(&wcl_allocations_allocation))[i] = 0;
+
     WclProgramAllocations *wcl_allocs = &wcl_allocations_allocation;
 
     // setup constant allocation areas

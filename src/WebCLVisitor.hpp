@@ -157,8 +157,14 @@ public:
   virtual bool handleTypedefDecl(clang::TypedefDecl *decl);
   
   
-  /// Go through all decl references to see
+  /// Go through all decl references to see if they need to be fixed
   virtual bool handleDeclRefExpr(clang::DeclRefExpr *expr);
+
+  /// 
+  virtual bool handleDeclStmt(clang::DeclStmt *expr) {
+    info(expr->getLocStart(), "DectStmt! what to do... why??");
+    return true;
+  };
   
   /// Accessors for data collected by analyser
   typedef std::set<clang::FunctionDecl*> FunctionDeclSet;

@@ -654,7 +654,6 @@ WebCLAccessor::~WebCLAccessor()
 {
 }
 
-#include <iostream>
 
 // TODO: Handle all memory accesses:
 

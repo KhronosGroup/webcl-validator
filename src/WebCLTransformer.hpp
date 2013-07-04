@@ -19,6 +19,7 @@ namespace clang {
     class ParmVarDecl;
     class Rewriter; 
     class VarDecl;
+    class DeclRefExpr;
 }
 
 namespace llvm {
@@ -36,10 +37,55 @@ public:
     WebCLTransformer(
         clang::CompilerInstance &instance, clang::Rewriter &rewriter);
     ~WebCLTransformer();
-
+  
     /// Applies all AST transformations.
     bool rewrite();
 
+    void createPrivateAddressSpaceTypedef(AddressSpaceInfo &as) {
+    };
+  
+    void createLocalAddressSpaceTypedef(AddressSpaceInfo &as) {
+    };
+  
+    void createConstantAddressSpaceTypedef(AddressSpaceInfo &as) {
+    };
+  
+    void createConstantAddressSpaceAllocation(AddressSpaceInfo &as) {
+    };
+  
+    void replaceWithRelocated(clang::DeclRefExpr *use, clang::VarDecl *decl) {
+    };
+  
+    void createGlobalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits) {
+    };
+  
+    void createConstantAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits) {
+    };
+  
+    void createLocalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits) {
+    };
+  
+    void createProgramAllocationsTypedef(AddressSpaceLimits &globalLimits,
+                                         AddressSpaceLimits &constantLimits,
+                                         AddressSpaceLimits &localLimits,
+                                         AddressSpaceInfo &privateAs) {
+    };
+  
+    void createLocalAddressSpaceAllocation(clang::FunctionDecl *kernelFunc) {
+    };
+  
+    void createProgramAllocationsAllocation(clang::FunctionDecl *kernelFunc,
+                                            AddressSpaceLimits &globalLimits,
+                                            AddressSpaceLimits &constantLimits,
+                                            AddressSpaceLimits &localLimits,
+                                            AddressSpaceInfo &privateAs) {
+    };
+  
+    void createLocalAreaZeroing(clang::FunctionDecl *kernelFunc,
+                                AddressSpaceLimits &localLimits) {
+    };
+  
+  
     // Inform about a kernels so that kernel prologues can be emitted.
     void addKernel(clang::FunctionDecl *decl);
 

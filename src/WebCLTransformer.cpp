@@ -220,6 +220,7 @@ void WebCLTransformer::emitVariable(std::ostream &out, const clang::VarDecl *dec
 void WebCLTransformer::emitAddressSpaceRecord(
     std::ostream &out, const VariableDeclarations &variables, const std::string &name)
 {
+    if (variables.empty()) return;
     out << "typedef struct {\n";
 
     for (VariableDeclarations::iterator i = variables.begin(); i != variables.end(); ++i) {

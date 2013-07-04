@@ -1,4 +1,5 @@
 #include "WebCLConsumer.hpp"
+#include "WebCLHelper.hpp"
 
 #include "clang/AST/ASTContext.h"
 
@@ -73,7 +74,7 @@ public:
   /// - inject address space types and constant address space initialization
   ///   to prologue
   AddressSpaceHandler(WebCLAnalyser &analyser, WebCLTransformer &transformer) :
-    analyser_(analyser){
+    analyser_(analyser), transformer_(transformer) {
   
     WebCLAnalyser::VarDeclSet &privateVars = analyser.getPrivateVariables();
     for(WebCLAnalyser::VarDeclSet::iterator i = privateVars.begin();
@@ -88,6 +89,7 @@ public:
           decl->getType()->isArrayType() ||
           analyser.hasAddressReferences(decl)) {
         
+        std::cerr << "Adding to AS: " << decl->getDeclName().getAsString() << "\n";
         privates_.insert(decl);
       } else {
         std::cerr << "Skipping: " << decl->getDeclName().getAsString() << "\n";
@@ -105,87 +107,242 @@ public:
         i != localVars.end(); ++i) {
       locals_.insert(*i);
     }
-  
-    // TODO: create prologue injection code with address space types
-    std::cerr << "Has private address space:" << hasPrivateAddressSpace() << "\n";
-    std::cerr << "Has local address space:" << hasLocalAddressSpace() << "\n";
-    std::cerr << "Has constant address space:" << hasConstantAddressSpace() << "\n";
+      
+    // create address space types
+    transformer_.createPrivateAddressSpaceTypedef(getPrivateAddressSpace());
+    transformer_.createLocalAddressSpaceTypedef(getLocalAddressSpace());
+    transformer_.createConstantAddressSpaceTypedef(getConstantAddressSpace());
+    
+    // allocate space for constant address space and pass original constants
+    // for initialzations
+    transformer_.createConstantAddressSpaceAllocation(getConstantAddressSpace());
   };
   
   ~AddressSpaceHandler() {};
-
-  bool hasPrivateAddressSpace()         { return privates_.size() > 0; };
+  
+  bool hasPrivateAddressSpace()  { return privates_.size() > 0; };
   bool hasLocalAddressSpace()    { return locals_.size() > 0; };
   bool hasConstantAddressSpace() { return constants_.size() > 0; };
-  
-  void createLocalAddressSpaceStruct(clang::FunctionDecl *decl) {
-      // TODO: add allocating wcl_allocs structure to start of the function
-      //       in case if we have static local data.
+
+  AddressSpaceInfo &getPrivateAddressSpace() {
+    return getOrCreateAddressSpaceInfo(&privates_);
+  };
+
+  AddressSpaceInfo &getLocalAddressSpace() {
+    return getOrCreateAddressSpaceInfo(&locals_);
+  };
+
+  AddressSpaceInfo &getConstantAddressSpace() {
+    return getOrCreateAddressSpaceInfo(&constants_);
   };
   
-  void addRelocations() {
+  /// Fixes DeclRefExpr uses of variables to point to address space.
+  ///
+  /// If address space initialization code generation works correctly,
+  /// we can just remove original declarations after this pass. Since
+  /// constant address space creation requires initialization generation
+  /// we can use the same code to generate static initializer for private
+  /// address space.
+  void doRelocations() {
     
+    std::cerr << "Going through all variable uses: \n"; 
     WebCLAnalyser::DeclRefExprSet &varUses = analyser_.getVariableUses();
     for (WebCLAnalyser::DeclRefExprSet::iterator i = varUses.begin();
          i != varUses.end(); ++i) {
       
-      clang::DeclRefExpr *expr = *i;
+      clang::DeclRefExpr *use = *i;
+      
+      clang::VarDecl *decl = llvm::dyn_cast<clang::VarDecl>(use->getDecl());
+      
+      if (decl) {
+        std::cerr << "Decl:" << use->getDecl()->getNameAsString() << "\n";
 
-      // TODO: check if declaration has been moved to address space and add
-      //       transformation if so.
-      //
-      // TODO: if original declaration is function argument, then add assignment
-      //       from function argument to address space arg to start of the function
-      //       for function arg decl llvm::dyn_cast<ParamVarDec>(decl)
-      // i.e.
-      // void foo(int arg) { bar(&arg); } ->
-      // void foo(WclProgramAllocations *wcl_allocs, int arg) {
-      //     wcl_allocs->pa.foo__arg = arg;
-      //     bar(&wcl_acllocs->pa.foo__arg); }
-      //
+        // TODO: if original declaration is function argument, then add assignment
+        //       from function argument to address space arg to start of the function
+        //
+        //
+        // for function arg decl llvm::dyn_cast<ParmVarDecl>(decl)
+        // i.e.
+        // void foo(int arg) { bar(&arg); } ->
+        // void foo(WclProgramAllocations *wcl_allocs, int arg) {
+        //     wcl_allocs->pa.foo__arg = arg;
+        //     bar(&wcl_acllocs->pa.foo__arg); }
+        //
+      
+        // check if declaration has been moved to address space and add
+        // transformation if so.
+        if (isRelocated(decl)) {
+          std::cerr << "--- relocated!\n";
+          transformer_.replaceWithRelocated(use, decl);
+        }
+      }
+    }
+  };
+
+  /// \brief Returns true if variable declaration is moved to address space struct
+  bool isRelocated(clang::VarDecl *decl) {
+    switch (decl->getType().getAddressSpace()) {
+      case clang::LangAS::opencl_global: assert(false && "Globals can't be relocated.");
+      case clang::LangAS::opencl_constant: return constants_.count(decl) > 0;
+      case clang::LangAS::opencl_local: return locals_.count(decl) > 0;
+      default: return privates_.count(decl) > 0;
     }
   };
   
-  // TODO: accessors for other handler to use data analyzed by this handler
-  // TODO: accessor to get list of limits of this address space
-  
 private:
+  typedef std::set<clang::VarDecl*> AddressSpaceSet;
+  std::map< AddressSpaceSet*, AddressSpaceInfo > organizedAddressSpaces;
+
+  /// Creates order for the address space
+  ///
+  /// If there is need to add padding bytes etc. inside address space
+  /// then they should be added here. If address space is completelu uninitialized
+  /// then paddings are not needed at all.
+  AddressSpaceInfo& getOrCreateAddressSpaceInfo(AddressSpaceSet *declarations) {
+    
+    // TODO: add sorting declarations according to their size
+    
+    if (organizedAddressSpaces.count(declarations) == 0) {
+      for (AddressSpaceSet::iterator declIter = declarations->begin();
+           declIter != declarations->end(); ++declIter) {
+        organizedAddressSpaces[declarations].push_back(*declIter);
+      }
+    }
+    return organizedAddressSpaces[declarations];
+  };
+
   WebCLAnalyser &analyser_;
-  std::set<clang::VarDecl*> privates_;
-  std::set<clang::VarDecl*> locals_;
-  std::set<clang::VarDecl*> constants_;
+  WebCLTransformer &transformer_;
+  AddressSpaceSet privates_;
+  AddressSpaceSet locals_;
+  AddressSpaceSet constants_;
   
 };
 
 /// TODO: refactor when ready to separate file
 class KernelHandler {
 public:
+  
   KernelHandler(WebCLAnalyser &analyser,
                 WebCLTransformer &transformer,
-                AddressSpaceHandler &addressSpaceHandler) {
+                AddressSpaceHandler &addressSpaceHandler) :
+      globalLimits_(false)
+    , constantLimits_(addressSpaceHandler.hasConstantAddressSpace())
+    , localLimits_(addressSpaceHandler.hasLocalAddressSpace())
+  {
     
-     // TODO: Create limit typedef for every address space
-     //   * check from address space manager address spaces, which will need struct
-     //   * go through all kernel arguments and sort to address spaces as well
+    // go through dynamic limits in the program and create variables for them
+    WebCLAnalyser::FunctionDeclSet &kernels = analyser.getKernelFunctions();
+    for (WebCLAnalyser::FunctionDeclSet::iterator i = kernels.begin();
+         i != kernels.end(); ++i) {
+      
+      clang::FunctionDecl *func = *i;
+      for (clang::FunctionDecl::param_iterator parmIter = func->param_begin();
+           parmIter != func->param_end(); ++parmIter) {
+        
+        clang::ParmVarDecl *parm = *parmIter;
+        if (parm->getType().getTypePtr()->isPointerType()) {
+        
+          transformer.addSizeParameter(parm);
+          
+          std::cerr << "Adding dynamic limits from kernel:"
+                    << func->getDeclName().getAsString()
+                    << " arg:" << parm->getDeclName().getAsString() << "\n";
 
-     // TODO: Create tell address space manager to create wcl_locals structure
+          switch (parm->getType().getTypePtr()->getPointeeType().getAddressSpace()) {
+            case clang::LangAS::opencl_global:
+              std::cerr << "Global address space!\n";
+              globalLimits_.insert(parm);
+              break;
+            case clang::LangAS::opencl_constant:
+              std::cerr << "Constant address space!\n";
+              constantLimits_.insert(parm);
+              break;
+            case clang::LangAS::opencl_local:
+              std::cerr << "Local address space!\n";
+              localLimits_.insert(parm);
+              break;
+            default:
+              assert(false && "Fail: Kernel arg to private address space!");
+          }
+        }
+      }
+    }
     
-     // TODO: Create WclProgramAllocations structure
-     //   * create also wcl_allocs which is pointer pointing to struct
+    // add typedefs for each limit structure
+    transformer.createGlobalAddressSpaceLimitsTypedef(globalLimits_);
+    transformer.createConstantAddressSpaceLimitsTypedef(constantLimits_);
+    transformer.createLocalAddressSpaceLimitsTypedef(localLimits_);
+    transformer.createProgramAllocationsTypedef(
+      globalLimits_, constantLimits_, localLimits_,
+      addressSpaceHandler.getPrivateAddressSpace());
+    
+    // now that we have all the data about the limit structures, we can actually
+    // create the initialization code for each kernel
+    for (WebCLAnalyser::FunctionDeclSet::iterator i = kernels.begin();
+         i != kernels.end(); ++i) {
+      
+      clang::FunctionDecl *func = *i;
+      
+      // Create allocation for local address space according to earlier typedef
+      transformer.createLocalAddressSpaceAllocation(func);
 
-     // TODO: add dummy call to inject initializations for every limit
-     //       that requires zeroing e.g. outputtin some comment is enough now
-    
-    // TODO: Go through every limit pair and store initializations
-    //      (ask from address space handler if constant / local address space
-    //       requires static limits)
-    
+      // allocate wcl_allocations_allocation and create the wcl_allocs
+      // pointer to it, give all the data it needs to be able to create
+      // also static initializator and prevent need for separate private
+      // area zeroing...
+      transformer.createProgramAllocationsAllocation(
+        func, globalLimits_, constantLimits_, localLimits_,
+        addressSpaceHandler.getPrivateAddressSpace());
+
+      // inject code that does zero initializing for all local memory ranges
+      transformer.createLocalAreaZeroing(func, localLimits_);
+    }
   };
   
-  KernelHandler() {};
+  ~KernelHandler() {};
   
 private:
+  AddressSpaceLimits globalLimits_;
+  AddressSpaceLimits constantLimits_;
+  AddressSpaceLimits localLimits_;
+  
 };
+
+/// TODO: refactor when ready to separate file
+class MemoryAccessHandler {
+public:
+  MemoryAccessHandler(WebCLAnalyser &analyser,
+                WebCLTransformer &transformer,
+                KernelHandler &kernelHandler) {
+
+    // TODO: go through memory accesses from analyser
+
+    // TODO: get memory access width to possibly create NULL ptr...
+    //       this will not work for global memory, so we should get way to
+    //       completetly abort?
+    
+    // TODO: find out list of limits of the address space
+    
+    // TODO: if access has multiple address ranges try to do some slight trickery to
+    //       get correct limits to check also check if limit check is actally needed
+    //       at all
+    
+    // TODO: add limit check
+    
+    // TODO: if not yet added, add macro with correct min,max pair count
+
+    // TODO: find out biggest memory access width of each address space and
+    //       add assert to start of kernels that we have enough global, local and constant
+    //       memory to do those accesses (check kernel size arguments to be in valid range)
+    //       we could have added the checks already and just output defines
+    //       stating WCL_MAX_ACCESS_WIDTH_TO_LOCAL etc. defines.
+  }
+
+  ~MemoryAccessHandler() {};
+private:
+};
+
 
 void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
 {
@@ -200,32 +357,33 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
     //       to be in start of file
     // InputCodeOrganiser addressSpaceTransformer(*anlyser_);
 
-    // TODO: Collect and organize all the information from
-    //       analyser_ to create view to different address spaces
-    //       and to provide replacements for replaced variable
-    //       references in first stage just create types and collect
-    //       information about the address spaces for kernel initialization code
-    //       generation
+    // Collect and organize all the information from analyser_ to create
+    // view to different address spaces and to provide replacements for
+    // replaced variable references in first stage just create types and collect
+    // information about the address spaces for kernel initialization
+    // code generation
     AddressSpaceHandler addressSpaceHandler(analyser_, *transformer_);
   
-    // TODO: Add class that fixes kernel arguments and
-    //       injects kernel initialization code writes limit
-    //       structures according to address spaces
-    //       and kernel arguments
-    //       also writes zero initializators for local and private memory
+    // Fixes kernel arguments and injects kernel initialization code writes limit
+    // struct typedefs according to address spaces and kernel arguments
+    // also writes initialization code for local and private memory
     KernelHandler kernelHandler(analyser_, *transformer_, addressSpaceHandler);
   
-    // now that limits and all new address spaces are created do the replacements
-    // so that struct fields are used instead of originals.
-    addressSpaceHandler.addRelocations();
-  
-    // TODO: Add class that fixes all the function signatures and calls of non
-    //       kernel functions with additional wcl_allocs arg
+    // Fixes all the function signatures and calls of internal helper functions
+    // with additional wcl_allocs arg
     HelperFunctionHandler helperFunctionHandler(analyser_, *transformer_);
-  
 
-    // TODO: Add class that emits pointer checks for all memory accesses
-    //       and injects required check macros to prolog.
+    // Now that limits and all new address spaces are created do the replacements
+    // so that struct fields are used instead of original variable declarations.
+    addressSpaceHandler.doRelocations();
+  
+    // Emits pointer checks for all memory accesses and injects
+    // required check macro definitions to prolog.
+    MemoryAccessHandler
+      memoryAccessHandler(analyser_, *transformer_, kernelHandler);
+  
+    // FUTURE: add class, which goes through builtins and adds required
+    //         things to make calls safe
   
     traverse(transformingVisitors_, context);
 }
