@@ -27,6 +27,7 @@ public:
     const std::string getNameOfIndexChecker() const;
     const std::string getNameOfSizeParameter(clang::ParmVarDecl *decl) const;
     const std::string getNameOfRelocatedVariable(const clang::VarDecl *decl) const;
+    const std::string getReferenceToRelocatedVariable(const clang::VarDecl *decl) const;
     const std::string getIndentation(unsigned int levels) const;
 
     const std::string prefix_;

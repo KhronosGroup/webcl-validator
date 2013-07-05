@@ -102,12 +102,6 @@ original order (our own typedefs needs to be injected after originals)
 
 TODO:
 
-* Add trivial local memory zeroing code to the start of kernel.
-  Trivial zeroing code can just zero all the space in start of every kernel
-  and have barrier after it is done.
-
-* Also add zero initializer to limits structure.
-
 * Find out type of each pointer that is accessed and
   create WCL_CLAMP implementations to many separate limits.
 
@@ -123,7 +117,7 @@ TODO:
   kill the program before memory access, it would be nice too.
 
 * Address space specific null pointers to return if no other valid area could have
-  been clamped for access
+  been clamped for access (NULLS should be initialized in start of every kernel)
 
 * system should move all typedefs to be in start of program in correct order
   and add our structures after those.
@@ -164,14 +158,12 @@ main.cpp: We create our WebCLAction and run it with webclTool.
 
     const int status = webclTool.run(webCLActionFactory);
 
-TODO: what webclTool (ClangTool) does?
+WebCLAction.cpp: Does initialize some classes, most importantly WebCLConsumer, which does basically all the hard work.
 
-TODO: what webCLActionFactory does?
-    
-    class WebCLAction : public clang::FrontendAction
+WebCLConsumer.cpp: 
 
-TODO: explain what analyser collects
- 
-TODO: explain what data is extracted form analysed nodes
+Calls all visitors to analyse and interpret AST tree. WebCLAnalyser is the visitor, which collects all the information that is needed for the few handler classes to be able to model the address spaces, dynamic memory got from kernel arguments and memory accesses in the program.
 
-TODO: explain how transformations were done.
+This all is done in WebCLConsumer::HandleTranslationUnit method.
+
+Handler classes calls internally WebCLTransformer to do required changes to code. To keep system simple and brains in one place transformer does not know anything about state between calls. It does only single transformations to source according to data provided by handler classes.

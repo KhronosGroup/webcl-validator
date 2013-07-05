@@ -40,17 +40,29 @@ typedef std::vector<clang::VarDecl*> AddressSpaceInfo;
 /// and initializers for it.
 class AddressSpaceLimits {
 public:
-  AddressSpaceLimits(bool hasStaticallyAllocatedLimits) :
-  hasStaticallyAllocatedLimits_(hasStaticallyAllocatedLimits) {};
+  AddressSpaceLimits(bool hasStaticallyAllocatedLimits, unsigned addressSpace) :
+    hasStaticallyAllocatedLimits_(hasStaticallyAllocatedLimits)
+  , addressSpace_(addressSpace){};
   ~AddressSpaceLimits() {};
   
   void insert(clang::ParmVarDecl *parm) {
     dynamicLimits_.push_back(parm);
-  }
+  };
+
+  unsigned staticAllocationAddressSpace() { return hasStaticallyAllocatedLimits_ ? addressSpace_ : 0; };
+
+  bool empty() {
+    return !hasStaticallyAllocatedLimits_ || dynamicLimits_.empty();
+  };
   
+  typedef std::vector<clang::ParmVarDecl*> LimitList;
+  
+  LimitList& getLimitList() { return dynamicLimits_; };
+
 private:
   bool hasStaticallyAllocatedLimits_;
-  std::vector<clang::ParmVarDecl*> dynamicLimits_;
+  unsigned addressSpace_;
+  LimitList dynamicLimits_;
   
 };
 

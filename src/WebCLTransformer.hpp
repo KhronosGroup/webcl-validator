@@ -10,6 +10,8 @@
 #include <set>
 #include <utility>
 
+#include <iostream>
+
 namespace clang {
     class ArraySubscriptExpr;
     class CallExpr;
@@ -41,50 +43,34 @@ public:
     /// Applies all AST transformations.
     bool rewrite();
 
-    void createPrivateAddressSpaceTypedef(AddressSpaceInfo &as) {
-    };
-  
-    void createLocalAddressSpaceTypedef(AddressSpaceInfo &as) {
-    };
-  
-    void createConstantAddressSpaceTypedef(AddressSpaceInfo &as) {
-    };
-  
-    void createConstantAddressSpaceAllocation(AddressSpaceInfo &as) {
-    };
-  
-    void replaceWithRelocated(clang::DeclRefExpr *use, clang::VarDecl *decl) {
-    };
-  
-    void createGlobalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits) {
-    };
-  
-    void createConstantAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits) {
-    };
-  
-    void createLocalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits) {
-    };
-  
+    void createPrivateAddressSpaceTypedef(AddressSpaceInfo &as);
+    void createLocalAddressSpaceTypedef(AddressSpaceInfo &as);
+    void createConstantAddressSpaceTypedef(AddressSpaceInfo &as);
+    void createConstantAddressSpaceAllocation(AddressSpaceInfo &as);
+    void replaceWithRelocated(clang::DeclRefExpr *use, clang::VarDecl *decl);
+    void createGlobalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);
+    void createConstantAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);
+    void createLocalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);
+
     void createProgramAllocationsTypedef(AddressSpaceLimits &globalLimits,
                                          AddressSpaceLimits &constantLimits,
                                          AddressSpaceLimits &localLimits,
-                                         AddressSpaceInfo &privateAs) {
-    };
+                                         AddressSpaceInfo &privateAs);
   
-    void createLocalAddressSpaceAllocation(clang::FunctionDecl *kernelFunc) {
-    };
+    void createLocalAddressSpaceAllocation(clang::FunctionDecl *kernelFunc);
   
     void createProgramAllocationsAllocation(clang::FunctionDecl *kernelFunc,
                                             AddressSpaceLimits &globalLimits,
                                             AddressSpaceLimits &constantLimits,
                                             AddressSpaceLimits &localLimits,
-                                            AddressSpaceInfo &privateAs) {
-    };
+                                            AddressSpaceInfo &privateAs);
   
     void createLocalAreaZeroing(clang::FunctionDecl *kernelFunc,
-                                AddressSpaceLimits &localLimits) {
-    };
+                                AddressSpaceLimits &localLimits);
   
+
+    // TODO: remove methods which requires storing any model state.
+    //       only allowed state here is how to represent multiple changes.
   
     // Inform about a kernels so that kernel prologues can be emitted.
     void addKernel(clang::FunctionDecl *decl);
@@ -126,6 +112,25 @@ private:
     typedef std::set<CheckedType> CheckedTypes;
     typedef std::set<const clang::VarDecl*> VariableDeclarations;
     typedef std::set<const clang::FunctionDecl*> Kernels;
+
+    /// returns address space structure e.g. { float *a; uint b; }
+    /// also drops address space qualifiers from original declarations
+    std::string addressSpaceInfoAsStruct(AddressSpaceInfo &as);
+  
+    /// returns initializer for as e.g. { NULL, 5 }
+    std::string addressSpaceInitializer(AddressSpaceInfo &as);
+
+    // returns address space limits info as structure
+    std::string addressSpaceLimitsAsStruct(AddressSpaceLimits &asLimits);
+
+    /// returns initializer for limits e.g.
+    /// {
+    ///     &((&wcl_constan_allocs)[0]), &((&wcl_constan_allocs)[1]),
+    ///     NULL, NULL,
+    ///     &const_as_arg[0], &const_as_arg[wcl_const_as_arg_size]
+    /// }
+    std::string addressSpaceLimitsInitializer(
+      clang::FunctionDecl *kernelFunc,AddressSpaceLimits &as);
 
     bool rewritePrologue();
     bool rewriteKernelPrologue(const clang::FunctionDecl *kernel);

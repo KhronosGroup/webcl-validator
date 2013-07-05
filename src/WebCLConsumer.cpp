@@ -226,9 +226,12 @@ public:
   KernelHandler(WebCLAnalyser &analyser,
                 WebCLTransformer &transformer,
                 AddressSpaceHandler &addressSpaceHandler) :
-      globalLimits_(false)
-    , constantLimits_(addressSpaceHandler.hasConstantAddressSpace())
-    , localLimits_(addressSpaceHandler.hasLocalAddressSpace())
+      globalLimits_(false,
+                    clang::LangAS::opencl_global)
+    , constantLimits_(addressSpaceHandler.hasConstantAddressSpace(),
+                      clang::LangAS::opencl_constant)
+    , localLimits_(addressSpaceHandler.hasLocalAddressSpace(),
+                   clang::LangAS::opencl_local)
   {
     
     // go through dynamic limits in the program and create variables for them

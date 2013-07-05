@@ -103,8 +103,36 @@ const std::string WebCLTransformerConfiguration::getNameOfSizeParameter(clang::P
 
 const std::string WebCLTransformerConfiguration::getNameOfRelocatedVariable(const clang::VarDecl *decl) const
 {
-    return decl->getName();
+  if (decl->getType().getAddressSpace() == clang::LangAS::opencl_constant) {
+    return decl->getName().str();
+  }
+  
+  const clang::FunctionDecl *func =
+    llvm::dyn_cast<clang::FunctionDecl>(decl->getParentFunctionOrMethod());
+  if (func) return func->getName().str() + "__" + decl->getName().str();
+  return decl->getName().str();
 }
+
+const std::string WebCLTransformerConfiguration::getReferenceToRelocatedVariable(const clang::VarDecl *decl) const
+{
+  std::string prefix;
+
+  switch (decl->getType().getAddressSpace()) {
+    case clang::LangAS::opencl_constant:
+      prefix = "wcl_constant_allocations.";
+      break;
+    case clang::LangAS::opencl_local:
+      prefix = "wcl_locals.";
+      break;
+    default:
+      assert(decl->getType().getAddressSpace() == 0);
+      prefix = "wcl_allocs->pa.";
+      break;
+  }
+
+  return prefix + getNameOfRelocatedVariable(decl);
+}
+
 
 const std::string WebCLTransformerConfiguration::getIndentation(unsigned int levels) const
 {

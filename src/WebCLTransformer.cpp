@@ -37,6 +37,216 @@ bool WebCLTransformer::rewrite()
     return status;
 }
 
+std::string WebCLTransformer::addressSpaceInfoAsStruct(AddressSpaceInfo &as) {
+  std::stringstream retVal;
+  retVal << "{ \n";
+  for (AddressSpaceInfo::iterator declIter = as.begin();
+       declIter != as.end(); ++declIter) {
+    emitVariable(retVal, (*declIter));
+    retVal << ";\n";
+  }
+  retVal << " }";
+  return retVal.str();
+}
+
+std::string WebCLTransformer::addressSpaceInitializer(AddressSpaceInfo &as) {
+  std::stringstream retVal;
+  retVal << "{ ";
+  std::string comma = "";
+  for (AddressSpaceInfo::iterator declIter = as.begin();
+       declIter != as.end(); ++declIter) {
+    retVal << comma;
+    // TODO: check if this works at all for private address space...
+    //       i.e. if initialization is value of some other variable..
+    //       maybe we just have to output zero initializer and assert
+    //       to struct/table initialization.
+    emitVariableInitialization(retVal, (*declIter));
+    comma = ", ";
+  }
+  retVal << " }";
+  return retVal.str();
+}
+
+std::string WebCLTransformer::addressSpaceLimitsAsStruct(AddressSpaceLimits &asLimits) {
+  std::stringstream retVal;
+  retVal << "{ \n";
+  
+  // if address space has static allocations
+  switch (asLimits.staticAllocationAddressSpace()) {
+    case clang::LangAS::opencl_constant:
+      retVal << "__constant WclConstants *wcl_constant_allocations_min;\n";
+      retVal << "__constant WclConstants *wcl_constant_allocations_max;\n";
+      break;
+    case clang::LangAS::opencl_local:
+      retVal << "__local WclLocals *wcl_locals_min;\n";
+      retVal << "__local WclLocals *wcl_locals_max;\n";
+      break;
+    default:
+      assert(asLimits.staticAllocationAddressSpace() == 0);
+      break;
+  }
+
+  for (AddressSpaceLimits::LimitList::iterator declIter = asLimits.getLimitList().begin();
+       declIter != asLimits.getLimitList().end(); ++declIter) {
+    clang::ParmVarDecl *decl = *declIter;
+    emitVariable(retVal, decl);
+    retVal << "_min" << ";\n";
+    emitVariable(retVal, decl);
+    retVal << "_max" << ";\n";
+  }
+  retVal << " }";
+  return retVal.str();
+}
+
+std::string WebCLTransformer::addressSpaceLimitsInitializer(
+    clang::FunctionDecl *kernelFunc,AddressSpaceLimits &asLimits) {
+
+  std::stringstream retVal;
+  retVal << "{ ";
+  std::string comma = "";
+
+  // if address space has static allocations
+  switch (asLimits.staticAllocationAddressSpace()) {
+    case clang::LangAS::opencl_constant:
+      retVal << " &(&wcl_constant_allocations)[0],  &(&wcl_constant_allocations)[1]";
+      comma = ",";
+      break;
+    case clang::LangAS::opencl_local:
+      retVal << " &(&wcl_locals)[0],  &(&wcl_locals)[1]";
+      comma = ",";
+      break;
+    default:
+      assert(asLimits.staticAllocationAddressSpace() == 0);
+      break;
+  }
+
+  for (AddressSpaceLimits::LimitList::iterator declIter = asLimits.getLimitList().begin();
+       declIter != asLimits.getLimitList().end(); ++declIter) {
+
+    retVal << comma;
+    clang::ParmVarDecl *decl = *declIter;
+    clang::FunctionDecl *func = llvm::dyn_cast<clang::FunctionDecl>(decl->getParentFunctionOrMethod());
+
+    assert(func);
+    
+    if (func == kernelFunc) {
+      retVal << "&" << decl->getNameAsString() << "[0],";
+      retVal << "&" << decl->getNameAsString() << "[wcl_" + decl->getNameAsString()  + "_size]";
+    } else {
+      retVal << "NULL, NULL";
+    }
+    
+    comma = ",";
+  }
+  retVal << " }";
+  return retVal.str();
+}
+
+
+void WebCLTransformer::createPrivateAddressSpaceTypedef(AddressSpaceInfo &as) {
+  if (!as.empty()) {
+    std::cerr << "typedef struct " << addressSpaceInfoAsStruct(as) << " WclPrivates;\n";
+  }
+}
+
+void WebCLTransformer::createLocalAddressSpaceTypedef(AddressSpaceInfo &as) {
+  if (!as.empty()) {
+    std::cerr << "typedef struct " << addressSpaceInfoAsStruct(as) << " WclLocals;\n";
+  }
+}
+
+void WebCLTransformer::createConstantAddressSpaceTypedef(AddressSpaceInfo &as) {
+  if (!as.empty()) {
+    std::cerr << "typedef struct " << addressSpaceInfoAsStruct(as) << " WclConstants;\n";
+  }
+}
+
+void WebCLTransformer::createConstantAddressSpaceAllocation(AddressSpaceInfo &as) {
+  if (!as.empty()) {
+    std::cerr << "__constant WclConstants wcl_constant_allocations = " << addressSpaceInitializer(as) << ";\n"; }
+}
+
+void WebCLTransformer::createGlobalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits) {
+  std::cerr << "typedef struct " << addressSpaceLimitsAsStruct(asLimits)
+            << " WclGlobalLimits;\n";
+}
+
+void WebCLTransformer::createConstantAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits) {
+  std::cerr << "typedef struct " << addressSpaceLimitsAsStruct(asLimits)
+            << " WclConstantLimits;\n";
+}
+
+void WebCLTransformer::createLocalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits) {
+  std::cerr << "typedef struct " << addressSpaceLimitsAsStruct(asLimits)
+            << " WclLocalLimits;\n";
+}
+
+void WebCLTransformer::createProgramAllocationsTypedef(AddressSpaceLimits &globalLimits,
+                                     AddressSpaceLimits &constantLimits,
+                                     AddressSpaceLimits &localLimits,
+                                     AddressSpaceInfo &privateAs) {
+  std::cerr << "typedef struct {\n";
+  if (!constantLimits.empty()) {
+    std::cerr << "WclconstantLimits cl;\n";
+  }
+  if (!globalLimits.empty()) {
+    std::cerr << "WclGlobalLimits gl;\n";
+  }
+  if (!localLimits.empty()) {
+    std::cerr << "WclLocalLimits ll;\n";
+  }
+  if (!privateAs.empty()) {
+    std::cerr << "WclPrivates pa;\n";
+  }
+  std::cerr << " } WclProgramAllocations;\n";
+}
+
+void WebCLTransformer::createLocalAddressSpaceAllocation(clang::FunctionDecl *kernelFunc) {
+  std::cerr << "__local WclLocals wcl_locals;\n";
+}
+
+void WebCLTransformer::createProgramAllocationsAllocation(clang::FunctionDecl *kernelFunc,
+                                        AddressSpaceLimits &globalLimits,
+                                        AddressSpaceLimits &constantLimits,
+                                        AddressSpaceLimits &localLimits,
+                                        AddressSpaceInfo &privateAs) {
+  
+  assert(!globalLimits.empty() || !constantLimits.empty() || !localLimits.empty());
+  
+  std::cerr << "WclProgramAllocations wcl_allocations_allocation = {\n";
+  bool hasPrev = false;
+  if (!globalLimits.empty()) {
+    std::cerr << addressSpaceLimitsInitializer(kernelFunc, globalLimits);
+    hasPrev = true;
+  }
+  if (!constantLimits.empty()) {
+    if (hasPrev) std::cerr << ",\n";
+    std::cerr << addressSpaceLimitsInitializer(kernelFunc, constantLimits);
+    hasPrev = true;
+  }
+  if (!localLimits.empty()) {
+    if (hasPrev) std::cerr << ",\n";
+    std::cerr << addressSpaceLimitsInitializer(kernelFunc, localLimits);
+    hasPrev = true;
+  }
+  if (!privateAs.empty()) {
+    if (hasPrev) std::cerr << ",\n";
+    std::cerr << addressSpaceInitializer(privateAs) << "\n";
+  }
+  std::cerr << "};\n";
+  std::cerr << "WclProgramAllocations *wcl_allocs = &wcl_allocations_allocation;\n";
+}
+
+void WebCLTransformer::createLocalAreaZeroing(clang::FunctionDecl *kernelFunc,
+                            AddressSpaceLimits &localLimits) {
+  std::cerr << "// Creating local memory cleanup code for every limit range\n";
+}
+
+void WebCLTransformer::replaceWithRelocated(clang::DeclRefExpr *use, clang::VarDecl *decl) {
+  std::cerr << "Replacing: " << use->getNameInfo().getName().getAsString()
+            << " with: " << cfg_.getReferenceToRelocatedVariable(decl) << "\n";
+}
+
 void WebCLTransformer::addKernel(clang::FunctionDecl *decl)
 {
     kernels_.insert(decl);
@@ -422,7 +632,10 @@ void WebCLTransformer::emitTypeInitialization(
 void WebCLTransformer::emitVariableInitialization(
     std::ostream &out, const clang::VarDecl *decl)
 {
-    const clang::Expr *init = decl->getInit();
+    const clang::Expr *init =  decl->getInit();
+  
+    // init->dump();
+
     if (!init || !init->isConstantInitializer(instance_.getASTContext(), false)) {
         emitTypeInitialization(out, decl->getType());
         return;
