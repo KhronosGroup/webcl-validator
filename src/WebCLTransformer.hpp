@@ -68,7 +68,12 @@ public:
     void createLocalAreaZeroing(clang::FunctionDecl *kernelFunc,
                                 AddressSpaceLimits &localLimits);
   
+  
+    void addMemoryAccessCheck(clang::Expr *access, clang::VarDecl *limits);
 
+    void addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
+                                               unsigned minWidthInBits);
+  
     // TODO: remove methods which requires storing any model state.
     //       only allowed state here is how to represent multiple changes.
   
@@ -106,7 +111,17 @@ public:
     void addPointerCheck(clang::Expr *expr);
 
 private:
+  
+    // TODO: stream for module prolog
+  
+    // TODO: streams for kernel prologs
+  
+    // TODO: mapping for address space limits by declaration
+  
+    // TODO: list of created limit check macros by limit range counts
 
+  
+  
     // address space, name
     typedef std::pair<const std::string, const std::string> CheckedType;
     typedef std::set<CheckedType> CheckedTypes;

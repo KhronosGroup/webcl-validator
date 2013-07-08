@@ -310,6 +310,7 @@ private:
   AddressSpaceLimits constantLimits_;
   AddressSpaceLimits localLimits_;
   
+  
 };
 
 /// TODO: refactor when ready to separate file
@@ -317,29 +318,42 @@ class MemoryAccessHandler {
 public:
   MemoryAccessHandler(WebCLAnalyser &analyser,
                 WebCLTransformer &transformer,
-                KernelHandler &kernelHandler) {
+                KernelHandler &kernelHandler,
+                clang::ASTContext &context) {
 
-    // TODO: go through memory accesses from analyser
+    // go through memory accesses from analyser
+    WebCLAnalyser::MemoryAccessMap &pointerAccesses =
+      analyser.getPointerAceesses();
 
-    // TODO: get memory access width to possibly create NULL ptr...
-    //       this will not work for global memory, so we should get way to
-    //       completetly abort?
+    std::map< unsigned, unsigned > maxAccess;
     
-    // TODO: find out list of limits of the address space
-    
-    // TODO: if access has multiple address ranges try to do some slight trickery to
-    //       get correct limits to check also check if limit check is actally needed
-    //       at all
-    
-    // TODO: add limit check
-    
-    // TODO: if not yet added, add macro with correct min,max pair count
+    for (WebCLAnalyser::MemoryAccessMap::iterator i = pointerAccesses.begin();
+         i != pointerAccesses.end(); ++i) {
+      
+      clang::Expr *access = i->first;
+      clang::VarDecl *decl = i->second;
+      
+      // update maximum access data
+      unsigned addressSpace = access->getType().getAddressSpace();
+      unsigned accessWidth = context.getTypeSize(access->getType());
+      if (maxAccess.count(addressSpace) == 0) {
+        maxAccess[addressSpace] = accessWidth;
+      }
+      unsigned oldVal = maxAccess[addressSpace];
+      maxAccess[addressSpace] = oldVal > accessWidth ? oldVal : accessWidth;
+      
+      // add memory check generation to transformer
+      // TODO: fix this to take in bool staticLimits, std::set<VarDecl*> decls
+      transformer.addMemoryAccessCheck(access, decl);
+    }
 
-    // TODO: find out biggest memory access width of each address space and
-    //       add assert to start of kernels that we have enough global, local and constant
-    //       memory to do those accesses (check kernel size arguments to be in valid range)
-    //       we could have added the checks already and just output defines
-    //       stating WCL_MAX_ACCESS_WIDTH_TO_LOCAL etc. defines.
+    // add defines for address space specific minimum memory requirements.
+    // this is needed to be able to serve all memory accesses in program
+    for (std::map<unsigned, unsigned>::iterator i = maxAccess.begin();
+         i != maxAccess.end(); i++) {
+      
+      transformer.addMinimumRequiredContinuousAreaLimit(i->first, i->second);
+    }
   }
 
   ~MemoryAccessHandler() {};
@@ -360,6 +374,8 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
     //       to be in start of file
     // InputCodeOrganiser addressSpaceTransformer(*anlyser_);
 
+    // FUTURE: Add memory limit dependence ananlysis here (or maybe it could be even separate visitor).
+  
     // Collect and organize all the information from analyser_ to create
     // view to different address spaces and to provide replacements for
     // replaced variable references in first stage just create types and collect
@@ -383,10 +399,14 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
     // Emits pointer checks for all memory accesses and injects
     // required check macro definitions to prolog.
     MemoryAccessHandler
-      memoryAccessHandler(analyser_, *transformer_, kernelHandler);
+      memoryAccessHandler(analyser_, *transformer_, kernelHandler, context);
   
-    // FUTURE: add class, which goes through builtins and adds required
-    //         things to make calls safe
+    // TODO: make sure that we have enough memory allocated to do all the
+    //       memory accesses
+    // kernelHandler.addMemoryLimitChecks();
+  
+    // FUTURE: add class, which goes through builtins and creates corresponding
+    //         safe calls and adds safe implementations to source.
   
     traverse(transformingVisitors_, context);
 }

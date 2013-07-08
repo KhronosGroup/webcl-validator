@@ -211,8 +211,6 @@ void WebCLTransformer::createProgramAllocationsAllocation(clang::FunctionDecl *k
                                         AddressSpaceLimits &localLimits,
                                         AddressSpaceInfo &privateAs) {
   
-  assert(!globalLimits.empty() || !constantLimits.empty() || !localLimits.empty());
-  
   std::cerr << "WclProgramAllocations wcl_allocations_allocation = {\n";
   bool hasPrev = false;
   if (!globalLimits.empty()) {
@@ -245,6 +243,65 @@ void WebCLTransformer::createLocalAreaZeroing(clang::FunctionDecl *kernelFunc,
 void WebCLTransformer::replaceWithRelocated(clang::DeclRefExpr *use, clang::VarDecl *decl) {
   std::cerr << "Replacing: " << use->getNameInfo().getName().getAsString()
             << " with: " << cfg_.getReferenceToRelocatedVariable(decl) << "\n";
+}
+
+void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, clang::VarDecl *limits) {
+  
+  
+  clang::Expr *base = access;
+  clang::Expr *index = NULL;
+  std::string field;
+  if (clang::MemberExpr *memberExpr = llvm::dyn_cast<clang::MemberExpr>(access)) {
+    base = memberExpr->getBase();
+    field = memberExpr->getMemberNameInfo().getName().getAsString();
+
+  } else if (clang::ExtVectorElementExpr *vecExpr =
+             llvm::dyn_cast<clang::ExtVectorElementExpr>(access)) {
+    base = vecExpr->getBase();
+    field = vecExpr->getAccessor().getName().str();
+  
+  } else if (clang::ArraySubscriptExpr *arraySubExpr =
+             llvm::dyn_cast<clang::ArraySubscriptExpr>(access)) {
+    base = arraySubExpr->getBase();
+    index = arraySubExpr->getIdx();
+  
+  } else if (clang::UnaryOperator *unary = llvm::dyn_cast<clang::UnaryOperator>(access)) {
+    base = unary->getSubExpr();
+  }
+
+  std::stringstream memAddress;
+  
+  clang::Rewriter &rewriter = transformations_.getRewriter();
+  const std::string original = rewriter.getRewrittenText(access->getSourceRange());
+  const std::string baseStr = rewriter.getRewrittenText(base->getSourceRange());
+  
+  memAddress << "(" << baseStr << ")";
+  if (index) {
+    const std::string indexStr = rewriter.getRewrittenText(index->getSourceRange());
+    memAddress << "+(" << indexStr << ")";
+  }
+  
+  std::cerr << "Creating memcheck for: " << original << "\n";
+  
+  // trust limits given in parameter or check against all limits
+  std::string safeAccessMacro = memAddress.str();
+  if (limits) {
+    std::cerr << "Limits: wcl_allocs->gl.function_name__" << limits->getNameAsString() << "_min\n";
+    std::cerr << "Limits: wcl_allocs->gl.function_name__" << limits->getNameAsString() << "_max\n";
+    //safeAccessMacro = getSingleLimitsClamp(memAddress, type, checkStatic, limits);
+  }
+  
+  std::cerr << "(*(" << safeAccessMacro << "))";
+  if (!field.empty()) {
+    std::cerr << "." << field;
+  }
+  std::cerr << "\n";
+  std::cerr << "Type for access check macro: " << access->getType().getAsString() << "*\n";
+}
+
+void WebCLTransformer::addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
+                                                             unsigned minWidthInBits) {
+  std::cerr << "#define WCL_ADDRESS_SPACE_" << addressSpace << "_MIN (" << minWidthInBits << ")\n";
 }
 
 void WebCLTransformer::addKernel(clang::FunctionDecl *decl)

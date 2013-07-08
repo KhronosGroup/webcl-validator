@@ -295,13 +295,17 @@ bool WebCLAnalyser::handleVarDecl(clang::VarDecl *decl)
 bool WebCLAnalyser::handleMemberExpr(clang::MemberExpr *expr)
 {
   if (!isFromMainFile(expr->getLocStart())) return true;
-
+  
   if (expr->isArrow()) {
     info(expr->getLocStart(), "Pointer access!");
+    clang::VarDecl *declaration = NULL;
     if (clang::DeclRefExpr *declRef = llvm::dyn_cast<clang::DeclRefExpr>(expr->getBase())) {
       std::cerr << "Jackpot found decl:\n";
       info(declRef->getDecl()->getLocStart(), "-- -- Corresponding decl.");
+      declaration = llvm::dyn_cast<clang::VarDecl>(declRef->getDecl());
     }
+    
+    pointerAccesses_[expr] = declaration;
   }
   return true;
 }
@@ -313,10 +317,13 @@ bool WebCLAnalyser::handleExtVectorElementExpr(clang::ExtVectorElementExpr *expr
   // handle only arrow accesses
   if (expr->isArrow()) {
     info(expr->getLocStart(), "Pointer access!");
+    clang::VarDecl *declaration = NULL;
     if (clang::DeclRefExpr *declRef = llvm::dyn_cast<clang::DeclRefExpr>(expr->getBase())) {
       std::cerr << "Jackpot found decl:\n";
       info(declRef->getDecl()->getLocStart(), "-- -- Corresponding decl.");
+      declaration = llvm::dyn_cast<clang::VarDecl>(declRef->getDecl());
     }
+    pointerAccesses_[expr] = declaration;
   }
   return true;
 }
@@ -326,22 +333,18 @@ bool WebCLAnalyser::handleArraySubscriptExpr(clang::ArraySubscriptExpr *expr)
   if (!isFromMainFile(expr->getLocStart())) return true;
   info(expr->getLocStart(), "Pointer access!");
 
-  clang::Expr *base = expr->getBase();
-  clang::Expr *idx = expr->getIdx();
-  
+  clang::VarDecl *declaration = NULL;
+
   // in case if we are abse to trace actual base declaration we can optimize more in future
-  if (clang::ImplicitCastExpr *implicitCast = llvm::dyn_cast<clang::ImplicitCastExpr>(base)) {
+  if (clang::ImplicitCastExpr *implicitCast = llvm::dyn_cast<clang::ImplicitCastExpr>(expr->getBase())) {
     if (clang::DeclRefExpr *declRef = llvm::dyn_cast<clang::DeclRefExpr>(implicitCast->getSubExpr())) {
       std::cerr << "Jackpot found decl:\n";
       info(declRef->getDecl()->getLocStart(), "-- -- Corresponding decl.");
+      declaration = llvm::dyn_cast<clang::VarDecl>(declRef->getDecl());
     }
   }
   
-   std::cerr << "Base type: " << base->getType().getAsString()
-            << " address number space: " << base->getType().getAddressSpace() <<  "\n";
-
-  std::cerr << "Index type: " << idx->getType().getAsString()
-            << " address number space: " << idx->getType().getAddressSpace() <<  "\n\n";
+  pointerAccesses_[expr] = declaration;
 
   return true;
 }
@@ -357,18 +360,21 @@ bool WebCLAnalyser::handleUnaryOperator(clang::UnaryOperator *expr)
       return false;
     }
     info(expr->getLocStart(), "Pointer access!");
-    clang::Expr *addr = expr->getSubExpr();
+    clang::VarDecl *declaration = NULL;
     if (clang::DeclRefExpr *declRef = llvm::dyn_cast<clang::DeclRefExpr>(expr->getSubExpr())) {
       std::cerr << "Jackpot found decl:\n";
       info(declRef->getDecl()->getLocStart(), "-- -- Corresponding decl.");
+      declaration = llvm::dyn_cast<clang::VarDecl>(declRef->getDecl());
     }
+    // std::cerr << "expr type:" << addr->getType().getAsString()
+    //          << " address number space: " << addr->getType().getAddressSpace()
+    //          <<  "\n\n";
+    pointerAccesses_[expr] = declaration;
     
-    std::cerr << "expr type:" << addr->getType().getAsString()
-              << " address number space: " << addr->getType().getAddressSpace() <<  "\n\n";
   } else if(expr->getOpcode() == clang::UO_AddrOf) {
     info(expr->getLocStart(), "Address of something, might require some handling.");
     if (clang::DeclRefExpr *declRef = llvm::dyn_cast<clang::DeclRefExpr>(expr->getSubExpr())) {
-      std::cerr << "Jackpot found decl:\n";
+      std::cerr << "Found decl for address of operator:\n";
       info(declRef->getDecl()->getLocStart(), "-- -- Corresponding decl.");
       clang::VarDecl *decl = llvm::dyn_cast<clang::VarDecl>(declRef->getDecl());
       assert(decl);

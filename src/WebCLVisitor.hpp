@@ -160,7 +160,9 @@ public:
   /// Go through all decl references to see if they need to be fixed
   virtual bool handleDeclRefExpr(clang::DeclRefExpr *expr);
 
-  /// 
+  /// This was handled in earlier passes, but not sure if necessary
+  /// the VarDecl handler seeme to catch these too.
+  /// TODO: remove if not needed
   virtual bool handleDeclStmt(clang::DeclStmt *expr) {
     info(expr->getLocStart(), "DectStmt! what to do... why??");
     return true;
@@ -172,15 +174,21 @@ public:
   typedef std::set<clang::VarDecl*> VarDeclSet;
   typedef std::set<clang::DeclRefExpr*> DeclRefExprSet;
 
+  /// Memory accesses and corresponding declarations, this will change
+  /// if separate dependence analysis is added to resolve which limits
+  /// each memory access should respect.
+  typedef std::map<clang::Expr*, clang::VarDecl*> MemoryAccessMap;
+
   
   FunctionDeclSet& getKernelFunctions()  { return kernelFunctions_; };
   FunctionDeclSet& getHelperFunctions()  { return helperFunctions_; };
-  CallExprSet&    getInternalCalls()     { return internalCalls_; };
-  CallExprSet&    getBuiltinCalls()      { return builtinCalls_; };
-  VarDeclSet&     getConstantVariables() { return constantVariables_; };
-  VarDeclSet&     getLocalVariables()    { return localVariables_; };
-  VarDeclSet&     getPrivateVariables()  { return privateVariables_; };
-  DeclRefExprSet& getVariableUses()      { return variableUses_; };
+  CallExprSet&     getInternalCalls()     { return internalCalls_; };
+  CallExprSet&     getBuiltinCalls()      { return builtinCalls_; };
+  VarDeclSet&      getConstantVariables() { return constantVariables_; };
+  VarDeclSet&      getLocalVariables()    { return localVariables_; };
+  VarDeclSet&      getPrivateVariables()  { return privateVariables_; };
+  DeclRefExprSet&  getVariableUses()      { return variableUses_; };
+  MemoryAccessMap& getPointerAceesses()   { return pointerAccesses_; };
   
   bool hasAddressReferences(clang::VarDecl *decl) {
     return declarationsWithAddressOfAccess_.count(decl) > 0;
@@ -197,12 +205,12 @@ private:
   VarDeclSet      constantVariables_;
   VarDeclSet      localVariables_;
   VarDeclSet      privateVariables_;
-  // set of variables, which has been accessed with &-operator
+  /// set of variables, which has been accessed with &-operator
   VarDeclSet      declarationsWithAddressOfAccess_;
+  /// all uses of variable declarations
   DeclRefExprSet  variableUses_;
+  MemoryAccessMap pointerAccesses_;
   
-  // TODO: maybe I need to keep track of variable names of declarations to
-  //       be able to trace them in expressions.
   
 };
 
