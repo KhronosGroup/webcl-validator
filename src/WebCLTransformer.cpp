@@ -6,8 +6,6 @@
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
-#include <sstream>
-
 WebCLTransformer::WebCLTransformer(
     clang::CompilerInstance &instance, clang::Rewriter &rewriter)
     : WebCLReporter(instance)
@@ -32,6 +30,11 @@ bool WebCLTransformer::rewrite()
     bool status = true;
 
     status = status && rewritePrologue();
+  
+    for (KernelPrologueMap::iterator iter = kernelPrologues_.begin();
+         iter != kernelPrologues_.end(); iter++) {
+      status = status && rewriteKernelPrologue(iter->first);
+    }
     status = status && rewriteTransformations();
 
     return status;
@@ -39,13 +42,14 @@ bool WebCLTransformer::rewrite()
 
 std::string WebCLTransformer::addressSpaceInfoAsStruct(AddressSpaceInfo &as) {
   std::stringstream retVal;
-  retVal << "{ \n";
+  retVal << "{\n";
   for (AddressSpaceInfo::iterator declIter = as.begin();
        declIter != as.end(); ++declIter) {
+    retVal << cfg_.indentation_;
     emitVariable(retVal, (*declIter));
     retVal << ";\n";
   }
-  retVal << " }";
+  retVal << "}";
   return retVal.str();
 }
 
@@ -69,32 +73,35 @@ std::string WebCLTransformer::addressSpaceInitializer(AddressSpaceInfo &as) {
 
 std::string WebCLTransformer::addressSpaceLimitsAsStruct(AddressSpaceLimits &asLimits) {
   std::stringstream retVal;
-  retVal << "{ \n";
+  retVal << "{\n";
   
   // if address space has static allocations
-  switch (asLimits.staticAllocationAddressSpace()) {
-    case clang::LangAS::opencl_constant:
-      retVal << "__constant WclConstants *wcl_constant_allocations_min;\n";
-      retVal << "__constant WclConstants *wcl_constant_allocations_max;\n";
-      break;
-    case clang::LangAS::opencl_local:
-      retVal << "__local WclLocals *wcl_locals_min;\n";
-      retVal << "__local WclLocals *wcl_locals_max;\n";
-      break;
-    default:
-      assert(asLimits.staticAllocationAddressSpace() == 0);
-      break;
+  if (asLimits.hasStaticallyAllocatedLimits()) {
+    switch (asLimits.getAddressSpace()) {
+      case clang::LangAS::opencl_constant:
+        retVal << cfg_.indentation_ << "__constant WclConstants *wcl_constant_allocations_min;\n";
+        retVal << cfg_.indentation_ << "__constant WclConstants *wcl_constant_allocations_max;\n";
+        break;
+      case clang::LangAS::opencl_local:
+        retVal << cfg_.indentation_ << "__local WclLocals *wcl_locals_min;\n";
+        retVal << cfg_.indentation_ << "__local WclLocals *wcl_locals_max;\n";
+        break;
+      default:
+        break;
+    }
   }
-
-  for (AddressSpaceLimits::LimitList::iterator declIter = asLimits.getLimitList().begin();
-       declIter != asLimits.getLimitList().end(); ++declIter) {
+  
+  for (AddressSpaceLimits::LimitList::iterator declIter = asLimits.getDynamicLimits().begin();
+       declIter != asLimits.getDynamicLimits().end(); ++declIter) {
     clang::ParmVarDecl *decl = *declIter;
+    retVal << cfg_.indentation_;
     emitVariable(retVal, decl);
     retVal << "_min" << ";\n";
+    retVal << cfg_.indentation_;
     emitVariable(retVal, decl);
     retVal << "_max" << ";\n";
   }
-  retVal << " }";
+  retVal << "}";
   return retVal.str();
 }
 
@@ -106,22 +113,24 @@ std::string WebCLTransformer::addressSpaceLimitsInitializer(
   std::string comma = "";
 
   // if address space has static allocations
-  switch (asLimits.staticAllocationAddressSpace()) {
-    case clang::LangAS::opencl_constant:
-      retVal << " &(&wcl_constant_allocations)[0],  &(&wcl_constant_allocations)[1]";
-      comma = ",";
-      break;
-    case clang::LangAS::opencl_local:
-      retVal << " &(&wcl_locals)[0],  &(&wcl_locals)[1]";
-      comma = ",";
-      break;
-    default:
-      assert(asLimits.staticAllocationAddressSpace() == 0);
-      break;
+  if (asLimits.hasStaticallyAllocatedLimits()) {
+    switch (asLimits.getAddressSpace()) {
+      case clang::LangAS::opencl_constant:
+        retVal << "&(&wcl_constant_allocations)[0],&(&wcl_constant_allocations)[1]";
+        comma = ",";
+        break;
+      case clang::LangAS::opencl_local:
+        retVal << "&(&wcl_locals)[0],&(&wcl_locals)[1]";
+        comma = ",";
+        break;
+      default:
+        assert(asLimits.getAddressSpace() == 0);
+        break;
+    }
   }
 
-  for (AddressSpaceLimits::LimitList::iterator declIter = asLimits.getLimitList().begin();
-       declIter != asLimits.getLimitList().end(); ++declIter) {
+  for (AddressSpaceLimits::LimitList::iterator declIter = asLimits.getDynamicLimits().begin();
+       declIter != asLimits.getDynamicLimits().end(); ++declIter) {
 
     retVal << comma;
     clang::ParmVarDecl *decl = *declIter;
@@ -145,64 +154,65 @@ std::string WebCLTransformer::addressSpaceLimitsInitializer(
 
 void WebCLTransformer::createPrivateAddressSpaceTypedef(AddressSpaceInfo &as) {
   if (!as.empty()) {
-    std::cerr << "typedef struct " << addressSpaceInfoAsStruct(as) << " WclPrivates;\n";
+    modulePrologue_ << "typedef struct " << addressSpaceInfoAsStruct(as) << " WclPrivates;\n\n";
   }
 }
 
 void WebCLTransformer::createLocalAddressSpaceTypedef(AddressSpaceInfo &as) {
   if (!as.empty()) {
-    std::cerr << "typedef struct " << addressSpaceInfoAsStruct(as) << " WclLocals;\n";
+    modulePrologue_ << "typedef struct " << addressSpaceInfoAsStruct(as) << " WclLocals;\n\n";
   }
 }
 
 void WebCLTransformer::createConstantAddressSpaceTypedef(AddressSpaceInfo &as) {
   if (!as.empty()) {
-    std::cerr << "typedef struct " << addressSpaceInfoAsStruct(as) << " WclConstants;\n";
+    modulePrologue_ << "typedef struct " << addressSpaceInfoAsStruct(as) << " WclConstants;\n\n";
   }
 }
 
 void WebCLTransformer::createConstantAddressSpaceAllocation(AddressSpaceInfo &as) {
   if (!as.empty()) {
-    std::cerr << "__constant WclConstants wcl_constant_allocations = " << addressSpaceInitializer(as) << ";\n"; }
+    modulePrologue_ << "__constant WclConstants wcl_constant_allocations = "
+                    << addressSpaceInitializer(as) << ";\n\n"; }
 }
 
 void WebCLTransformer::createGlobalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits) {
-  std::cerr << "typedef struct " << addressSpaceLimitsAsStruct(asLimits)
-            << " WclGlobalLimits;\n";
+  modulePrologue_ << "typedef struct " << addressSpaceLimitsAsStruct(asLimits)
+                  << " WclGlobalLimits;\n\n";
 }
 
 void WebCLTransformer::createConstantAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits) {
-  std::cerr << "typedef struct " << addressSpaceLimitsAsStruct(asLimits)
-            << " WclConstantLimits;\n";
+  modulePrologue_ << "typedef struct " << addressSpaceLimitsAsStruct(asLimits)
+                  << " WclConstantLimits;\n\n";
 }
 
 void WebCLTransformer::createLocalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits) {
-  std::cerr << "typedef struct " << addressSpaceLimitsAsStruct(asLimits)
-            << " WclLocalLimits;\n";
+  modulePrologue_ << "typedef struct " << addressSpaceLimitsAsStruct(asLimits)
+                  << " WclLocalLimits;\n\n";
 }
 
 void WebCLTransformer::createProgramAllocationsTypedef(AddressSpaceLimits &globalLimits,
                                      AddressSpaceLimits &constantLimits,
                                      AddressSpaceLimits &localLimits,
                                      AddressSpaceInfo &privateAs) {
-  std::cerr << "typedef struct {\n";
+  modulePrologue_ << "typedef struct {\n";
   if (!constantLimits.empty()) {
-    std::cerr << "WclconstantLimits cl;\n";
+    modulePrologue_ << cfg_.indentation_ << "WclconstantLimits cl;\n";
   }
   if (!globalLimits.empty()) {
-    std::cerr << "WclGlobalLimits gl;\n";
+    modulePrologue_ << cfg_.indentation_ << "WclGlobalLimits gl;\n";
   }
   if (!localLimits.empty()) {
-    std::cerr << "WclLocalLimits ll;\n";
+    modulePrologue_ << cfg_.indentation_ << "WclLocalLimits ll;\n";
   }
   if (!privateAs.empty()) {
-    std::cerr << "WclPrivates pa;\n";
+    modulePrologue_ << cfg_.indentation_ << "WclPrivates pa;\n";
   }
-  std::cerr << " } WclProgramAllocations;\n";
+  modulePrologue_ << " } WclProgramAllocations;\n\n";
 }
 
 void WebCLTransformer::createLocalAddressSpaceAllocation(clang::FunctionDecl *kernelFunc) {
-  std::cerr << "__local WclLocals wcl_locals;\n";
+  kernelPrologue(kernelFunc) << "\n" << cfg_.indentation_ << "__local WclLocals wcl_locals;\n";
 }
 
 void WebCLTransformer::createProgramAllocationsAllocation(clang::FunctionDecl *kernelFunc,
@@ -210,44 +220,67 @@ void WebCLTransformer::createProgramAllocationsAllocation(clang::FunctionDecl *k
                                         AddressSpaceLimits &constantLimits,
                                         AddressSpaceLimits &localLimits,
                                         AddressSpaceInfo &privateAs) {
-  
-  std::cerr << "WclProgramAllocations wcl_allocations_allocation = {\n";
+
+  kernelPrologue(kernelFunc) << "\n" << cfg_.indentation_  << "WclProgramAllocations wcl_allocations_allocation = {\n";
   bool hasPrev = false;
   if (!globalLimits.empty()) {
-    std::cerr << addressSpaceLimitsInitializer(kernelFunc, globalLimits);
+    kernelPrologue(kernelFunc) << cfg_.indentation_ << cfg_.indentation_
+                               << addressSpaceLimitsInitializer(kernelFunc, globalLimits);
     hasPrev = true;
   }
   if (!constantLimits.empty()) {
-    if (hasPrev) std::cerr << ",\n";
-    std::cerr << addressSpaceLimitsInitializer(kernelFunc, constantLimits);
+    if (hasPrev) kernelPrologue(kernelFunc) << ",\n";
+    kernelPrologue(kernelFunc) << cfg_.indentation_ << cfg_.indentation_
+                               << addressSpaceLimitsInitializer(kernelFunc, constantLimits);
     hasPrev = true;
   }
   if (!localLimits.empty()) {
-    if (hasPrev) std::cerr << ",\n";
-    std::cerr << addressSpaceLimitsInitializer(kernelFunc, localLimits);
+    if (hasPrev) kernelPrologue(kernelFunc) << ",\n";
+    kernelPrologue(kernelFunc) << cfg_.indentation_ << cfg_.indentation_
+                               << addressSpaceLimitsInitializer(kernelFunc, localLimits);
     hasPrev = true;
   }
   if (!privateAs.empty()) {
-    if (hasPrev) std::cerr << ",\n";
-    std::cerr << addressSpaceInitializer(privateAs) << "\n";
+    if (hasPrev) kernelPrologue(kernelFunc) << ",\n";
+    kernelPrologue(kernelFunc) << cfg_.indentation_ << cfg_.indentation_
+                               << addressSpaceInitializer(privateAs) << "\n";
   }
-  std::cerr << "};\n";
-  std::cerr << "WclProgramAllocations *wcl_allocs = &wcl_allocations_allocation;\n";
+  kernelPrologue(kernelFunc) << cfg_.indentation_ << "};\n";
+  kernelPrologue(kernelFunc) << cfg_.indentation_ << "WclProgramAllocations *wcl_allocs = &wcl_allocations_allocation;\n";
+
 }
 
 void WebCLTransformer::createLocalAreaZeroing(clang::FunctionDecl *kernelFunc,
                             AddressSpaceLimits &localLimits) {
-  std::cerr << "// Creating local memory cleanup code for every limit range\n";
+  kernelPrologue(kernelFunc) << cfg_.indentation_ << "// TODO: Creating local memory cleanup macro call for every limit range\n";
 }
 
 void WebCLTransformer::replaceWithRelocated(clang::DeclRefExpr *use, clang::VarDecl *decl) {
   std::cerr << "Replacing: " << use->getNameInfo().getName().getAsString()
-            << " with: " << cfg_.getReferenceToRelocatedVariable(decl) << "\n";
+            << " with: " << cfg_.getReferenceToRelocatedVariable(decl) << "\n";  
 }
 
-void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, clang::VarDecl *limits) {
+std::string WebCLTransformer::getClampMacroCall(std::string addr, std::string type, AddressSpaceLimits &limits) {
+  std::stringstream retVal;
+
+  retVal << "WCL_ADDR_" << limits.getAddressSpace() << "_" << limits.count() << "(" << type << ", " << addr;
+
+  if (limits.hasStaticallyAllocatedLimits()) {
+    retVal << ", " << "implement_static_min" << ", " << "implement_static_max";
+  }
+
+  for (AddressSpaceLimits::LimitList::iterator i = limits.getDynamicLimits().begin();
+       i != limits.getDynamicLimits().end(); i++) {
+    retVal << ", " << "implement_dyn_min" << ", " << "implement_dyn_max";
+  }
   
+  retVal << ")";
   
+  return retVal.str();
+}
+
+void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLimits &limits) {
+
   clang::Expr *base = access;
   clang::Expr *index = NULL;
   std::string field;
@@ -284,19 +317,15 @@ void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, clang::VarDecl 
   std::cerr << "Creating memcheck for: " << original << "\n";
   
   // trust limits given in parameter or check against all limits
-  std::string safeAccessMacro = memAddress.str();
-  if (limits) {
-    std::cerr << "Limits: wcl_allocs->gl.function_name__" << limits->getNameAsString() << "_min\n";
-    std::cerr << "Limits: wcl_allocs->gl.function_name__" << limits->getNameAsString() << "_max\n";
-    //safeAccessMacro = getSingleLimitsClamp(memAddress, type, checkStatic, limits);
-  }
+  std::string type = access->getType().getAsString() + "*";
+  std::string safeAccessMacro = getClampMacroCall(memAddress.str(), type, limits);
   
   std::cerr << "(*(" << safeAccessMacro << "))";
   if (!field.empty()) {
     std::cerr << "." << field;
   }
   std::cerr << "\n";
-  std::cerr << "Type for access check macro: " << access->getType().getAsString() << "*\n";
+
 }
 
 void WebCLTransformer::addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
@@ -396,21 +425,22 @@ bool WebCLTransformer::rewriteKernelPrologue(const clang::FunctionDecl *kernel)
         error(kernel->getLocStart(), "Kernel has no body.");
         return false;
     }
-
+/*
     std::ostringstream out;
     emitKernelPrologue(out);
-
+*/
+  
     clang::Rewriter &rewriter = transformations_.getRewriter();
     // Rewriter returns false on success.
     return !rewriter.InsertTextAfter(
-        body->getLocStart().getLocWithOffset(1), out.str());
+        body->getLocStart().getLocWithOffset(1), kernelPrologue(kernel).str());
 }
 
 bool WebCLTransformer::rewriteTransformations()
 {
     bool status = true;
 
-    for (Kernels::iterator i = kernels_.begin(); i != kernels_.end(); ++i) {
+  for (Kernels::iterator i = kernels_.begin(); i != kernels_.end(); ++i) {
         const clang::FunctionDecl *kernel = (*i);
         status = status && rewriteKernelPrologue(kernel);
     }
@@ -669,9 +699,12 @@ void WebCLTransformer::emitPrologueCheckers(std::ostream &out)
 
 void WebCLTransformer::emitPrologue(std::ostream &out)
 {
+    out << modulePrologue_.str();
+/*
     emitPrologueRecords(out);
     emitPrologueMacros(out);
     emitPrologueCheckers(out);
+*/
 }
 
 void WebCLTransformer::emitTypeInitialization(

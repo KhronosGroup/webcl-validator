@@ -49,15 +49,21 @@ public:
     dynamicLimits_.push_back(parm);
   };
 
-  unsigned staticAllocationAddressSpace() { return hasStaticallyAllocatedLimits_ ? addressSpace_ : 0; };
-
-  bool empty() {
-    return !hasStaticallyAllocatedLimits_ || dynamicLimits_.empty();
-  };
+  bool hasStaticallyAllocatedLimits() { return hasStaticallyAllocatedLimits_; };
+  unsigned getAddressSpace() { return addressSpace_; };
   
+  bool empty() {
+    return !hasStaticallyAllocatedLimits_ && dynamicLimits_.empty();
+  };
+
+  unsigned count() {
+    return hasStaticallyAllocatedLimits() ?
+      (dynamicLimits_.size()+1) : dynamicLimits_.size();
+  };
+    
   typedef std::vector<clang::ParmVarDecl*> LimitList;
   
-  LimitList& getLimitList() { return dynamicLimits_; };
+  LimitList& getDynamicLimits() { return dynamicLimits_; };
 
 private:
   bool hasStaticallyAllocatedLimits_;

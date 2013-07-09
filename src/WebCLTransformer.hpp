@@ -9,6 +9,7 @@
 #include <map>
 #include <set>
 #include <utility>
+#include <sstream>
 
 #include <iostream>
 
@@ -69,7 +70,7 @@ public:
                                 AddressSpaceLimits &localLimits);
   
   
-    void addMemoryAccessCheck(clang::Expr *access, clang::VarDecl *limits);
+    void addMemoryAccessCheck(clang::Expr *access, AddressSpaceLimits &limits);
 
     void addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
                                                unsigned minWidthInBits);
@@ -112,6 +113,24 @@ public:
 
 private:
   
+    // Set of all different type clamp macro calls in program.
+    // One pair for each address space and limit count <address space num, limit count>
+    typedef std::pair< unsigned, unsigned > ClampMacroKey;
+    typedef std::map< const clang::FunctionDecl*, std::stringstream* > KernelPrologueMap;
+    std::set< ClampMacroKey > usedClampMacros_;
+    KernelPrologueMap kernelPrologues_;
+    std::stringstream modulePrologue_;
+ 
+    std::stringstream& kernelPrologue(const clang::FunctionDecl *kernel) {
+      // TODO: cleanup memory...
+      if (kernelPrologues_.count(kernel) == 0) {
+        kernelPrologues_[kernel] = new std::stringstream();
+      }
+      return *kernelPrologues_[kernel];
+    }
+  
+    std::string getClampMacroCall(std::string addr, std::string type, AddressSpaceLimits &limits);
+
     // TODO: stream for module prolog
   
     // TODO: streams for kernel prologs

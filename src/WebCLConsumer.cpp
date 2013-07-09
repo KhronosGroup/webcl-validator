@@ -232,6 +232,7 @@ public:
                       clang::LangAS::opencl_constant)
     , localLimits_(addressSpaceHandler.hasLocalAddressSpace(),
                    clang::LangAS::opencl_local)
+    , privateLimits_(true, 0)
   {
     
     // go through dynamic limits in the program and create variables for them
@@ -303,14 +304,40 @@ public:
     }
   };
   
-  ~KernelHandler() {};
+  AddressSpaceLimits& getLimits(clang::Expr *access, clang::VarDecl *decl) {
+    
+    // TODO: remove if true after better limit resolving is added
+    if (true ||decl == NULL) {
+      switch( access->getType().getAddressSpace()) {
+        case clang::LangAS::opencl_global:   return globalLimits_;
+        case clang::LangAS::opencl_constant: return constantLimits_;
+        case clang::LangAS::opencl_local:    return localLimits_;
+        default: return privateLimits_;
+      }
+    }
+    
+    // FUTURE: implement getting specific limits..
+    if (declarationLimits_.count(decl) == 0) {
+      createDeclarationLimits(decl);
+    }
+    return *declarationLimits_[decl];
+  };
+  
+  ~KernelHandler() {
+    // FUTURE: free memory from declaration limits table
+  };
   
 private:
   AddressSpaceLimits globalLimits_;
   AddressSpaceLimits constantLimits_;
   AddressSpaceLimits localLimits_;
+  AddressSpaceLimits privateLimits_;
   
-  
+  std::map< clang::VarDecl*, AddressSpaceLimits* > declarationLimits_;
+
+  void createDeclarationLimits(clang::VarDecl *decl) {
+    // FUTURE: find out if we can trace single limits for this declaration...
+  };
 };
 
 /// TODO: refactor when ready to separate file
@@ -343,8 +370,8 @@ public:
       maxAccess[addressSpace] = oldVal > accessWidth ? oldVal : accessWidth;
       
       // add memory check generation to transformer
-      // TODO: fix this to take in bool staticLimits, std::set<VarDecl*> decls
-      transformer.addMemoryAccessCheck(access, decl);
+      transformer.addMemoryAccessCheck(
+        access, kernelHandler.getLimits(access, decl));
     }
 
     // add defines for address space specific minimum memory requirements.
@@ -401,8 +428,8 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
     MemoryAccessHandler
       memoryAccessHandler(analyser_, *transformer_, kernelHandler, context);
   
-    // TODO: make sure that we have enough memory allocated to do all the
-    //       memory accesses
+    // TODO: make sure that when we are calling kernerl, that we have enough
+    // memory allocated to do all the memory accesses
     // kernelHandler.addMemoryLimitChecks();
   
     // FUTURE: add class, which goes through builtins and creates corresponding
