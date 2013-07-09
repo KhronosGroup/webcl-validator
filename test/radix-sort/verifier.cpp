@@ -97,8 +97,8 @@ bool RadixSortVerifier::verifySorter(RadixSorter &sorter)
     double prefix_scan_ms = diff_ms_helper(prefix_scan_end, prefix_scan_begin);
     double allocate_buffers_ms = diff_ms_helper(allocate_buffers_end, allocate_buffers_begin);
     double stream_count_ms = diff_ms_helper(stream_count_end, stream_count_begin);
-    double prefix_kernel_ms = diff_ms_helper(stream_kernel_end, stream_kernel_begin);
-    double stream_kernel_ms = diff_ms_helper(stream_kernel_end, stream_kernel_begin);
+    double prefix_kernel_ms = diff_ms_helper(prefix_kernel_end, prefix_kernel_begin);
+    double stream_kernel_ms = diff_ms_helper(prefix_kernel_end, prefix_kernel_begin);
 
     double elapsed_ms = allocate_buffers_ms + stream_kernel_ms + prefix_kernel_ms + stream_count_ms + prefix_scan_ms;
 
