@@ -9,8 +9,13 @@ __constant float4 base_factor = ((float4)(1.0f,2.0f,3.0f,4.0f));
 // __constant float4 base_factor = (float4)(1.0f,2.0f,3.0f,4.0f);
 // __constant float base_table[] = { 1.0f,2.0f,3.0f,4.0f };
 
+void empty_params(void);
 void init_scratch(size_t gid, size_t wgid, TempStruct *additional_shuffle, __global float4* input, __constant float4* factors, __local float4* scratch);
 __local float4* flip_to_awesomeness(size_t wgid, size_t wgsize, __local float4* scratch);
+
+void empty_params() {
+    int table[3];
+} 
 
 void init_scratch(
     size_t gid, size_t wgid,
@@ -35,6 +40,8 @@ __kernel void awesomize(
     __global float4* output,
     __constant float4* factors,
     __local float4* scratch) {
+
+    empty_params();
 
     size_t gid = get_global_id(0);
     size_t wgid = get_local_id(0);

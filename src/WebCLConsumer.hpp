@@ -33,9 +33,6 @@ private:
     WebCLAnalyser analyser_;
     Visitors checkingVisitors_;
 
-    WebCLRelocator relocator_;
-    WebCLParameterizer parameterizer_;
-    WebCLAccessor accessor_;
     WebCLPrinter printer_;
     TransformingVisitors transformingVisitors_;
 

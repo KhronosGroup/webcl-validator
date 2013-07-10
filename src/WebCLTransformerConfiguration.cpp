@@ -3,6 +3,8 @@
 #include "clang/AST/Decl.h"
 #include "clang/Basic/AddressSpaces.h"
 
+#include <sstream>
+
 WebCLTransformerConfiguration::WebCLTransformerConfiguration()
     : prefix_("wcl")
     , pointerSuffix_("ptr")
@@ -35,22 +37,28 @@ WebCLTransformerConfiguration::~WebCLTransformerConfiguration()
 {
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfAddressSpace(clang::QualType type) const
-{
-    if (const unsigned int space = type.getAddressSpace()) {
-        switch (space) {
-        case clang::LangAS::opencl_global:
-            return globalAddressSpace_;
-        case clang::LangAS::opencl_local:
-            return localAddressSpace_;
-        case clang::LangAS::opencl_constant:
-            return constantAddressSpace_;
-        default:
-            return invalid_;
-        }
-    }
+const std::string WebCLTransformerConfiguration::getNameOfAddressSpace(clang::QualType type) const {
+    return getNameOfAddressSpace(type.getAddressSpace());
+}
 
-    return privateAddressSpace_;
+const std::string WebCLTransformerConfiguration::getNameOfAddressSpace(unsigned addressSpaceNumber) const
+{
+    switch (addressSpaceNumber) {
+      case clang::LangAS::opencl_global:
+        return globalAddressSpace_;
+      case clang::LangAS::opencl_local:
+        return localAddressSpace_;
+      case clang::LangAS::opencl_constant:
+        return constantAddressSpace_;
+      default:
+        return privateAddressSpace_;
+      }
+}
+
+const std::string WebCLTransformerConfiguration::getNameOfAddressSpaceNullPtrRef(unsigned addressSpaceNumber) const
+{
+    // TODO: implement me! Probably we need to inject null to each address space struct
+    return "wcl_allocs";
 }
 
 const std::string WebCLTransformerConfiguration::getNameOfAddressSpaceRecord(clang::QualType type) const
@@ -141,3 +149,45 @@ const std::string WebCLTransformerConfiguration::getIndentation(unsigned int lev
         indentation.append(indentation_);
     return indentation;
 }
+
+const std::string WebCLTransformerConfiguration::getStaticLimitRef(unsigned addressSpaceNumber) const
+{
+  switch (addressSpaceNumber) {
+    case clang::LangAS::opencl_constant:
+      return "wcl_allocs->cl.wcl_constant_allocations_min,wcl_allocs->cl.wcl_constant_allocations_max";
+    case clang::LangAS::opencl_local:
+      return "wcl_allocs->ll.wcl_locals_min,wcl_allocs->ll.wcl_locals_max";
+    case clang::LangAS::opencl_global:
+      assert(false && "There can't be static allocations in global address space.");
+    default:
+      return "&wcl_allocs->pa,(&wcl_allocs->pa + 1)";
+  }
+}
+
+const std::string WebCLTransformerConfiguration::getDynamicLimitRef(const clang::VarDecl *decl) const
+{
+    std::stringstream retVal;
+    std::string varName = getNameOfRelocatedVariable(decl);
+    std::string prefix;
+  
+    switch (decl->getType().getTypePtr()->getPointeeType().getAddressSpace()) {
+    case clang::LangAS::opencl_global:
+      prefix = "wcl_allocs->gl.";
+      break;
+    case clang::LangAS::opencl_constant:
+      prefix = "wcl_allocs->cl.";
+      break;
+    case clang::LangAS::opencl_local:
+      prefix = "wcl_allocs->ll.";
+      break;
+    default:
+      assert(false && "There can't be dynamic limits of private address space.");
+    }
+
+    retVal << prefix << varName << "_min," << prefix << varName << "_max";
+    return retVal.str();
+}
+
+
+
+

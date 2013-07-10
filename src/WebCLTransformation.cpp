@@ -214,45 +214,6 @@ bool WebCLRecordParameterInsertion::rewrite()
     return prepend(decl_->getParamDecl(0)->getLocStart(), parameter + ", ");
 }
 
-// WebCLRecordArgumentInsertion
-
-WebCLRecordArgumentInsertion::WebCLRecordArgumentInsertion(
-    WebCLTransformations &transformations, clang::CallExpr *expr)
-    : WebCLRecursiveTransformation(transformations), expr_(expr)
-{
-}
-
-WebCLRecordArgumentInsertion::~WebCLRecordArgumentInsertion()
-{
-}
-
-bool WebCLRecordArgumentInsertion::getAsText(
-    std::string &text, clang::SourceRange &range)
-{
-    const unsigned int numArguments = expr_->getNumArgs();
-
-    clang::SourceLocation location = expr_->getRParenLoc();
-    if (numArguments) {
-        clang::Expr *first = expr_->getArg(0);
-        if (!first) {
-            error(expr_->getLocStart(), "Invalid first argument.");
-            return false;
-        }
-        location = first->getLocStart();
-    }
-
-    WebCLTransformerConfiguration &cfg = transformations_.getConfiguration();
-    const std::string comma = (numArguments > 0) ? ", " : "";
-    const std::string argument = cfg.addressSpaceRecordName_ + comma;
-
-    clang::Rewriter &rewriter = transformations_.getRewriter();
-    clang::SourceRange head(expr_->getLocStart(), location.getLocWithOffset(-1));
-    clang::SourceRange tail(location, expr_->getLocEnd());
-    text = rewriter.getRewrittenText(head) + argument + rewriter.getRewrittenText(tail);
-    range = expr_->getSourceRange();
-    return true;
-}
-
 // WebCLSizeParameterInsertion
 
 WebCLSizeParameterInsertion::WebCLSizeParameterInsertion(

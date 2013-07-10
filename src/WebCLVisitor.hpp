@@ -53,7 +53,7 @@ public:
     bool VisitTypedefDecl(clang::TypedefDecl *decl);
     /// \see clang::RecursiveASTVisitor::VisitDeclRefExpr
     bool VisitDeclRefExpr(clang::DeclRefExpr *decl);
-
+  
 protected:
 
     virtual bool handleTranslationUnitDecl(clang::TranslationUnitDecl *decl);
@@ -173,6 +173,7 @@ public:
   typedef std::set<clang::CallExpr*> CallExprSet;
   typedef std::set<clang::VarDecl*> VarDeclSet;
   typedef std::set<clang::DeclRefExpr*> DeclRefExprSet;
+  typedef std::vector<clang::TypedefDecl*> TypedefList;
 
   /// Memory accesses and corresponding declarations, this will change
   /// if separate dependence analysis is added to resolve which limits
@@ -189,7 +190,8 @@ public:
   VarDeclSet&      getPrivateVariables()  { return privateVariables_; };
   DeclRefExprSet&  getVariableUses()      { return variableUses_; };
   MemoryAccessMap& getPointerAceesses()   { return pointerAccesses_; };
-  
+  TypedefList&     getTypedefs()          { return typedefList_; };
+
   bool hasAddressReferences(clang::VarDecl *decl) {
     return declarationsWithAddressOfAccess_.count(decl) > 0;
   }
@@ -210,7 +212,7 @@ private:
   /// all uses of variable declarations
   DeclRefExprSet  variableUses_;
   MemoryAccessMap pointerAccesses_;
-  
+  TypedefList     typedefList_;
   
 };
 
@@ -223,128 +225,6 @@ public:
 
     explicit WebCLTransformingVisitor(clang::CompilerInstance &instance);
     virtual ~WebCLTransformingVisitor();
-};
-
-/// \brief Finds variables that need to be relocated into address
-/// space records and all the kernel arguments, which contain limits.
-class WebCLRelocator : public WebCLTransformingVisitor
-                     , public WebCLHelper
-{
-public:
-
-    explicit WebCLRelocator(clang::CompilerInstance &instance);
-    virtual ~WebCLRelocator();
-
-  
-    /// \see WebCLVisitor::handleDeclStmt
-    virtual bool handleDeclStmt(clang::DeclStmt *stmt);
-  
-    /// \see WebCLVisitor::handleVarDecl
-    virtual bool handleVarDecl(clang::VarDecl *decl);
-  
-    /// \see WebCLVisitor::handleUnaryOperator
-    virtual bool handleUnaryOperator(clang::UnaryOperator *expr);
-
-    /// Collects list of kernel arguments, which require limits
-    /// - Later on this information is combined with information
-    ///   in WebCLParameterizer to be able to write initialization
-    ///   code for kernel.
-    /// \see WebCLVisitor::handleFunctionDecl
-    virtual bool handleFunctionDecl(clang::FunctionDecl *decl);
-
-private:
-
-    clang::VarDecl *getRelocatedVariable(clang::Expr *expr);
-
-    clang::DeclStmt *current_;
-    typedef std::pair<clang::VarDecl*, clang::DeclStmt*> RelocationCandidate;
-    typedef std::map<clang::VarDecl*, clang::DeclStmt*> RelocationCandidates;
-    RelocationCandidates relocationCandidates_;
-};
-
-/// Finds function parameter lists that need to be extended. Also
-/// finds function calls and augments argument lists when necessary.
-class WebCLParameterizer : public WebCLTransformingVisitor
-{
-public:
-
-    explicit WebCLParameterizer(clang::CompilerInstance &instance);
-    virtual ~WebCLParameterizer();
-
-    /// Checks whether parameter lists need to be extended:
-    ///
-    /// - Add array size parameters for kernel array parameters.
-    /// - Add address space record parameters for functions that need
-    ///   to do pointer and index checking.
-    ///
-    /// \see WebCLVisitor::handleFunctionDecl
-    virtual bool handleFunctionDecl(clang::FunctionDecl *decl);
-
-    /// Checks whether argument lists need to be extended:
-    ///
-    /// - Add address space argument for functions that need to do
-    ///  pointer and index checking.
-    ///
-    /// - TODO: Knows if the called function is builtin, or builtin that
-    ///   needs to be replaced with safe implementation.
-    ///
-    /// - TODO: If builtin is replaced, with safe version, add it to bookkeeping
-    ///   to be able to emit safe implementation afterwards.
-    ///
-    /// \see WebCLVisitor::handleCallExpr
-    virtual bool handleCallExpr(clang::CallExpr *expr);
-
-private:
-
-    bool handleFunction(clang::FunctionDecl *decl);
-
-    bool handleKernel(clang::FunctionDecl *decl);
-
-    /// \brief Whether function needs address space record parameter.
-    bool isRecordRequired(clang::FunctionDecl *decl);
-
-    /// \brief Whether parameter requires size information.
-    ///
-    /// This is intended for __global, __local and __constant memory
-    /// object parameters.
-    bool isSizeRequired(const clang::ParmVarDecl *decl);
-
-    /// \brief Whether address space is __global, __local or
-    /// __constant.
-    bool isNonPrivateOpenCLAddressSpace(unsigned int addressSpace) const;
-};
-
-/// \brief Finds array subscriptions and all other pointer dereferences.
-///
-/// Handled access types: table[index];, struct_ptr->field;, *(any_pointer);
-/// For the transformation all accesses are normalized to (*()) format.
-/// i.e. (*(table + (index))) and (*(struct_ptr)).field
-class WebCLAccessor : public WebCLTransformingVisitor
-{
-public:
-
-    explicit WebCLAccessor(clang::CompilerInstance &instance);
-    virtual ~WebCLAccessor();
-
-    /// \see WebCLVisitor::handleMemberExpr
-    virtual bool handleMemberExpr(clang::MemberExpr *expr);
-  
-    /// \see WebCLVisitor::handleExtVectorElementExpr
-    virtual bool handleExtVectorElementExpr(clang::ExtVectorElementExpr *expr);
-
-    /// \see WebCLVisitor::handleArraySubscriptExpr
-    virtual bool handleArraySubscriptExpr(clang::ArraySubscriptExpr *expr);
-
-    /// \see WebCLVisitor::handleUnaryOperator
-    virtual bool handleUnaryOperator(clang::UnaryOperator *expr);
-
-private:
-
-    bool getIndexedArraySize(const clang::Expr *base, llvm::APSInt &size);
-
-    bool getArrayIndexValue(const clang::Expr *index, llvm::APSInt &value);
-
-    bool isPointerCheckNeeded(const clang::Expr *expr);
 };
 
 #endif // WEBCLVALIDATOR_WEBCLVISITOR

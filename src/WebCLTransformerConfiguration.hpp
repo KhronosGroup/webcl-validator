@@ -19,6 +19,8 @@ public:
     WebCLTransformerConfiguration();
     ~WebCLTransformerConfiguration();
 
+    const std::string getNameOfAddressSpace(unsigned addressSpaceNum) const;
+    const std::string getNameOfAddressSpaceNullPtrRef(unsigned addressSpaceNum) const;
     const std::string getNameOfAddressSpace(clang::QualType type) const;
     const std::string getNameOfAddressSpaceRecord(clang::QualType type) const;
     const std::string getNameOfType(clang::QualType type) const;
@@ -26,9 +28,12 @@ public:
     const std::string getNameOfIndexChecker(clang::QualType type) const;
     const std::string getNameOfIndexChecker() const;
     const std::string getNameOfSizeParameter(clang::ParmVarDecl *decl) const;
-    const std::string getNameOfRelocatedVariable(const clang::VarDecl *decl) const;
+    const std::string getNameOfRelocatedVariable(const clang::VarDecl *decl)  const;
     const std::string getReferenceToRelocatedVariable(const clang::VarDecl *decl) const;
     const std::string getIndentation(unsigned int levels) const;
+
+    const std::string getStaticLimitRef(unsigned addressSpaceNum) const;
+    const std::string getDynamicLimitRef(const clang::VarDecl *decl) const;
 
     const std::string prefix_;
     const std::string pointerSuffix_;

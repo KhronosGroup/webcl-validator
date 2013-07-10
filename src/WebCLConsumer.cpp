@@ -11,9 +11,6 @@ WebCLConsumer::WebCLConsumer(
     , restrictor_(instance)
     , analyser_(instance)
     , checkingVisitors_()
-    , relocator_(instance)
-    , parameterizer_(instance)
-    , accessor_(instance)
     , printer_(instance, rewriter)
     , transformingVisitors_()
     , transformer_(NULL)
@@ -21,19 +18,35 @@ WebCLConsumer::WebCLConsumer(
     // Push in reverse order.
     checkingVisitors_.push_front(&analyser_);
     checkingVisitors_.push_front(&restrictor_);
-
     // Push in reverse order.
     transformingVisitors_.push_front(&printer_);
-/*
-    transformingVisitors_.push_front(&accessor_);
-    transformingVisitors_.push_front(&parameterizer_);
-    transformingVisitors_.push_front(&relocator_);
-*/
  }
 
 WebCLConsumer::~WebCLConsumer()
 {
 }
+
+/// TODO: refactor when ready to separate file
+class InputNormaliser {
+public:
+  InputNormaliser(WebCLAnalyser &analyser, WebCLTransformer &transformer) {
+    
+    // go thorugh all non kernel functions and add first parameter
+    WebCLAnalyser::TypedefList &typedefs = analyser.getTypedefs();
+    for (WebCLAnalyser::TypedefList::iterator i = typedefs.begin();
+         i != typedefs.end(); ++i) {
+      transformer.moveToModulePrologue(*i);
+    }
+    
+    // NOTE: if #define directoves are causing problems,
+    //       make sure that they are expanded before transformation.
+    
+  };
+  
+  InputNormaliser() {};
+  
+private:
+};
 
 /// TODO: refactor when ready to separate file
 class HelperFunctionHandler {
@@ -397,11 +410,15 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
     // Introduce changes in way that after every step we still have correclty
     // running program.
   
-    // TODO: class that for now just moves all the  typedefs
-    //       to be in start of file
-    // InputCodeOrganiser addressSpaceTransformer(*anlyser_);
+    // Class that for now just moves all the  typedefs
+    // and defines to start of program
+    InputNormaliser inputNormaliser(analyser_, *transformer_);
 
-    // FUTURE: Add memory limit dependence ananlysis here (or maybe it could be even separate visitor).
+    // FUTURE: Add memory limit dependence ananlysis here
+    // (or maybe it could be even separate visitor). Also value range
+    // analysis could help in meny cases. Based on dependence
+    // anlysis could create separate implementations for different calls
+    // if we know which arguments are passed to function
   
     // Collect and organize all the information from analyser_ to create
     // view to different address spaces and to provide replacements for

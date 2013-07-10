@@ -75,6 +75,8 @@ public:
     void addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
                                                unsigned minWidthInBits);
   
+    void moveToModulePrologue(clang::Decl *decl);
+  
     // TODO: remove methods which requires storing any model state.
     //       only allowed state here is how to represent multiple changes.
   
@@ -92,24 +94,13 @@ public:
     void addRecordParameter(clang::FunctionDecl *decl);
 
     /// Modify arguments passed to a function:
-    /// call(a, b) -> call(record, a, b)
+    /// call(a, b) -> call(wcl_allocs, a, b)
     void addRecordArgument(clang::CallExpr *expr);
 
     /// Modify kernel parameter declarations:
     /// kernel(a, array, b) -> kernel(a, array, array_size, b)
     void addSizeParameter(clang::ParmVarDecl *decl);
 
-    /// Modify array indexing:
-    /// array[index] -> array[index % bound]
-    void addArrayIndexCheck(clang::ArraySubscriptExpr *expr, llvm::APInt &bound);
-
-    /// Modify array indexing:
-    /// array[index] -> array[unknown_array_size_check(index)]
-    void addArrayIndexCheck(clang::ArraySubscriptExpr *expr);
-
-    /// Modify pointer dereferencing:
-    // *pointer -> *unknown_pointer_check(pointer)
-    void addPointerCheck(clang::Expr *expr);
 
 private:
   
@@ -117,7 +108,8 @@ private:
     // One pair for each address space and limit count <address space num, limit count>
     typedef std::pair< unsigned, unsigned > ClampMacroKey;
     typedef std::map< const clang::FunctionDecl*, std::stringstream* > KernelPrologueMap;
-    std::set< ClampMacroKey > usedClampMacros_;
+    typedef std::set<ClampMacroKey> RequiredMacroSet;
+    RequiredMacroSet usedClampMacros_;
     KernelPrologueMap kernelPrologues_;
     std::stringstream modulePrologue_;
  
@@ -130,16 +122,7 @@ private:
     }
   
     std::string getClampMacroCall(std::string addr, std::string type, AddressSpaceLimits &limits);
-
-    // TODO: stream for module prolog
-  
-    // TODO: streams for kernel prologs
-  
-    // TODO: mapping for address space limits by declaration
-  
-    // TODO: list of created limit check macros by limit range counts
-
-  
+    std::string getWclAddrCheckMacroDefinition(unsigned addrSpaceNum, unsigned limitCount);
   
     // address space, name
     typedef std::pair<const std::string, const std::string> CheckedType;
@@ -203,14 +186,6 @@ private:
         std::ostream &out, const std::string &type, const std::string &name,
         VariableDeclarations &relocations);
     void emitKernelPrologue(std::ostream &out);
-
-    CheckedTypes checkedPointerTypes_;
-    CheckedTypes checkedIndexTypes_;
-    VariableDeclarations relocatedGlobals_;
-    VariableDeclarations relocatedLocals_;
-    VariableDeclarations relocatedConstants_;
-    VariableDeclarations relocatedPrivates_;
-    Kernels kernels_;
 
     WebCLTransformerConfiguration cfg_;
     WebCLTransformations transformations_;
