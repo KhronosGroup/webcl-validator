@@ -72,6 +72,8 @@ public:
   
     void addMemoryAccessCheck(clang::Expr *access, AddressSpaceLimits &limits);
 
+    void addRelocationInitializer(clang::ParmVarDecl *parmDecl);
+  
     void addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
                                                unsigned minWidthInBits);
   
@@ -110,19 +112,31 @@ private:
     // Set of all different type clamp macro calls in program.
     // One pair for each address space and limit count <address space num, limit count>
     typedef std::pair< unsigned, unsigned > ClampMacroKey;
-    typedef std::map< const clang::FunctionDecl*, std::stringstream* > KernelPrologueMap;
+    typedef std::map< const clang::FunctionDecl*, std::stringstream* > FunctionPrologueMap;
     typedef std::set<ClampMacroKey> RequiredMacroSet;
     RequiredMacroSet usedClampMacros_;
-    KernelPrologueMap kernelPrologues_;
+    FunctionPrologueMap kernelPrologues_;
+    FunctionPrologueMap functionPrologues_;
     std::stringstream modulePrologue_;
-    std::map< clang::SourceLocation, unsigned > tokenLengths_;
- 
+  
+    // set to keep track that we are not doing paramRelocationInitializations multiple times
+    std::set< clang::ParmVarDecl* > parameterRelocationInitializations_;
+  
+    // \brief kernel prologue comes before function prologue... kernel might have also functionPrologue
     std::stringstream& kernelPrologue(const clang::FunctionDecl *kernel) {
       // TODO: cleanup memory...
       if (kernelPrologues_.count(kernel) == 0) {
         kernelPrologues_[kernel] = new std::stringstream();
       }
       return *kernelPrologues_[kernel];
+    }
+
+    std::stringstream& functionPrologue(const clang::FunctionDecl *func) {
+      // TODO: cleanup memory...
+      if (functionPrologues_.count(func) == 0) {
+        functionPrologues_[func] = new std::stringstream();
+      }
+      return *functionPrologues_[func];
     }
   
     std::string getClampMacroCall(std::string addr, std::string type, AddressSpaceLimits &limits);

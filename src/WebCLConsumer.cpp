@@ -170,21 +170,22 @@ public:
       if (decl) {
         std::cerr << "Decl:" << use->getDecl()->getNameAsString() << "\n";
 
-        // TODO: if original declaration is function argument, then add assignment
-        //       from function argument to address space arg to start of the function
-        //
-        //
-        // for function arg decl llvm::dyn_cast<ParmVarDecl>(decl)
-        // i.e.
-        // void foo(int arg) { bar(&arg); } ->
-        // void foo(WclProgramAllocations *wcl_allocs, int arg) {
-        //     wcl_allocs->pa.foo__arg = arg;
-        //     bar(&wcl_acllocs->pa.foo__arg); }
-        //
-      
         // check if declaration has been moved to address space and add
         // transformation if so.
         if (isRelocated(decl)) {
+          // if reloacted variable was function argument, add initialization row
+          // to start of function
+          // i.e.
+          // void foo(int arg) { bar(&arg); } ->
+          // void foo(WclProgramAllocations *wcl_allocs, int arg) {
+          //     wcl_allocs->pa.foo__arg = arg;
+          //     bar(&wcl_acllocs->pa.foo__arg); }
+          //
+          if (clang::ParmVarDecl *parmDecl =
+            llvm::dyn_cast<clang::ParmVarDecl>(decl)) {
+            transformer_.addRelocationInitializer(parmDecl);
+          }
+      
           std::cerr << "--- relocated!\n";
           transformer_.replaceWithRelocated(use, decl);
         }

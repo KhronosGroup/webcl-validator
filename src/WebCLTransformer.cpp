@@ -24,9 +24,36 @@ bool WebCLTransformer::rewrite()
 
     status = status && rewritePrologue();
   
-    for (KernelPrologueMap::iterator iter = kernelPrologues_.begin();
+    std::set<const clang::FunctionDecl*> kernelOrFunction;
+    for (FunctionPrologueMap::iterator iter = kernelPrologues_.begin();
          iter != kernelPrologues_.end(); iter++) {
-      status = status && rewriteKernelPrologue(iter->first);
+      kernelOrFunction.insert(iter->first);
+    }
+
+    for (FunctionPrologueMap::iterator iter = functionPrologues_.begin();
+       iter != functionPrologues_.end(); iter++) {
+      kernelOrFunction.insert(iter->first);
+    }
+  
+    clang::Rewriter &rewriter = transformations_.getRewriter();
+    for (std::set<const clang::FunctionDecl*>::iterator iter = kernelOrFunction.begin();
+         iter != kernelOrFunction.end(); iter++) {
+
+      const clang::FunctionDecl *func = *iter;
+      clang::Stmt *body = func->getBody();
+      if (!body) {
+        error(func->getLocStart(), "Function has no body.");
+        return false;
+      }
+
+      std::stringstream prologue;
+      if (kernelPrologues_.count(func) > 0) {
+        prologue << kernelPrologue(func).str();
+      }
+      if (functionPrologues_.count(func) > 0) {
+        prologue << functionPrologue(func).str();
+      }
+      rewriter.InsertTextAfter(body->getLocStart().getLocWithOffset(1), prologue.str());
     }
 
     status = status && rewriteTransformations();
@@ -340,6 +367,15 @@ void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLim
             << "\n----------------------------\n";
 
   replaceText(access->getSourceRange(), retVal.str());
+}
+
+void WebCLTransformer::addRelocationInitializer(clang::ParmVarDecl *parmDecl) {
+  const clang::FunctionDecl *parent = llvm::dyn_cast<const clang::FunctionDecl>(parmDecl->getParentFunctionOrMethod());
+  // add only once
+  if (parameterRelocationInitializations_.count(paramDecl) == 0) {
+    functionPrologue(parent) << "\n" << cfg_.getReferenceToRelocatedVariable(parmDecl) << " = " << parmDecl->getNameAsString() << ";\n";
+    parameterRelocationInitializations_.insert(paramDecl);
+  }
 }
 
 void WebCLTransformer::moveToModulePrologue(clang::Decl *decl) {
