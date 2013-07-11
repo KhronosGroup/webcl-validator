@@ -361,6 +361,10 @@ public:
                 KernelHandler &kernelHandler,
                 clang::ASTContext &context) {
 
+    // we need to make sure that current transformations
+    // are applied already (we are going to apply check macros now)
+    transformer.flushQueuedTransformations();
+    
     // go through memory accesses from analyser
     WebCLAnalyser::MemoryAccessMap &pointerAccesses =
       analyser.getPointerAceesses();
@@ -435,7 +439,7 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
     // Fixes all the function signatures and calls of internal helper functions
     // with additional wcl_allocs arg
     HelperFunctionHandler helperFunctionHandler(analyser_, *transformer_);
-
+  
     // Now that limits and all new address spaces are created do the replacements
     // so that struct fields are used instead of original variable declarations.
     addressSpaceHandler.doRelocations();
@@ -445,10 +449,10 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
     MemoryAccessHandler
       memoryAccessHandler(analyser_, *transformer_, kernelHandler, context);
   
-    // TODO: make sure that when we are calling kernerl, that we have enough
+    // TODO: make sure that when we are calling kernel, that we have enough
     // memory allocated to do all the memory accesses
     // kernelHandler.addMemoryLimitChecks();
-  
+
     // FUTURE: add class, which goes through builtins and creates corresponding
     //         safe calls and adds safe implementations to source.
   

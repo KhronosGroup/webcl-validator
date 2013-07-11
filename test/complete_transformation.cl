@@ -41,7 +41,17 @@ __kernel void awesomize(
     __constant float4* factors,
     __local float4* scratch) {
 
+    // check empty arg list conversion
     empty_params();
+    // check removing qualifiers from tables and structs
+    __local size_t localTable[3];
+    __local TempStruct localStruct;
+    __local TempStruct localStructTable[2];
+
+    // Tables of pointers are always allocated from private memory
+    // __local int __global * localTableOfGlobalASPtrs[2];
+    __global int* tableOfGlobalASPtrs[2];
+    __local int* tableOfLocalASPtrs[2];
 
     size_t gid = get_global_id(0);
     size_t wgid = get_local_id(0);

@@ -77,6 +77,9 @@ public:
   
     void moveToModulePrologue(clang::Decl *decl);
   
+    // applies already added transformation to source
+    void flushQueuedTransformations();
+  
     // TODO: remove methods which requires storing any model state.
     //       only allowed state here is how to represent multiple changes.
   
@@ -112,6 +115,7 @@ private:
     RequiredMacroSet usedClampMacros_;
     KernelPrologueMap kernelPrologues_;
     std::stringstream modulePrologue_;
+    std::map< clang::SourceLocation, unsigned > tokenLengths_;
  
     std::stringstream& kernelPrologue(const clang::FunctionDecl *kernel) {
       // TODO: cleanup memory...
@@ -149,6 +153,34 @@ private:
     std::string addressSpaceLimitsInitializer(
       clang::FunctionDecl *kernelFunc,AddressSpaceLimits &as);
 
+    // use vectors to preserve order, when doing macro additions, we need to do inner first
+    typedef std::pair< clang::SourceLocation, clang::SourceLocation > LocationPair;
+    typedef std::pair< LocationPair, std::string >                    ReplacementPair;
+    typedef std::pair< clang::SourceLocation, std::string >           InsertionPair;
+    typedef std::vector< LocationPair >                               RemovalContainer;
+    typedef std::vector< ReplacementPair >                            ReplacementContainer;
+    typedef std::vector< InsertionPair >                              InsertionContainer;
+  
+    // transformation methods, which does not do transformation yet, but waits
+    // if there is other transformation done for the same location and merge them first
+    void insertText(clang::SourceLocation loc, std::string text) {
+      inserts_.push_back(
+          InsertionPair(loc, text));
+    };
+    void removeText(clang::SourceRange range) {
+      removals_.push_back(
+          LocationPair(range.getBegin(), range.getEnd()));
+    };
+    void replaceText(clang::SourceRange range, std::string text) {
+      replacements_.push_back(
+          ReplacementPair( LocationPair(range.getBegin(), range.getEnd()), text));
+    };
+
+    // organize transformations so that remove / replace is done first and insert after
+    RemovalContainer     removals_;
+    ReplacementContainer replacements_;
+    InsertionContainer   inserts_;
+  
     bool rewritePrologue();
     bool rewriteKernelPrologue(const clang::FunctionDecl *kernel);
     bool rewriteTransformations();

@@ -28,6 +28,7 @@ bool WebCLTransformer::rewrite()
          iter != kernelPrologues_.end(); iter++) {
       status = status && rewriteKernelPrologue(iter->first);
     }
+
     status = status && rewriteTransformations();
 
     return status;
@@ -135,7 +136,7 @@ std::string WebCLTransformer::addressSpaceLimitsInitializer(
       retVal << "&" << decl->getNameAsString() << "[0],";
       retVal << "&" << decl->getNameAsString() << "[wcl_" + decl->getNameAsString()  + "_size]";
     } else {
-      retVal << "NULL, NULL";
+      retVal << "0,0";
     }
     
     comma = ",";
@@ -255,7 +256,7 @@ void WebCLTransformer::replaceWithRelocated(clang::DeclRefExpr *use, clang::VarD
   std::string relocatedRef = cfg_.getReferenceToRelocatedVariable(decl);
   std::string original = rewriter.getRewrittenText(use->getSourceRange());
   std::cerr << "Replacing: " << original << " with: " << relocatedRef << "\n";
-  rewriter.ReplaceText(use->getSourceRange(), relocatedRef);
+  replaceText(use->getSourceRange(), relocatedRef);
 }
 
 std::string WebCLTransformer::getClampMacroCall(std::string addr, std::string type, AddressSpaceLimits &limits) {
@@ -303,20 +304,23 @@ void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLim
              llvm::dyn_cast<clang::ArraySubscriptExpr>(access)) {
     base = arraySubExpr->getBase();
     index = arraySubExpr->getIdx();
-  
+    
   } else if (clang::UnaryOperator *unary = llvm::dyn_cast<clang::UnaryOperator>(access)) {
     base = unary->getSubExpr();
   }
 
-  std::stringstream memAddress;
-  
   clang::Rewriter &rewriter = transformations_.getRewriter();
+
+  std::stringstream memAddress;
+  // NOTE: source end locations are wrong after replacements...
+  clang::SourceRange baseRange = clang::SourceRange(base->getLocStart(), base->getLocStart().getLocWithOffset(1));
   const std::string original = rewriter.getRewrittenText(access->getSourceRange());
-  const std::string baseStr = rewriter.getRewrittenText(base->getSourceRange());
-  
+  const std::string baseStr = rewriter.getRewrittenText(baseRange);
+
   memAddress << "(" << baseStr << ")";
+  std::string indexStr;
   if (index) {
-    const std::string indexStr = rewriter.getRewrittenText(index->getSourceRange());
+    indexStr = rewriter.getRewrittenText(index->getSourceRange());
     memAddress << "+(" << indexStr << ")";
   }
   
@@ -330,16 +334,43 @@ void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLim
   }
 
   std::cerr << "Creating memcheck for: " << original
-            << "\n          replacement: " << retVal.str() << "\n";
+            << "\n                 base: " << baseStr
+            << "\n                index: " << indexStr
+            << "\n          replacement: " << retVal.str()
+            << "\n----------------------------\n";
 
-  rewriter.ReplaceText(access->getSourceRange(), retVal.str());
+  replaceText(access->getSourceRange(), retVal.str());
 }
 
 void WebCLTransformer::moveToModulePrologue(clang::Decl *decl) {
   clang::Rewriter &rewriter = transformations_.getRewriter();
   const std::string typedefText = rewriter.getRewrittenText(decl->getSourceRange());
-  rewriter.RemoveText(decl->getSourceRange());
+  removeText(decl->getSourceRange());
   modulePrologue_ << typedefText << ";\n\n";
+}
+
+void WebCLTransformer::flushQueuedTransformations() {
+  
+  clang::Rewriter &rewriter = transformations_.getRewriter();
+  
+  // if we replace / remove after insert, rewriter seems to fail
+  // transformation applying order 1. removals, 2. replacements, 3. insertions
+  for (RemovalContainer::iterator iter = removals_.begin();
+       iter != removals_.end(); iter++) {
+    rewriter.RemoveText(clang::SourceRange(iter->first, iter->second));
+  }
+  for (ReplacementContainer::iterator iter = replacements_.begin();
+       iter != replacements_.end(); iter++) {
+    rewriter.ReplaceText(clang::SourceRange(iter->first.first, iter->first.second), iter->second );
+  }
+  for (InsertionContainer::iterator iter = inserts_.begin();
+       iter != inserts_.end(); iter++) {
+    rewriter.InsertText(iter->first, iter->second);
+  }
+  
+  removals_.clear();
+  replacements_.clear();
+  inserts_.clear();
 }
 
 void WebCLTransformer::addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
@@ -353,26 +384,28 @@ void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)
 
     if (decl->getNumParams() > 0) {
       clang::SourceLocation addLoc = decl->getParamDecl(0)->getLocStart();
-      transformations_.getRewriter().InsertText(addLoc, parameter + ", ");
+      insertText(addLoc, parameter + ", ");
     } else {
       // in case of empty args, we need to replcace content inside parenthesis
       // empty params might be e.g. (void)
       clang::TypeLoc typeLoc = decl->getTypeSourceInfo()->getTypeLoc();
       clang::FunctionTypeLoc *funTypeLoc = llvm::dyn_cast<clang::FunctionTypeLoc>(&typeLoc);
       clang::SourceRange addRange(funTypeLoc->getLParenLoc(), funTypeLoc->getRParenLoc());
-      transformations_.getRewriter().ReplaceText(addRange, "(" + parameter + ")");
+      replaceText(addRange, "(" + parameter + ")");
     }
 }
 
-void WebCLTransformer::addRecordArgument(clang::CallExpr *expr)
+void WebCLTransformer::addRecordArgument(clang::CallExpr *call)
 {
-  clang::SourceLocation addLoc = expr->getRParenLoc();
+  clang::SourceLocation addLoc = call->getRParenLoc();
   std::string allocsArg = "wcl_allocs";
-  if (expr->getNumArgs() > 0) {
-    addLoc = expr->getArg(0)->getLocStart();
+  if (call->getNumArgs() > 0) {
+    addLoc = call->getArg(0)->getLocStart();
     allocsArg = "wcl_allocs, ";
   }
-  transformations_.getRewriter().InsertText(addLoc, allocsArg);
+
+  // cant translate yet, since there might be other transformations coming to same position
+  insertText(addLoc, allocsArg);
 }
 
 void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
@@ -412,12 +445,9 @@ bool WebCLTransformer::rewriteKernelPrologue(const clang::FunctionDecl *kernel)
 bool WebCLTransformer::rewriteTransformations()
 {
     bool status = true;
-/*
-    for (Kernels::iterator i = kernels_.begin(); i != kernels_.end(); ++i) {
-        const clang::FunctionDecl *kernel = (*i);
-        status = status && rewriteKernelPrologue(kernel);
-    }
-*/
+  
+    flushQueuedTransformations();
+  
     status = status && transformations_.rewriteTransformations();
 
     return status;
@@ -454,14 +484,25 @@ void WebCLTransformer::emitVariable(std::ostream &out, const clang::VarDecl *dec
     clang::QualType type = decl->getType();
     clang::Qualifiers qualifiers = type.getQualifiers();
     qualifiers.removeAddressSpace();
-
+  
+    const clang::Type *typePtr = type.getTypePtrOrNull();
+ 
     std::string variable;
     llvm::raw_string_ostream stream(variable);
     clang::PrintingPolicy policy(instance_.getLangOpts());
-    clang::QualType::print(
-        type.getTypePtrOrNull(), qualifiers, stream, policy,
-        cfg_.getNameOfRelocatedVariable(decl));
-    out << stream.str();
+  
+    // dropping qualifiers from array type is pretty hard... there must be better way to do this
+    if (type.getTypePtr()->isArrayType()) {
+      clang::QualType unqualArray = instance_.getASTContext().getUnqualifiedArrayType(type, qualifiers);
+      clang::QualType fixedType = clang::QualType(unqualArray.getTypePtr(), qualifiers);
+      const clang::ConstantArrayType *constArr = llvm::dyn_cast<clang::ConstantArrayType>(fixedType.getTypePtr()->getAsArrayTypeUnsafe());
+      assert(constArr && "OpenCL cant have non-constant arrays.");
+      out << constArr->getElementType().getAsString() << " " << cfg_.getNameOfRelocatedVariable(decl) << "[" << constArr->getSize().getZExtValue() << "]";
+
+    } else {
+      clang::QualType::print(typePtr, qualifiers, stream, policy, cfg_.getNameOfRelocatedVariable(decl));
+      out << stream.str();
+    }
 }
 
 void WebCLTransformer::emitAddressSpaceRecord(
