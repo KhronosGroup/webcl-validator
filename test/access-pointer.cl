@@ -6,18 +6,18 @@ int get_pointed_value(__global int *pointer);
 void set_pointed_value(__global int *pointer, int value);
 
 int get_pointed_value(
-    // CHECK: WclAddressSpaces *wcl_as,
+    // CHECK: WclProgramAllocations *wcl_allocs,
     __global int *pointer)
 {
-    // CHECK: return *wcl_global_int_ptr(wcl_as, pointer);
+    // CHECK: return (*(WCL_ADDR_global_1(__global int *, (pointer), wcl_allocs->gl.access_pointer__array_min,wcl_allocs->gl.access_pointer__array_max)));
     return *pointer;
 }
 
 void set_pointed_value(
-    // CHECK: WclAddressSpaces *wcl_as,
+    // CHECK: WclProgramAllocations *wcl_allocs,
     __global int *pointer, int value)
 {
-    // CHECK: *wcl_global_int_ptr(wcl_as, pointer) = value;
+    // CHECK: (*(WCL_ADDR_global_1(__global int *, (pointer), wcl_allocs->gl.access_pointer__array_min,wcl_allocs->gl.access_pointer__array_max))) = value;
     *pointer = value;
 }
 
@@ -25,11 +25,14 @@ __kernel void access_pointer(
     // CHECK: __global int *array, unsigned long wcl_array_size)
     __global int *array)
 {
-    // CHECK: WclAddressSpaces wcl_as = { 0, 0, 0, 0 };
+    // CHECK: WclProgramAllocations wcl_allocations_allocation = {
+    // CHECK:     { &array[0],&array[wcl_array_size] }    };
+    // CHECK: WclProgramAllocations *wcl_allocs = &wcl_allocations_allocation;
+
     const int i = get_global_id(0);
 
-    // CHECK: const int pointed_value = get_pointed_value(wcl_as, array + i);
+    // CHECK: const int pointed_value = get_pointed_value(wcl_allocs, array + i);
     const int pointed_value = get_pointed_value(array + i);
-    // CHECK: set_pointed_value(wcl_as, array + i, -pointed_value);
+    // CHECK: set_pointed_value(wcl_allocs, array + i, -pointed_value);
     set_pointed_value(array + i, -pointed_value);
 }

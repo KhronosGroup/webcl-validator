@@ -7,21 +7,21 @@ int value_parameters(int index);
 int unused_parameters(__global int *global_array, __local int *local_array, __constant int *constant_array, __private int *private_array);
 int used_parameters(__global int *global_array, __local int *local_array, __constant int *constant_array, __private int *private_array);
 
-// CHECK: int no_parameters(void)
+// CHECK: int no_parameters(WclProgramAllocations *wcl_allocs)
 int no_parameters(void)
 {
     return 0;
 }
 
 int value_parameters(
-    // CHECK: WclAddressSpaces *wcl_as, int index)
+    // CHECK: WclProgramAllocations *wcl_allocs, int index)
     int index)
 {
     return index + 1;
 }
 
 int unused_parameters(
-    // CHECK: WclAddressSpaces *wcl_as,
+    // CHECK: WclProgramAllocations *wcl_allocs,
     // CHECK: __global int *global_array, __local int *local_array,
     __global int *global_array, __local int *local_array,
     // CHECK: __constant int *constant_array, __private int *private_array)
@@ -31,7 +31,7 @@ int unused_parameters(
 }
 
 int used_parameters(
-    // CHECK: WclAddressSpaces *wcl_as,
+    // CHECK: WclProgramAllocations *wcl_allocs,
     // CHECK: __global int *global_array, __local int *local_array,
     __global int *global_array, __local int *local_array,
     // CHECK: __constant int *constant_array, __private int *private_array)

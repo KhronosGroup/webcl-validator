@@ -6,20 +6,17 @@ int get_indexed_value(__global int *array, int index);
 void set_indexed_value(__global int *array, int index, int value);
 
 int get_indexed_value(
-    // CHECK: WclAddressSpaces *wcl_as,
+    // CHECK: WclProgramAllocations *wcl_allocs,
     __global int *array, int index)
 {
-    // CHECK: #if 0
-    // CHECK: const int triple[3] = { 0, 1, 2 };
-    // CHECK: #endif
     const int triple[3] = { 0, 1, 2 };
-    // CHECK: const int sum1 = array[wcl_global_int_idx(wcl_as, array, index)] + array[wcl_global_int_idx(wcl_as, array, 0)] + triple[wcl_idx(index, 3UL)];
+    // CHECK: const int sum1 = (*(WCL_ADDR_global_1(__global int *, (array)+(index), wcl_allocs->gl.access_array__array_min,wcl_allocs->gl.access_array__array_max))) + (*(WCL_ADDR_global_1(__global int *, (array)+(0), wcl_allocs->gl.access_array__array_min,wcl_allocs->gl.access_array__array_max))) + (*(WCL_ADDR_private_1(const int *, (wcl_allocs->pa.get_indexed_value__triple)+(index), &wcl_allocs->pa,(&wcl_allocs->pa + 1))))
     const int sum1 = array[index] + array[0] + triple[index];
-    // CHECK: const int sum2 = triple[0] + triple[1] + triple[2];
+    // CHECK: const int sum2 = (*(WCL_ADDR_private_1(const int *, (wcl_allocs->pa.get_indexed_value__triple)+(0), &wcl_allocs->pa,(&wcl_allocs->pa + 1)))) + (*(WCL_ADDR_private_1(const int *, (wcl_allocs->pa.get_indexed_value__triple)+(1), &wcl_allocs->pa,(&wcl_allocs->pa + 1)))) + (*(WCL_ADDR_private_1(const int *, (wcl_allocs->pa.get_indexed_value__triple)+(2), &wcl_allocs->pa,(&wcl_allocs->pa + 1))))
     const int sum2 = triple[0] + triple[1] + triple[2];
-    // CHECK: const int sum3 = array[wcl_global_int_idx(wcl_as, array, index)] + array[wcl_global_int_idx(wcl_as, array, 0)] + triple[wcl_idx(index, 3UL)];
+    // CHECK: const int sum3 = (*(WCL_ADDR_global_1(__global int *, (array)+(index), wcl_allocs->gl.access_array__array_min,wcl_allocs->gl.access_array__array_max))) + (*(WCL_ADDR_global_1(__global int *, (array)+(0), wcl_allocs->gl.access_array__array_min,wcl_allocs->gl.access_array__array_max))) + (*(WCL_ADDR_private_1(const int *, (wcl_allocs->pa.get_indexed_value__triple)+(index), &wcl_allocs->pa,(&wcl_allocs->pa + 1))))
     const int sum3 = index[array] + 0[array] + index[triple]; // DRIVER-MAY-REJECT
-    // CHECK: const int sum4 = 0[triple] + 1[triple] + 2[triple];
+    // CHECK: const int sum4 = (*(WCL_ADDR_private_1(const int *, (wcl_allocs->pa.get_indexed_value__triple)+(0), &wcl_allocs->pa,(&wcl_allocs->pa + 1)))) + (*(WCL_ADDR_private_1(const int *, (wcl_allocs->pa.get_indexed_value__triple)+(1), &wcl_allocs->pa,(&wcl_allocs->pa + 1)))) + (*(WCL_ADDR_private_1(const int *, (wcl_allocs->pa.get_indexed_value__triple)+(2), &wcl_allocs->pa,(&wcl_allocs->pa + 1))))
     const int sum4 = 0[triple] + 1[triple] + 2[triple]; // DRIVER-MAY-REJECT
     return sum1 + sum2
         + sum3 + sum4 // DRIVER-MAY-REJECT
@@ -27,12 +24,12 @@ int get_indexed_value(
 }
 
 void set_indexed_value(
-    // CHECK: WclAddressSpaces *wcl_as,
+    // CHECK: WclProgramAllocations *wcl_allocs,
     __global int *array, int index, int value)
 {
-    // CHECK: array[wcl_global_int_idx(wcl_as, array, index)] += value;
+    // CHECK: (*(WCL_ADDR_global_1(__global int *, (array)+(index), wcl_allocs->gl.access_array__array_min,wcl_allocs->gl.access_array__array_max))) += value;
     array[index] += value;
-    // CHECK: array[wcl_global_int_idx(wcl_as, array, index)] += value;
+    // CHECK: (*(WCL_ADDR_global_1(__global int *, (array)+(index), wcl_allocs->gl.access_array__array_min,wcl_allocs->gl.access_array__array_max))) += value;
     index[array] += value; // DRIVER-MAY-REJECT
 }
 
@@ -40,14 +37,16 @@ __kernel void access_array(
     // CHECK: __global int *array, unsigned long wcl_array_size)
     __global int *array)
 {
-    // CHECK: WclPrivates wcl_ps = {
-    // CHECK:     { 0, 1, 2 }
+
+    // CHECK: WclProgramAllocations wcl_allocations_allocation = {
+    // CHECK:     { &array[0],&array[wcl_array_size] },
+    // CHECK:     { { 0, 1, 2 } }
     // CHECK: };
-    // CHECK: WclAddressSpaces wcl_as = { &wcl_ps, 0, 0, 0 };
+
     const int i = get_global_id(0);
 
-    // CHECK: const int indexed_value = get_indexed_value(wcl_as, array, i);
+    // CHECK: const int indexed_value = get_indexed_value(wcl_allocs, array, i);
     const int indexed_value = get_indexed_value(array, i);
-    // CHECK: set_indexed_value(wcl_as, array, i, -indexed_value);
+    // CHECK: set_indexed_value(wcl_allocs, array, i, -indexed_value);
     set_indexed_value(array, i, -indexed_value);
 }
