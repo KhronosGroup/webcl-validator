@@ -372,9 +372,9 @@ void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLim
 void WebCLTransformer::addRelocationInitializer(clang::ParmVarDecl *parmDecl) {
   const clang::FunctionDecl *parent = llvm::dyn_cast<const clang::FunctionDecl>(parmDecl->getParentFunctionOrMethod());
   // add only once
-  if (parameterRelocationInitializations_.count(paramDecl) == 0) {
+  if (parameterRelocationInitializations_.count(parmDecl) == 0) {
     functionPrologue(parent) << "\n" << cfg_.getReferenceToRelocatedVariable(parmDecl) << " = " << parmDecl->getNameAsString() << ";\n";
-    parameterRelocationInitializations_.insert(paramDecl);
+    parameterRelocationInitializations_.insert(parmDecl);
   }
 }
 
