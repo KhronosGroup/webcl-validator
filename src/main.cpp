@@ -1,10 +1,8 @@
 #include "WebCLAction.hpp"
+#include "WebCLDebug.hpp"
 
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
-
-#include <iostream>
-
 
 // TODO: when we port to llvm-3.3 we can just say -target spir and it should
 //       have valid address space mapping
@@ -12,7 +10,7 @@ class WebCLArgumentsAdjuster : public clang::tooling::ArgumentsAdjuster {
 public:
   virtual clang::tooling::CommandLineArguments Adjust(const clang::tooling::CommandLineArguments &args) {
     clang::tooling::CommandLineArguments fixedArgs = args;
-    std::cerr << "Fixing cmd args!!\n";
+    DEBUG( std::cerr << "Fixing cmd args!!\n"; );
     fixedArgs.push_back("-x");
     fixedArgs.push_back("cl");
     fixedArgs.push_back("-ffake-address-space-map");

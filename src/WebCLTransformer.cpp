@@ -1,6 +1,8 @@
 #include "WebCLTransformation.hpp"
 #include "WebCLTransformer.hpp"
 
+#include "WebCLDebug.hpp"
+
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -282,7 +284,7 @@ void WebCLTransformer::replaceWithRelocated(clang::DeclRefExpr *use, clang::VarD
   clang::Rewriter &rewriter = transformations_.getRewriter();
   std::string relocatedRef = cfg_.getReferenceToRelocatedVariable(decl);
   std::string original = rewriter.getRewrittenText(use->getSourceRange());
-  std::cerr << "Replacing: " << original << " with: " << relocatedRef << "\n";
+  DEBUG( std::cerr << "Replacing: " << original << " with: " << relocatedRef << "\n"; );
   replaceText(use->getSourceRange(), relocatedRef);
 }
 
@@ -360,12 +362,12 @@ void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLim
     retVal << "." << field;
   }
 
-  std::cerr << "Creating memcheck for: " << original
-            << "\n                 base: " << baseStr
-            << "\n                index: " << indexStr
-            << "\n          replacement: " << retVal.str()
-            << "\n----------------------------\n";
-
+  DEBUG(
+    std::cerr << "Creating memcheck for: " << original
+              << "\n                 base: " << baseStr
+              << "\n                index: " << indexStr
+              << "\n          replacement: " << retVal.str()
+              << "\n----------------------------\n"; );
   replaceText(access->getSourceRange(), retVal.str());
 }
 

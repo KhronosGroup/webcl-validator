@@ -11,7 +11,10 @@
 #include <utility>
 #include <sstream>
 
+#ifdef DEBUG
 #include <iostream>
+
+#endif
 
 namespace clang {
     class ArraySubscriptExpr;

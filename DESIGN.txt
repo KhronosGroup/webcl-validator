@@ -28,12 +28,6 @@ Then the address inside *() notation is clamped to correct range:
 
 *(WCL_CLAMP((type), ptr, min_ptr, max_ptr))
 
-ISSUE: How to make access safe in case where ((type)max_ptr) - 1 < min_ptr
-       is it ok to allow accessing NULL or should we define some fallback
-       area for each address space? Clamp solution cannot just ignore 
-       store/return 0. Branch/jump implementation is harder to do in source 
-       level because we would have to do the checks for a whole block and
-       then deside if that will be executed at all...
 
 Memory zero initialization
 --------------------------
@@ -96,35 +90,18 @@ What kind of other checks are done to validate the webcl
 What additional transformations are needed
 ------------------------------------------
 
-* all typedefs and #defines are collected and located to start of source in the 
+* all typedefs are collected and located to start of source in the 
 original order (our own typedefs needs to be injected after originals)
-
 
 TODO:
 
-* Find out type of each pointer that is accessed and
-  create WCL_CLAMP implementations to many separate limits.
-
-* Collect information what kind of checks we need to do in addition
-  to memory protection to meet the requirements (already wrote mail to webcl list about it).
-
 * Add list / checks of allowed preprocessor directives 
 
-* Recognize the case if we know how big value we are going to load
-  and if we know that value might be bigger that [min,max] range, then add 
-  additional checks and make reference to point address space specific "NULL"
-  which is big enough to all loads / stores if the program. If we could just
-  kill the program before memory access, it would be nice too.
-
-* Address space specific null pointers to return if no other valid area could have
-  been clamped for access (NULLS should be initialized in start of every kernel)
-
-* system should move all typedefs to be in start of program in correct order
-  and add our structures after those.
+* Create address space specific null pointers and code to initialize them.
 
 * add converter which adds padding to constant address space struct initializer
 
-* add rewriter, which converts private struct initializations to assignments (or at least give failure of private struct initializer at start)
+* fix private memory initializers (support only basic types and arrays)
 
 FUTURE:
 
@@ -132,7 +109,8 @@ FUTURE:
   between function calls.
 
 * Inject safe builtin implementations, for the builtin functions which
-  might access memory evil ways (probably we need to generate code on the fly if multiple limits to check). 
+  might access memory evil ways (probably we need to generate code on the 
+  fly if multiple limits to check). 
 
 * Add separate version of helper functions for each kernel and create
   different limit structures for each kernel. 
@@ -141,14 +119,16 @@ FUTURE:
   and write stack emulation, instead of having all the private variables
   separately in provate address space struct
 
+* Add value range analysis to be able to remove checks out from loops and
+  to start of program or in extreme case completely create pre-validation 
+  kernel, which checks that arguments are ok before just executing the code 
+  (this would allow e.g. autovectorization to work normally).
 
 
 Implementation details and brief intro to code base
 ====================================================
 
-Magic starts with 
-
-main.cpp: We create our WebCLAction and run it with webclTool.
+Magic starts with main.cpp: We create our WebCLAction and run it with webclTool.
 
     clang::tooling::ClangTool webclTool(optionsParser.GetCompilations(),
                                         optionsParser.GetSourcePathList());
@@ -158,12 +138,50 @@ main.cpp: We create our WebCLAction and run it with webclTool.
 
     const int status = webclTool.run(webCLActionFactory);
 
-WebCLAction.cpp: Does initialize some classes, most importantly WebCLConsumer, which does basically all the hard work.
+WebCLAction.cpp: Does initialize some classes, most importantly WebCLConsumer, which coordinates 
+all the hard work to different pieces.
 
 WebCLConsumer.cpp: 
 
-Calls all visitors to analyse and interpret AST tree. WebCLAnalyser is the visitor, which collects all the information that is needed for the few handler classes to be able to model the address spaces, dynamic memory got from kernel arguments and memory accesses in the program.
+Calls all visitors to analyse and interpret AST tree. WebCLAnalyser is the visitor, which collects 
+all the information that is needed for the few handler classes to be able to model the address 
+spaces, dynamic memory got from kernel arguments and memory accesses in the program.
 
 This all is done in WebCLConsumer::HandleTranslationUnit method.
 
-Handler classes calls internally WebCLTransformer to do required changes to code. To keep system simple and brains in one place transformer does not know anything about state between calls. It does only single transformations to source according to data provided by handler classes.
+Handler classes calls internally WebCLTransformer to do required changes to code. To keep system 
+simple and brains in one place transformer does not know anything about state between calls. It does 
+only single transformations to source according to data provided by handler classes.
+
+Currently design has following handlers:
+
+InputNormaliser: This class just moves typedefs to start of module so that typedefs are 
+                 available when defining types of address spaces.
+
+HelperFunctionHandler: Adds additinal parameter to every helper function signature and to calls
+                       of internal functions.
+
+AddressSpaceHandler: Collects information about which variables must be collected to each address space
+                     and if necessary organizes order of data and adds explicit paddin bytes to prevent
+                     information leakage. Class also does relocations of variable uses to refer address
+                     space equivalents instead.
+
+KernelHandler: Class collects information of every limit that exists in program and contains information
+               which limits each variable use should respect. Limits are collected from AddressSpaceHandler
+               and from pointers passed to kernel arguments. Class also creates initialization code for
+               each kernel, where static allocations of private and local address space data are done.
+
+MemoryAccessHandler: This class knows everything about memory accesses and uses limit information got from
+                     kernel handler to inject memory access clamping macro calls.
+
+WebCLTransformer.cpp: Handler classes use transformer to create all simple transformations.
+This should be mostly brainless class that e.g. knows how relocation is done, but does not
+know if it should be done. 
+
+Does the hard work of keeping track generated prologues of every function / kernel and
+module prologue. Provides easy API for handlers to be able to create transformations
+required by the algorithm, but does not store internally data about program structure. 
+
+
+
+

@@ -3,7 +3,7 @@
 
 #include "clang/AST/ASTContext.h"
 
-#include <iostream>
+#include "WebCLDebug.hpp"
 
 WebCLConsumer::WebCLConsumer(
     clang::CompilerInstance &instance, clang::Rewriter &rewriter)
@@ -102,10 +102,14 @@ public:
           decl->getType()->isArrayType() ||
           analyser.hasAddressReferences(decl)) {
         
-        std::cerr << "Adding to AS: " << decl->getDeclName().getAsString() << "\n";
+        DEBUG(
+          std::cerr << "Adding to AS: "
+                    << decl->getDeclName().getAsString() << "\n"; );
         privates_.insert(decl);
       } else {
-        std::cerr << "Skipping: " << decl->getDeclName().getAsString() << "\n";
+        DEBUG(
+          std::cerr << "Skipping: "
+                   << decl->getDeclName().getAsString() << "\n"; );
       }
     }
     
@@ -158,7 +162,7 @@ public:
   /// address space.
   void doRelocations() {
     
-    std::cerr << "Going through all variable uses: \n"; 
+    DEBUG( std::cerr << "Going through all variable uses: \n"; );
     WebCLAnalyser::DeclRefExprSet &varUses = analyser_.getVariableUses();
     for (WebCLAnalyser::DeclRefExprSet::iterator i = varUses.begin();
          i != varUses.end(); ++i) {
@@ -168,7 +172,7 @@ public:
       clang::VarDecl *decl = llvm::dyn_cast<clang::VarDecl>(use->getDecl());
       
       if (decl) {
-        std::cerr << "Decl:" << use->getDecl()->getNameAsString() << "\n";
+        DEBUG( std::cerr << "Decl:" << use->getDecl()->getNameAsString() << "\n"; );
 
         // check if declaration has been moved to address space and add
         // transformation if so.
@@ -186,7 +190,7 @@ public:
             transformer_.addRelocationInitializer(parmDecl);
           }
       
-          std::cerr << "--- relocated!\n";
+          DEBUG( std::cerr << "--- relocated!\n"; );
           transformer_.replaceWithRelocated(use, decl);
         }
       }
@@ -263,21 +267,22 @@ public:
         
           transformer.addSizeParameter(parm);
           
-          std::cerr << "Adding dynamic limits from kernel:"
-                    << func->getDeclName().getAsString()
-                    << " arg:" << parm->getDeclName().getAsString() << "\n";
+          DEBUG(
+            std::cerr << "Adding dynamic limits from kernel:"
+                      << func->getDeclName().getAsString()
+                      << " arg:" << parm->getDeclName().getAsString() << "\n"; );
 
           switch (parm->getType().getTypePtr()->getPointeeType().getAddressSpace()) {
             case clang::LangAS::opencl_global:
-              std::cerr << "Global address space!\n";
+              DEBUG( std::cerr << "Global address space!\n"; );
               globalLimits_.insert(parm);
               break;
             case clang::LangAS::opencl_constant:
-              std::cerr << "Constant address space!\n";
+              DEBUG( std::cerr << "Constant address space!\n"; );
               constantLimits_.insert(parm);
               break;
             case clang::LangAS::opencl_local:
-              std::cerr << "Local address space!\n";
+              DEBUG( std::cerr << "Local address space!\n"; );
               localLimits_.insert(parm);
               break;
             default:
@@ -414,17 +419,17 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
 
     // Introduce changes in way that after every step we still have correclty
     // running program.
-  
-    // Class that for now just moves all the  typedefs
-    // and defines to start of program
-    InputNormaliser inputNormaliser(analyser_, *transformer_);
 
     // FUTURE: Add memory limit dependence ananlysis here
     // (or maybe it could be even separate visitor). Also value range
     // analysis could help in meny cases. Based on dependence
     // anlysis could create separate implementations for different calls
     // if we know which arguments are passed to function
-  
+
+    // Class that for now just moves all the  typedefs
+    // and defines to start of program
+    InputNormaliser inputNormaliser(analyser_, *transformer_);
+
     // Collect and organize all the information from analyser_ to create
     // view to different address spaces and to provide replacements for
     // replaced variable references in first stage just create types and collect

@@ -1,3 +1,4 @@
+// RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h | grep -v CHECK | %FileCheck %s
 
 typedef struct {
     float table[3];

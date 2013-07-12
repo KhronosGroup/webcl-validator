@@ -1,10 +1,9 @@
 #include "WebCLVisitor.hpp"
+#include "WebCLDebug.hpp"
 
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
 #include "clang/Frontend/CompilerInstance.h"
-
-#include <iostream>
 
 // WebCLVisitor
 
@@ -284,7 +283,7 @@ bool WebCLAnalyser::handleVarDecl(clang::VarDecl *decl)
     }
   } else if (decl->hasGlobalStorage()) {
     info(decl->getLocStart(), "Global/Local address space variable! Collect to corresponding address space.");
-    std::cerr << "######## Woot:" << decl->getType().getAddressSpace() << "\n";
+    DEBUG( std::cerr << "######## Woot:" << decl->getType().getAddressSpace() << "\n"; );
   } else {
     info(decl->getLocStart(), "Filter these, so that only globals are left. And maybe some function arguments.");
   }
@@ -300,7 +299,7 @@ bool WebCLAnalyser::handleMemberExpr(clang::MemberExpr *expr)
     info(expr->getLocStart(), "Pointer access!");
     clang::VarDecl *declaration = NULL;
     if (clang::DeclRefExpr *declRef = llvm::dyn_cast<clang::DeclRefExpr>(expr->getBase())) {
-      std::cerr << "Jackpot found decl:\n";
+      DEBUG( std::cerr << "Jackpot found decl:\n"; );
       info(declRef->getDecl()->getLocStart(), "-- -- Corresponding decl.");
       declaration = llvm::dyn_cast<clang::VarDecl>(declRef->getDecl());
     }
@@ -319,7 +318,7 @@ bool WebCLAnalyser::handleExtVectorElementExpr(clang::ExtVectorElementExpr *expr
     info(expr->getLocStart(), "Pointer access!");
     clang::VarDecl *declaration = NULL;
     if (clang::DeclRefExpr *declRef = llvm::dyn_cast<clang::DeclRefExpr>(expr->getBase())) {
-      std::cerr << "Jackpot found decl:\n";
+      DEBUG( std::cerr << "Jackpot found decl:\n"; );
       info(declRef->getDecl()->getLocStart(), "-- -- Corresponding decl.");
       declaration = llvm::dyn_cast<clang::VarDecl>(declRef->getDecl());
     }
@@ -338,7 +337,7 @@ bool WebCLAnalyser::handleArraySubscriptExpr(clang::ArraySubscriptExpr *expr)
   // in case if we are abse to trace actual base declaration we can optimize more in future
   if (clang::ImplicitCastExpr *implicitCast = llvm::dyn_cast<clang::ImplicitCastExpr>(expr->getBase())) {
     if (clang::DeclRefExpr *declRef = llvm::dyn_cast<clang::DeclRefExpr>(implicitCast->getSubExpr())) {
-      std::cerr << "Jackpot found decl:\n";
+      DEBUG( std::cerr << "Jackpot found decl:\n"; );
       info(declRef->getDecl()->getLocStart(), "-- -- Corresponding decl.");
       declaration = llvm::dyn_cast<clang::VarDecl>(declRef->getDecl());
     }
@@ -362,7 +361,7 @@ bool WebCLAnalyser::handleUnaryOperator(clang::UnaryOperator *expr)
     info(expr->getLocStart(), "Pointer access!");
     clang::VarDecl *declaration = NULL;
     if (clang::DeclRefExpr *declRef = llvm::dyn_cast<clang::DeclRefExpr>(expr->getSubExpr())) {
-      std::cerr << "Jackpot found decl:\n";
+      DEBUG( std::cerr << "Jackpot found decl:\n"; );
       info(declRef->getDecl()->getLocStart(), "-- -- Corresponding decl.");
       declaration = llvm::dyn_cast<clang::VarDecl>(declRef->getDecl());
     }
@@ -374,7 +373,7 @@ bool WebCLAnalyser::handleUnaryOperator(clang::UnaryOperator *expr)
   } else if(expr->getOpcode() == clang::UO_AddrOf) {
     info(expr->getLocStart(), "Address of something, might require some handling.");
     if (clang::DeclRefExpr *declRef = llvm::dyn_cast<clang::DeclRefExpr>(expr->getSubExpr())) {
-      std::cerr << "Found decl for address of operator:\n";
+      DEBUG( std::cerr << "Found decl for address of operator:\n"; );
       info(declRef->getDecl()->getLocStart(), "-- -- Corresponding decl.");
       clang::VarDecl *decl = llvm::dyn_cast<clang::VarDecl>(declRef->getDecl());
       assert(decl);
@@ -414,10 +413,10 @@ bool WebCLAnalyser::handleCallExpr(clang::CallExpr *expr)
   info(expr->getLocStart(), "Found call, adding to bookkeeping to decide later if parameterlist needs fixing.");
 
   if (helperFunctions_.count(expr->getDirectCallee()) > 0) {
-    std::cerr << "Looks like it is call to internal function!\n";
+    DEBUG( std::cerr << "Looks like it is call to internal function!\n"; );
     internalCalls_.insert(expr);
   } else {
-    std::cerr << "Looks like it is call to builtin!\n";
+    DEBUG( std::cerr << "Looks like it is call to builtin!\n"; );
     builtinCalls_.insert(expr);
   }
   

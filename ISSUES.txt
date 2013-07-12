@@ -113,3 +113,19 @@ Array Indexing
 Fixed in validator tool, not in upstream:
 Clang doesn't handle indexing of arrays with large integer constant
 expressions (>= 2^63) properly.
+
+Static vector initialisers are not working properly in clang 3.2
+-----------------------------------------------------------------
+
+http://clang-developers.42468.n3.nabble.com/getSourceRange-for-InitListExpr-td4033036.html
+Also opened bug report: http://llvm.org/bugs/show_bug.cgi?id=16560
+
+for now bug can be circumvented by having vector initializations wrapped inside ().
+
+i.e (float4)(0,0,0,0) -> ((float4)(0,0,0,0))
+
+
+
+
+
+

@@ -1,3 +1,5 @@
+// RUN: true
+
 /**
  * Completely unoptimized instrumentation, which does collect all the variables
  * to the address space.
