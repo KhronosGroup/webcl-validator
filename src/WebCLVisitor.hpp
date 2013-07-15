@@ -197,6 +197,9 @@ public:
   }
   
 private:
+
+  bool isPrivate(clang::VarDecl *decl) const;
+  void collectVariable(clang::VarDecl *decl);
   
   clang::FunctionDecl *contextFunction_;
   

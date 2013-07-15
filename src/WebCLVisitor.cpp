@@ -247,28 +247,31 @@ WebCLAnalyser::~WebCLAnalyser()
 
 bool WebCLAnalyser::handleVarDecl(clang::VarDecl *decl)
 {
-  if (!isFromMainFile(decl->getLocStart())) return true;
- 
+  if (!isFromMainFile(decl->getLocStart()))
+    return true;
+
   switch (decl->getType().getAddressSpace()) {
     case clang::LangAS::opencl_local:
       info(decl->getLocStart(), "Local variable declaration. Collect!");
-      localVariables_.insert(decl);
+      collectVariable(decl);
       break;
     case clang::LangAS::opencl_constant:
       info(decl->getLocStart(), "Constant variable declaration. Collect!");
-      constantVariables_.insert(decl);
+      collectVariable(decl);
       break;
     default:
-      assert(decl->getType().getAddressSpace() == 0);
+      assert(isPrivate(decl));
       if (decl->isFunctionOrMethodVarDecl()) {
         info(decl->getLocStart(), "Private variable declaration. Collect!");
-        privateVariables_.insert(decl);
+        collectVariable(decl);
       } else {
         info(decl->getLocStart(), "Function parameter... skip for now.");
       }
   }
   
   return true;
+
+#if 0
   
   if (decl->hasLocalStorage()) {
     if (decl->isFunctionOrMethodVarDecl()) {
@@ -289,6 +292,8 @@ bool WebCLAnalyser::handleVarDecl(clang::VarDecl *decl)
   }
   
   return true;
+
+#endif
 }
 
 bool WebCLAnalyser::handleMemberExpr(clang::MemberExpr *expr)
@@ -378,8 +383,9 @@ bool WebCLAnalyser::handleUnaryOperator(clang::UnaryOperator *expr)
       clang::VarDecl *decl = llvm::dyn_cast<clang::VarDecl>(declRef->getDecl());
       assert(decl);
       declarationsWithAddressOfAccess_.insert(decl);
-      // also add veriable to address space in this special case
-      privateVariables_.insert(decl);
+      // Add variable to corresponding address space record if its
+      // address is required.
+      collectVariable(decl);
     }
   }
   return true;
@@ -441,3 +447,22 @@ bool WebCLAnalyser::handleDeclRefExpr(clang::DeclRefExpr *expr) {
   return true;
 }
 
+bool WebCLAnalyser::isPrivate(clang::VarDecl *decl) const
+{
+    return decl->getType().getAddressSpace() == 0;
+}
+
+void WebCLAnalyser::collectVariable(clang::VarDecl *decl)
+{
+    switch (decl->getType().getAddressSpace()) {
+    case clang::LangAS::opencl_local:
+        localVariables_.insert(decl);
+        return;
+    case clang::LangAS::opencl_constant:
+        constantVariables_.insert(decl);
+        return;
+    default:
+        if (isPrivate(decl))
+            privateVariables_.insert(decl);
+    }
+}
