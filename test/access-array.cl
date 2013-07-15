@@ -1,4 +1,5 @@
-// RUN: cat %s | grep -v DRIVER-MAY-REJECT %opencl-validator
+// RUN: cat %s | grep -v DRIVER-MAY-REJECT | %opencl-validator
+// RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>/dev/null | grep -v "Processing\|CHECK" | %opencl-validator
 // RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h | grep -v CHECK | %FileCheck %s
 
 // prototypes for apple driver
@@ -37,7 +38,6 @@ __kernel void access_array(
     // CHECK: __global int *array, unsigned long wcl_array_size)
     __global int *array)
 {
-
     // CHECK: WclProgramAllocations wcl_allocations_allocation = {
     // CHECK:     { &array[0],&array[wcl_array_size] },
     // CHECK:     { { 0, 1, 2 } }

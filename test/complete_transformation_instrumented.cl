@@ -1,4 +1,4 @@
-// RUN: true
+// RUN: cat %s | %opencl-validator
 
 /**
  * Completely unoptimized instrumentation, which does collect all the variables
