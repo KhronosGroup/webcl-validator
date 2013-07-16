@@ -567,16 +567,25 @@ std::string WebCLTransformer::getWclAddrCheckMacroDefinition(unsigned aSpaceNum,
   std::stringstream retValPostfix;
   retVal  << "#define WCL_ADDR_" << cfg_.getNameOfAddressSpace(aSpaceNum) << "_" << limitCount << "(type, addr";
   for (unsigned i = 0; i < limitCount; i++) {
-      retVal << ",min" << i << ",max" << i;
+      retVal << ", min" << i << ", max" << i;
   }
-  retVal << ") ";
+  retVal << ") \\\n";
+  retVal << cfg_.indentation_ << "( \\\n";
 
   for (unsigned i = 0; i < limitCount; i++) {
-    retVal << "((addr >= ((type)min" << i << ") && addr <= WCL_LAST(type, max" << i << ")) ? (addr) : (";
-    retValPostfix << " ))";
+    retVal << cfg_.getIndentation(i + 1) << "( "
+           << "( "
+           << "((addr) >= ((type)min" << i << "))"
+           << " && "
+           << "((addr) <= WCL_LAST(type, max" << i << "))"
+           << " )"
+           << " ? (addr) : \\\n";
+    retValPostfix << " )";
   }
   
-  retVal << "((type)" << asNull << ") " << retValPostfix.str();
+  retVal << cfg_.getIndentation(limitCount + 1)
+         << "((type)(" << asNull << "))"
+         << retValPostfix.str() << " )";
   
   return retVal.str();
 }
@@ -584,7 +593,7 @@ std::string WebCLTransformer::getWclAddrCheckMacroDefinition(unsigned aSpaceNum,
 void WebCLTransformer::emitLimitMacros(std::ostream &out)
 {
     out << "#define WCL_LAST(type, ptr) \\\n"
-        << cfg_.indentation_ <<  "(((type)ptr)-1)\n\n";
+        << cfg_.indentation_ <<  "(((type)(ptr)) - 1)\n\n";
 
     for (RequiredMacroSet::iterator i = usedClampMacros_.begin();
          i != usedClampMacros_.end(); i++) {

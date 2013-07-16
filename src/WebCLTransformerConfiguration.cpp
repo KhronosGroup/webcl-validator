@@ -58,7 +58,7 @@ const std::string WebCLTransformerConfiguration::getNameOfAddressSpace(unsigned 
 const std::string WebCLTransformerConfiguration::getNameOfAddressSpaceNullPtrRef(unsigned addressSpaceNumber) const
 {
     // TODO: implement me! Probably we need to inject null to each address space struct
-    return "wcl_allocs";
+    return "min0";
 }
 
 const std::string WebCLTransformerConfiguration::getNameOfAddressSpaceRecord(clang::QualType type) const
