@@ -292,10 +292,14 @@ public:
       }
     }
     
-    // add typedefs for each limit structure
-    transformer.createGlobalAddressSpaceLimitsTypedef(globalLimits_);
-    transformer.createConstantAddressSpaceLimitsTypedef(constantLimits_);
-    transformer.createLocalAddressSpaceLimitsTypedef(localLimits_);
+    // Add typedefs for each limit structure. These are required if
+    // static or dynamic allocations are present.
+    if (!globalLimits_.empty())
+        transformer.createGlobalAddressSpaceLimitsTypedef(globalLimits_);
+    if (!constantLimits_.empty())
+        transformer.createConstantAddressSpaceLimitsTypedef(constantLimits_);
+    if (!localLimits_.empty())
+        transformer.createLocalAddressSpaceLimitsTypedef(localLimits_);
     transformer.createProgramAllocationsTypedef(
       globalLimits_, constantLimits_, localLimits_,
       addressSpaceHandler.getPrivateAddressSpace());
@@ -307,8 +311,11 @@ public:
       
       clang::FunctionDecl *func = *i;
       
-      // Create allocation for local address space according to earlier typedef
-      transformer.createLocalAddressSpaceAllocation(func);
+      // Create allocation for local address space according to
+      // earlier typedef. This is required if there are static
+      // allocations but not if there are only dynamic allocations.
+      if (addressSpaceHandler.hasLocalAddressSpace())
+          transformer.createLocalAddressSpaceAllocation(func);
 
       // allocate wcl_allocations_allocation and create the wcl_allocs
       // pointer to it, give all the data it needs to be able to create
