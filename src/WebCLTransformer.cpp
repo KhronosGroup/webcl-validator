@@ -288,6 +288,11 @@ void WebCLTransformer::replaceWithRelocated(clang::DeclRefExpr *use, clang::VarD
   replaceText(use->getSourceRange(), relocatedRef);
 }
 
+void WebCLTransformer::removeRelocated(clang::VarDecl *decl)
+{
+  removeText(decl->getSourceRange());
+}
+
 std::string WebCLTransformer::getClampMacroCall(std::string addr, std::string type, AddressSpaceLimits &limits) {
   
   std::stringstream retVal;

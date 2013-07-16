@@ -52,6 +52,7 @@ public:
     void createConstantAddressSpaceTypedef(AddressSpaceInfo &as);
     void createConstantAddressSpaceAllocation(AddressSpaceInfo &as);
     void replaceWithRelocated(clang::DeclRefExpr *use, clang::VarDecl *decl);
+    void removeRelocated(clang::VarDecl *decl);
     void createGlobalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);
     void createConstantAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);
     void createLocalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);

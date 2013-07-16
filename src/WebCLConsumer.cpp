@@ -197,6 +197,15 @@ public:
     }
   };
 
+  /// \brief Remove variables that have been relocated into any
+  /// address space records.
+  void removeRelocatedVariables()
+  {
+    removeRelocatedVariables(privates_);
+    removeRelocatedVariables(locals_);
+    removeRelocatedVariables(constants_);
+  }
+
   /// \brief Returns true if variable declaration is moved to address space struct
   bool isRelocated(clang::VarDecl *decl) {
     switch (decl->getType().getAddressSpace()) {
@@ -227,6 +236,18 @@ private:
       }
     }
     return organizedAddressSpaces[declarations];
+  };
+
+  /// \brief Remove variables that have been relocated into a specific
+  /// address space record.
+  void removeRelocatedVariables(AddressSpaceSet &variables)
+  {
+    for (AddressSpaceSet::iterator i = variables.begin(); i != variables.end(); ++i) {
+      clang::VarDecl *decl = (*i);
+      // Remove all relocations except function parameters.
+      if (!llvm::dyn_cast<clang::ParmVarDecl>(decl) && isRelocated(decl))
+        transformer_.removeRelocated(decl);
+    }
   };
 
   WebCLAnalyser &analyser_;
@@ -456,7 +477,8 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
     // Now that limits and all new address spaces are created do the replacements
     // so that struct fields are used instead of original variable declarations.
     addressSpaceHandler.doRelocations();
-  
+    addressSpaceHandler.removeRelocatedVariables();
+
     // Emits pointer checks for all memory accesses and injects
     // required check macro definitions to prolog.
     MemoryAccessHandler
