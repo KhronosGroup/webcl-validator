@@ -321,9 +321,11 @@ public:
         transformer.createConstantAddressSpaceLimitsTypedef(constantLimits_);
     if (!localLimits_.empty())
         transformer.createLocalAddressSpaceLimitsTypedef(localLimits_);
-    transformer.createProgramAllocationsTypedef(
-      globalLimits_, constantLimits_, localLimits_,
-      addressSpaceHandler.getPrivateAddressSpace());
+    if (hasProgramAllocations(addressSpaceHandler)) {
+        transformer.createProgramAllocationsTypedef(
+            globalLimits_, constantLimits_, localLimits_,
+            addressSpaceHandler.getPrivateAddressSpace());
+    }
     
     // now that we have all the data about the limit structures, we can actually
     // create the initialization code for each kernel
@@ -342,9 +344,11 @@ public:
       // pointer to it, give all the data it needs to be able to create
       // also static initializator and prevent need for separate private
       // area zeroing...
-      transformer.createProgramAllocationsAllocation(
-        func, globalLimits_, constantLimits_, localLimits_,
-        addressSpaceHandler.getPrivateAddressSpace());
+      if (hasProgramAllocations(addressSpaceHandler)) {
+          transformer.createProgramAllocationsAllocation(
+              func, globalLimits_, constantLimits_, localLimits_,
+              addressSpaceHandler.getPrivateAddressSpace());
+      }
 
       // inject code that does zero initializing for all local memory ranges
       transformer.createLocalAreaZeroing(func, localLimits_);
@@ -372,6 +376,12 @@ public:
   
   ~KernelHandler() {
     // FUTURE: free memory from declaration limits table
+  };
+
+  bool hasProgramAllocations(AddressSpaceHandler &addressSpaceHandler)
+  {
+      return !addressSpaceHandler.getPrivateAddressSpace().empty() ||
+          !globalLimits_.empty() || !constantLimits_.empty() || !localLimits_.empty();
   };
   
 private:
@@ -472,7 +482,9 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
   
     // Fixes all the function signatures and calls of internal helper functions
     // with additional wcl_allocs arg
-    HelperFunctionHandler helperFunctionHandler(analyser_, *transformer_);
+    if (kernelHandler.hasProgramAllocations(addressSpaceHandler)) {
+      HelperFunctionHandler helperFunctionHandler(analyser_, *transformer_);
+    }
   
     // Now that limits and all new address spaces are created do the replacements
     // so that struct fields are used instead of original variable declarations.
