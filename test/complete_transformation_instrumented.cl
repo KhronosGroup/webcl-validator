@@ -140,7 +140,7 @@ __kernel void awesomize(
     __local WclLocals wcl_locals;
     // trivial local memory zeroing
     for (uint i = 0; i < wcl_scratch_size; i++) scratch[i] = (float4)(0,0,0,0);
-    for (uint i = 0; i < sizeof(WclLocals); i++) ((uchar*)(&wcl_locals))[i] = 0;
+    for (uint i = 0; i < sizeof(WclLocals); i++) ((__local uchar*)(&wcl_locals))[i] = 0;
     barrier(CLK_LOCAL_MEM_FENCE);
 
     // zeroing private memory and allowing initializations is pretty tough
