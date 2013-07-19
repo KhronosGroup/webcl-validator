@@ -224,29 +224,54 @@ Size required by pointers:
 
 Alternative solution doesn't suffer size overhead regarding
 pointers. This issue would be more pronounced in large pointer arrays.
+Each pointer in array would require additional min/max addresses
+stored and therefore it would require 3x more memory/registers. 
+
+Size overhead of smart pointer approach affects directly to memory
+comsuption and overall performance. When ever pointer is assigned we 
+need to store/load 3 addresses instead of just one. 
+
+Preloading memory access limit values:
+
+Since in smart pointer appriach each pointer has its own limits 
+many different pointers cannot share the same limits. This means
+that we would need to do indirect load operation for every pointer
+access to get limits for that single memory access. With altenative
+approach we have single limits for private address space, which 
+we can load just once in runnin kernel and re-use the loaded values
+for every memory access of private address space. For other address
+spaces we have few separate limits, which compiler should be able to
+optimize in a way that required limits loads are done just once 
+in each function.
 
 Number of region checks in pointer accesses:
 
 Smart pointers require only one region check for each pointer access
-whereas the alternative approach may require multiple checks.
+where min and max limits are always loaded indirectly whereas the 
+alternative approach may require multiple checks and usually limits
+needs to be loaded just once for each limit range in the program.
 
 Only one check is needed for pointers accessing private memory. Local,
-global and constant memory accesses need multiple checks depending on
-how many different memory areas are passed to kernels.
+global and constant memory accesses might need multiple checks depending on
+how many different memory areas are passed to kernels and how easy it
+is to resolve exact limits of each memory access.
 
-However, the user can usually rearrange the code in such a way that
+The user can usually rearrange the code in such a way that
 local and constant memory objects don't need to be passed. Global
 memory is commonly copied to local memory before it's used and
-therefore global memory checks can also be minimized if the user wants
-to.
+therefore global memory checks can also be minimized if the user 
+wants to. Compiler also know in compile time if unefficient checks 
+are needed in program and can guide programmer how to possibly 
+avoid the checks.
 
-Therefore, at least in principle, it should be possible to write code
-that doesn't require too complicated region checks even with the
-alternative approach. The validator tool could provide optimization
-hints and warnings if it recognizes that too many region checks are
-required. Alternatively the tool could choose one of these two
-approaches after initial analysis of the input source.
+Also simple dependence analysis can resolve single limits for the
+cases where kernel arguments are accessed directly through base
+pointer.
 
+There fore it is possible to write code that doesn't require 
+multiple region checks for core parts of the code. The validator 
+tool could provide optimization hints and warnings if it 
+recognizes that too many region checks are required. 
 
 Coding guidelines for programmer to avoid checks
 ------------------------------------------------
