@@ -1,6 +1,253 @@
 Some notes about the system and how does it work
 ================================================
 
+The validation solution described here is based on already existing
+LLVM IR based implementation. This alternative solution was invented
+as a replacement for a smart pointer based solution that wasn't found
+to be good enough in practice.
+
+The project sources are available at
+https://github.com/toaarnio/llvm-ir-memprotect. The people involved in
+that project have also done initial performance analysis and therefore
+they should have some rough benchmark results available. However, they
+haven't done extensive benchmarking yet.
+
+It's best to start explaining this alternative solution with example
+code.
+
+
+Example transformation
+----------------------
+
+Consider the following OpenCL C code:
+
+int helper(int *ptr)
+{
+    return *ptr;
+}
+
+__kernel void entry(__global int *res)
+{
+    int val = 0;
+    res[get_global_id(0)] = helper(&val);
+}
+
+The code will be transformed as:
+
+typedef struct {
+    int entry__val;
+} WclPrivates;
+
+typedef struct {
+    __global int *entry__res_min;
+    __global int *entry__res_max;
+} WclGlobalLimits;
+
+typedef struct {
+    WclGlobalLimits gl;
+    WclPrivates pa;
+} WclProgramAllocations;
+
+int helper(WclProgramAllocations *wcl_allocs, int *ptr)
+{
+    return *CHECK_PRIVATE(wcl_allocs, ptr);
+}
+
+__kernel void entry(__global int *res, unsigned long wcl_res_size)
+{
+    WclProgramAllocations wcl_allocations_allocation = {
+        { &res[0], &res[wcl_res_size] }, // WclGlobalLimits
+        { 0 } // WclPrivates
+    };
+    WclProgramAllocations *wcl_allocs = &wcl_allocations_allocation;
+
+    *CHECK_GLOBAL(wcl_allocs, res + get_global_id(0)) =
+        helper(wcl_allocs, &wcl_allocs->pa.entry__val);
+}
+
+
+Introduction to required transformations
+----------------------------------------
+
+Variable relocation:
+
+Any variable that requires its address to be known, must be relocated
+to an address space specific structure. In the example 'val' was
+relocated to 'WclPrivates'. Similar structures are required for local
+and constant address spaces.
+
+Variable renaming:
+
+Relocated variables may need to be renamed, because identically named
+variables may be relocated to the same address space structure from
+multiple places. In the example 'val' was renamed as 'entry__val', the
+new name must be unique within the address space structure.
+
+Type relocation:
+
+The types of relocated variables need to be relocated as well (or at
+least forward declarations need to be generated). If the type of 'val'
+would have been 'struct V { int v; }' instead of 'int', the type would
+have had to be introduced before 'WclPrivates'.
+
+Type renaming:
+
+Just like relocated variables, some relocated types need to be
+uniquely renamed.
+
+Static limit check:
+
+Accesses for memory that has been defined inside the kernel can be
+checked by determining the begin and end addresses of the
+corresponding address space structure. In the example 'CHECK_PRIVATE'
+can clamp 'ptr' to be within instance of 'WclPrivates'.
+
+Dynamic limit check:
+
+Size of memory regions passed to kernels need to be defined. In the
+example 'wcl_res_size' was introduced for 'res'. The extra size
+parameters can be used to define limits for passed memory
+regions. This is shown in 'WclGlobalLimits'. Similar limit structures
+are needed for local and constant address spaces as well. In the
+example 'CHECK_GLOBAL' will use the limit information to clamp 'res +
+get_global_id(0)'.
+
+Initialization:
+
+All address space structures (for internal allocations) and limit
+structures (for external allocations) are put together into
+'WclProgramAllocations'. Instances of the generated structures need to
+be created and initialized in the beginning of each kernel.
+
+Transformation:
+
+A pointer to the main allocation structure, 'wcl_allocs', needs to be
+passed to any function that performs pointer checks. The signatures of
+these functions need to be modfied so that they can accept this extra
+argument. See the signature and call of 'helper'.
+
+Each reference to relocated variables needs to be transformed. In the
+example 'val' was transformed to 'wcl_allocs->pa.entry__val'.
+
+
+Issues with required transformations
+------------------------------------
+
+Variable relocation:
+
+Simple implementation allocates too much space for address space
+structures and relocates all variables, not only those whose address
+is needed:
+
+__kernel void entry(__global int *res)
+{
+    int val = 0; // relocated even though not necessary
+    res[get_global_id(0)] = val;
+} 
+
+In the ideal case each kernel requires its own structures, otherwise
+too many unused variables may be relocated:
+
+int helper(int *ptr)
+{
+    return *ptr;
+}
+
+__kernel void entry1(__global int *res)
+{
+    int val1 = 0; // relocated
+    res[get_global_id(0)] = helper(&val1);
+} 
+
+__kernel void entry2(__global int *res)
+{
+    int val2 = 0; // relocated to the same structure
+    res[get_global_id(0)] = helper(&val2);
+} 
+
+Static limit check:
+
+In principle, each internally allocated variable can be relocated to a
+single address space structure. Therefore each pointer access needs to
+perform only a single region check.
+
+However, in some very rare cases the initialization of a single
+constant address space structure may become challenging:
+
+__constant int val = { 0 };
+__constant int * __constant ptr = &val;
+
+An initializer for transformed code, that is accepted by C compilers,
+makes at least AMDs OpenCL C compiler crash:
+
+typedef struct {
+    int val;
+    __constant int *ptr;
+} WclConstants;
+
+__constant WclConstants wcl_constants = { 0, &wcl_constants.val };
+
+Dynamic limit check:
+
+Each memory region passed to a kernel fragments the corresponding
+address space:
+
+__kernel void entry(
+    __constant int *c1, __constant int *c2,
+    __global int *g1, __global int *g2,
+    __local int *l1, __local int *l2)
+{
+    ...
+}
+
+In the above example each pointer access needs to perform three region
+checks (2 dynamic + 1 static) for local and constant address
+spaces. Two region checks are required for global address space
+pointers.
+
+
+Comparison with smart pointers
+------------------------------
+
+By a smart pointer we mean a structure that contains limits for a
+pointer:
+
+typedef struct { char *min; char *ptr; char *max; } SmartPtr;
+
+Initialization and assignment of pointers:
+
+Smart pointer approach requires assigment to limit fields whenever a
+pointer is created (e.g. with &-operator) or assigned (possibly passed
+as argument).
+
+Size required by pointers:
+
+Alternative solution doesn't suffer size overhead regarding
+pointers. This issue would be more pronounced in large pointer arrays.
+
+Number of region checks in pointer accesses:
+
+Smart pointers require only one region check for each pointer access
+whereas the alternative approach may require multiple checks.
+
+Only one check is needed for pointers accessing private memory. Local,
+global and constant memory accesses need multiple checks depending on
+how many different memory areas are passed to kernels.
+
+However, the user can usually rearrange the code in such a way that
+local and constant memory objects don't need to be passed. Global
+memory is commonly copied to local memory before it's used and
+therefore global memory checks can also be minimized if the user wants
+to.
+
+Therefore, at least in principle, it should be possible to write code
+that doesn't require too complicated region checks even with the
+alternative approach. The validator tool could provide optimization
+hints and warnings if it recognizes that too many region checks are
+required. Alternatively the tool could choose one of these two
+approaches after initial analysis of the input source.
+
+
 Coding guidelines for programmer to avoid checks
 ------------------------------------------------
 
@@ -8,7 +255,7 @@ Avoid having to use unneccessary amount of
 *(), -> or [] operators, each of them causes check to be added to
 code.
 
-NOTE: in the future dependecy analysis can help to remove checks if many cases  
+NOTE: in the future dependecy analysis can help to remove checks in many cases  
 
 
 What memory accesses are recognized and how are they made safe
@@ -181,7 +428,3 @@ know if it should be done.
 Does the hard work of keeping track generated prologues of every function / kernel and
 module prologue. Provides easy API for handlers to be able to create transformations
 required by the algorithm, but does not store internally data about program structure. 
-
-
-
-
