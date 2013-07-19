@@ -25,6 +25,8 @@ are accepted by some drivers, but rejected by at least one driver.
   need to use "uint4 *p = &v; (*p).x = 0;" instead of "p->x = 0;".
 - AMD: Compiler segfaults if array is indexed with "index[array]"
   instead of "array[index]".
+- AMD: Segfaults if structure initialization refers to itself:
+  __constant struct { int v; __constant int *p; } c = { 0, &c.v };
 - Apple: requires prototype declarations for each helper function
 - Apple: gives error on e.g. signed vs. unsigned comparisons
 
