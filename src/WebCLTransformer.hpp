@@ -47,28 +47,31 @@ public:
     /// Applies all AST transformations.
     bool rewrite();
 
+    void createAddressSpaceTypedef(AddressSpaceInfo &as, const std::string &name);
     void createPrivateAddressSpaceTypedef(AddressSpaceInfo &as);
     void createLocalAddressSpaceTypedef(AddressSpaceInfo &as);
     void createConstantAddressSpaceTypedef(AddressSpaceInfo &as);
-    void createConstantAddressSpaceAllocation(AddressSpaceInfo &as);
+
     void replaceWithRelocated(clang::DeclRefExpr *use, clang::VarDecl *decl);
     void removeRelocated(clang::VarDecl *decl);
+
+    void createAddressSpaceLimitsTypedef(
+        AddressSpaceLimits &limits, const std::string &name);
     void createGlobalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);
     void createConstantAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);
     void createLocalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);
-
-    void createProgramAllocationsTypedef(AddressSpaceLimits &globalLimits,
-                                         AddressSpaceLimits &constantLimits,
-                                         AddressSpaceLimits &localLimits,
-                                         AddressSpaceInfo &privateAs);
+    void createAddressSpaceLimitsField(
+        AddressSpaceLimits &limits, const std::string &type, const std::string &name);
+    void createProgramAllocationsTypedef(
+        AddressSpaceLimits &globalLimits, AddressSpaceLimits &constantLimits,
+        AddressSpaceLimits &localLimits, AddressSpaceInfo &privateAs);
   
+    void createConstantAddressSpaceAllocation(AddressSpaceInfo &as);
     void createLocalAddressSpaceAllocation(clang::FunctionDecl *kernelFunc);
-  
-    void createProgramAllocationsAllocation(clang::FunctionDecl *kernelFunc,
-                                            AddressSpaceLimits &globalLimits,
-                                            AddressSpaceLimits &constantLimits,
-                                            AddressSpaceLimits &localLimits,
-                                            AddressSpaceInfo &privateAs);
+    void createProgramAllocationsAllocation(
+        clang::FunctionDecl *kernelFunc, AddressSpaceLimits &globalLimits,
+        AddressSpaceLimits &constantLimits, AddressSpaceLimits &localLimits,
+        AddressSpaceInfo &privateAs);
   
     void createLocalAreaZeroing(clang::FunctionDecl *kernelFunc,
                                 AddressSpaceLimits &localLimits);
@@ -209,7 +212,9 @@ private:
 
     void addRelocatedVariable(clang::VarDecl *decl);
 
-    void emitVariable(std::ostream& out, const clang::VarDecl *decl);
+    void emitVariable(std::ostream &out, const clang::VarDecl *decl);
+    void emitVariable(std::ostream &out, const clang::VarDecl *decl,
+                      const std::string &name);
     void emitAddressSpaceRecord(std::ostream &out, const VariableDeclarations &variables,
                                 const std::string &name);
     void emitPrologueRecords(std::ostream &out);

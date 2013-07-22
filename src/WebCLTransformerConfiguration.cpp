@@ -7,28 +7,40 @@
 
 WebCLTransformerConfiguration::WebCLTransformerConfiguration()
     : prefix_("wcl")
-    , pointerSuffix_("ptr")
-    , indexSuffix_("idx")
+    , minSuffix_("min")
+    , maxSuffix_("max")
     , invalid_("???")
     , indentation_("    ")
     , sizeParameterType_("unsigned long")
+
     , privateAddressSpace_("private")
-    , privateRecordType_("WclPrivates")
-    , privateField_("privates")
-    , privateRecordName_("wcl_ps")
     , localAddressSpace_("local")
-    , localRecordType_("WclLocals")
-    , localField_("locals")
-    , localRecordName_("wcl_locals")
     , constantAddressSpace_("constant")
-    , constantRecordType_("WclConstants")
-    , constantField_("constants")
-    , constantRecordName_("wcl_cs")
     , globalAddressSpace_("global")
+
+    , privateRecordType_("WclPrivates")
+    , localRecordType_("WclLocals")
+    , constantRecordType_("WclConstants")
     , globalRecordType_("WclGlobals")
-    , globalField_("globals")
-    , globalRecordName_("wcl_gs")
     , addressSpaceRecordType_("WclProgramAllocations")
+
+    , localLimitsType_("WclLocalLimits")
+    , constantLimitsType_("WclConstantLimits")
+    , globalLimitsType_("WclGlobalLimits")
+
+    , localMinField_("wcl_locals_min")
+    , localMaxField_("wcl_locals_max")
+    , constantMinField_("wcl_constant_allocations_min")
+    , constantMaxField_("wcl_constant_allocations_max")
+
+    , privatesField_("pa")
+    , localLimitsField_("ll")
+    , constantLimitsField_("cl")
+    , globalLimitsField_("gl")
+
+    , localRecordName_("wcl_locals")
+    , constantRecordName_("wcl_constant_allocations")
+    , programRecordName_("wcl_allocations_allocation")
     , addressSpaceRecordName_("wcl_allocs")
 {
 }
@@ -61,46 +73,29 @@ const std::string WebCLTransformerConfiguration::getNameOfAddressSpaceNullPtrRef
     return "min0";
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfAddressSpaceRecord(clang::QualType type) const
+const std::string WebCLTransformerConfiguration::getNameOfLimitCheckMacro(
+    unsigned addressSpaceNum, int limitCount) const
 {
-    if (const unsigned int space = type.getAddressSpace()) {
-        switch (space) {
-        case clang::LangAS::opencl_global:
-            return globalRecordName_;
-        case clang::LangAS::opencl_local:
-            return localRecordName_;
-        case clang::LangAS::opencl_constant:
-            return constantRecordName_;
-        default:
-            return invalid_;
-        }
-    }
+    std::stringstream result;
+    result << "WCL_ADDR_" << getNameOfAddressSpace(addressSpaceNum) << "_" << limitCount;
+    return result.str();
+}
 
-    return privateRecordName_;
+const std::string WebCLTransformerConfiguration::getNameOfSizeMacro(unsigned addressSpaceNum) const
+{
+    const std::string name =
+        "WCL_ADDRESS_SPACE_" + getNameOfAddressSpace(addressSpaceNum) + "_MIN";
+    return name;
+}
+
+const std::string WebCLTransformerConfiguration::getNameOfLimitMacro() const
+{
+    return "WCL_LAST";
 }
 
 const std::string WebCLTransformerConfiguration::getNameOfType(clang::QualType type) const
 {
     return type.getUnqualifiedType().getAsString();
-}
-
-const std::string WebCLTransformerConfiguration::getNameOfPointerChecker(clang::QualType type) const
-{
-    return prefix_ + "_" +
-        getNameOfAddressSpace(type) + "_" + getNameOfType(type) +
-        "_" + pointerSuffix_;
-}
-
-const std::string WebCLTransformerConfiguration::getNameOfIndexChecker(clang::QualType type) const
-{
-    return prefix_ + "_" +
-        getNameOfAddressSpace(type) + "_" + getNameOfType(type) +
-        "_" + indexSuffix_;
-}
-
-const std::string WebCLTransformerConfiguration::getNameOfIndexChecker() const
-{
-    return prefix_ + "_" + indexSuffix_;
 }
 
 const std::string WebCLTransformerConfiguration::getNameOfSizeParameter(clang::ParmVarDecl *decl) const
@@ -121,26 +116,32 @@ const std::string WebCLTransformerConfiguration::getNameOfRelocatedVariable(cons
   return decl->getName().str();
 }
 
+const std::string WebCLTransformerConfiguration::getNameOfLimitField(
+    const clang::VarDecl *decl, bool isMax) const
+{
+    const std::string name = getNameOfRelocatedVariable(decl);
+    return name + "_" + (isMax ? maxSuffix_ : minSuffix_);
+}
+
 const std::string WebCLTransformerConfiguration::getReferenceToRelocatedVariable(const clang::VarDecl *decl) const
 {
   std::string prefix;
 
   switch (decl->getType().getAddressSpace()) {
     case clang::LangAS::opencl_constant:
-      prefix = "wcl_constant_allocations.";
+      prefix = constantRecordName_ + ".";
       break;
     case clang::LangAS::opencl_local:
-      prefix = "wcl_locals.";
+      prefix = localRecordName_ + ".";
       break;
     default:
       assert(decl->getType().getAddressSpace() == 0);
-      prefix = "wcl_allocs->pa.";
+      prefix = addressSpaceRecordName_ + "->" + privatesField_ + ".";
       break;
   }
 
   return prefix + getNameOfRelocatedVariable(decl);
 }
-
 
 const std::string WebCLTransformerConfiguration::getIndentation(unsigned int levels) const
 {
@@ -152,42 +153,48 @@ const std::string WebCLTransformerConfiguration::getIndentation(unsigned int lev
 
 const std::string WebCLTransformerConfiguration::getStaticLimitRef(unsigned addressSpaceNumber) const
 {
-  switch (addressSpaceNumber) {
+    std::string prefix = addressSpaceRecordName_ + "->";
+
+    switch (addressSpaceNumber) {
     case clang::LangAS::opencl_constant:
-      return "wcl_allocs->cl.wcl_constant_allocations_min,wcl_allocs->cl.wcl_constant_allocations_max";
+        prefix += constantLimitsField_ + ".";
+        return prefix + constantMinField_ + ", " + prefix + constantMaxField_;
+
     case clang::LangAS::opencl_local:
-      return "wcl_allocs->ll.wcl_locals_min,wcl_allocs->ll.wcl_locals_max";
+        prefix += localLimitsField_ + ".";
+        return prefix + localMinField_ + ", " + prefix + localMaxField_;
+
     case clang::LangAS::opencl_global:
-      assert(false && "There can't be static allocations in global address space.");
+        assert(false && "There can't be static allocations in global address space.");
+
     default:
-      return "&wcl_allocs->pa,(&wcl_allocs->pa + 1)";
-  }
+        prefix += privatesField_;
+        return "&" + prefix + ", (&" + prefix + " + 1)";
+    }
 }
 
 const std::string WebCLTransformerConfiguration::getDynamicLimitRef(const clang::VarDecl *decl) const
 {
-    std::stringstream retVal;
-    std::string varName = getNameOfRelocatedVariable(decl);
-    std::string prefix;
-  
+    std::string prefix = addressSpaceRecordName_ + "->";
+
     switch (decl->getType().getTypePtr()->getPointeeType().getAddressSpace()) {
     case clang::LangAS::opencl_global:
-      prefix = "wcl_allocs->gl.";
-      break;
+        prefix += globalLimitsField_;
+        break;
     case clang::LangAS::opencl_constant:
-      prefix = "wcl_allocs->cl.";
-      break;
+        prefix += constantLimitsField_;
+        break;
     case clang::LangAS::opencl_local:
-      prefix = "wcl_allocs->ll.";
-      break;
+        prefix += localLimitsField_;
+        break;
     default:
-      assert(false && "There can't be dynamic limits of private address space.");
+        assert(false && "There can't be dynamic limits of private address space.");
     }
 
-    retVal << prefix << varName << "_min," << prefix << varName << "_max";
+    prefix += ".";
+
+    std::stringstream retVal;
+    retVal << prefix << getNameOfLimitField(decl, false) << ", "
+           << prefix << getNameOfLimitField(decl, true);
     return retVal.str();
 }
-
-
-
-
