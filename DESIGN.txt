@@ -100,7 +100,8 @@ Static limit check:
 Accesses for memory that has been defined inside the kernel can be
 checked by determining the begin and end addresses of the
 corresponding address space structure. In the example 'CHECK_PRIVATE'
-can clamp 'ptr' to be within instance of 'WclPrivates'.
+can clamp 'ptr' to be within instance of 'WclPrivates'. The limits of
+this check are known at compile time.
 
 Dynamic limit check:
 
@@ -143,7 +144,7 @@ __kernel void entry(__global int *res)
 {
     int val = 0; // relocated even though not necessary
     res[get_global_id(0)] = val;
-} 
+}
 
 In the ideal case each kernel requires its own structures, otherwise
 too many unused variables may be relocated:
@@ -157,13 +158,13 @@ __kernel void entry1(__global int *res)
 {
     int val1 = 0; // relocated
     res[get_global_id(0)] = helper(&val1);
-} 
+}
 
 __kernel void entry2(__global int *res)
 {
     int val2 = 0; // relocated to the same structure
     res[get_global_id(0)] = helper(&val2);
-} 
+}
 
 Static limit check:
 
@@ -214,40 +215,57 @@ pointer:
 
 typedef struct { char *min; char *ptr; char *max; } SmartPtr;
 
-Initialization and assignment of pointers:
+Generality:
 
-Smart pointer approach requires assigment to limit fields whenever a
-pointer is created (e.g. with &-operator) or assigned (possibly passed
-as argument).
+The alternative method doesn't restrict pointer operations in any way,
+whereas keeping track of smart pointer limits can become challenging
+in some cases. Consider the following example:
+
+    int value = 0xabcdef;
+    int *pointer = &value;
+    int *base = 0;
+    unsigned long offset = pointer - base;
+    int value2 = *(base + offset);
+
+In this case 'base' can't have valid limits and therefore evaluating
+'*(base + offset)' must fail with smart pointers.
+
 
 Size required by pointers:
 
 Alternative solution doesn't suffer size overhead regarding
-pointers. This issue would be more pronounced in large pointer arrays.
-Each pointer in array would require additional min/max addresses
-stored and therefore it would require 3x more memory/registers. 
+pointers.
 
-Size overhead of smart pointer approach affects directly to memory
-comsuption and overall performance. When ever pointer is assigned we 
-need to store/load 3 addresses instead of just one. 
+This issue would be more pronounced with large smart pointer
+arrays. Each smart pointer would require additional min/max addresses
+to be stored and would consume three times more memory/registers,
+which would have a negative effect on memory consumption.
+
+Initialization and assignment of pointers:
+
+Smart pointer approach requires assigment to limit fields whenever a
+pointer is created (e.g. with &-operator) or assigned (possibly passed
+as argument). This degrades performance because whenever a pointer is
+assigned we need to store/load three addresses instead of just one.
 
 Preloading memory access limit values:
 
-Since in smart pointer appriach each pointer has its own limits 
-many different pointers cannot share the same limits. This means
-that we would need to do indirect load operation for every pointer
-access to get limits for that single memory access. With altenative
-approach we have single limits for private address space, which 
-we can load just once in runnin kernel and re-use the loaded values
-for every memory access of private address space. For other address
-spaces we have few separate limits, which compiler should be able to
-optimize in a way that required limits loads are done just once 
-in each function.
+Since in smart pointer approach each pointer has its own limits, many
+different pointers cannot share the same limits. This means that we
+would need to do indirect load operation for every pointer access to
+get limits for that single memory access.
+
+With the altenative approach we have single limits for private address
+space, which we can load just once in running kernel and re-use the
+loaded values for every memory access of private address space. For
+other address spaces we have few separate limits, which the compiler
+should be able to optimize in such a way that the required limit loads
+would be done just once in each function.
 
 Number of region checks in pointer accesses:
 
 Smart pointers require only one region check for each pointer access
-where min and max limits are always loaded indirectly whereas the 
+where min and max limits are always loaded indirectly whereas the
 alternative approach may require multiple checks and usually limits
 needs to be loaded just once for each limit range in the program.
 
@@ -256,22 +274,22 @@ global and constant memory accesses might need multiple checks depending on
 how many different memory areas are passed to kernels and how easy it
 is to resolve exact limits of each memory access.
 
-The user can usually rearrange the code in such a way that
-local and constant memory objects don't need to be passed. Global
-memory is commonly copied to local memory before it's used and
-therefore global memory checks can also be minimized if the user 
-wants to. Compiler also know in compile time if unefficient checks 
-are needed in program and can guide programmer how to possibly 
-avoid the checks.
+The user can usually rearrange the code in such a way that local and
+constant memory objects don't need to be passed. Global memory is
+commonly copied to local memory before it's used and therefore global
+memory checks can also be minimized if the user wants to. Compiler
+also knows at compile time if inefficient checks are needed and can
+guide the programmer how to possibly avoid the checks.
 
 Also simple dependence analysis can resolve single limits for the
-cases where kernel arguments are accessed directly through base
+cases where kernel arguments are accessed directly through a base
 pointer.
 
-There fore it is possible to write code that doesn't require 
-multiple region checks for core parts of the code. The validator 
-tool could provide optimization hints and warnings if it 
-recognizes that too many region checks are required. 
+It's therefore possible to write code that doesn't require multiple
+region checks for core parts of the code. The validator tool could
+provide optimization hints and warnings if it recognizes that too many
+region checks are required.
+
 
 Coding guidelines for programmer to avoid checks
 ------------------------------------------------
