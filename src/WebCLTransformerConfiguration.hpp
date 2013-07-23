@@ -36,10 +36,12 @@ public:
     const std::string getStaticLimitRef(unsigned addressSpaceNum) const;
     const std::string getDynamicLimitRef(const clang::VarDecl *decl) const;
 
-    const std::string prefix_;
+    const std::string typePrefix_;
+    const std::string variablePrefix_;
+    const std::string macroPrefix_;
+
     const std::string minSuffix_;
     const std::string maxSuffix_;
-    const std::string invalid_;
     const std::string indentation_;
     const std::string sizeParameterType_;
 

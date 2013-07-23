@@ -201,7 +201,8 @@ private:
     RemovalContainer     removals_;
     ReplacementContainer replacements_;
     InsertionContainer   inserts_;
-  
+
+    bool checkIdentifiers();
     bool rewritePrologue();
     bool rewriteKernelPrologue(const clang::FunctionDecl *kernel);
     bool rewriteTransformations();

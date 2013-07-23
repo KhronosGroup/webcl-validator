@@ -6,10 +6,12 @@
 #include <sstream>
 
 WebCLTransformerConfiguration::WebCLTransformerConfiguration()
-    : prefix_("wcl")
+    : typePrefix_("_Wcl")
+    , variablePrefix_("_wcl")
+    , macroPrefix_("_WCL")
+
     , minSuffix_("min")
     , maxSuffix_("max")
-    , invalid_("???")
     , indentation_("    ")
     , sizeParameterType_("unsigned long")
 
@@ -18,30 +20,30 @@ WebCLTransformerConfiguration::WebCLTransformerConfiguration()
     , constantAddressSpace_("constant")
     , globalAddressSpace_("global")
 
-    , privateRecordType_("WclPrivates")
-    , localRecordType_("WclLocals")
-    , constantRecordType_("WclConstants")
-    , globalRecordType_("WclGlobals")
-    , addressSpaceRecordType_("WclProgramAllocations")
+    , privateRecordType_(typePrefix_ + "Privates")
+    , localRecordType_(typePrefix_ + "Locals")
+    , constantRecordType_(typePrefix_ + "Constants")
+    , globalRecordType_(typePrefix_ + "Globals")
+    , addressSpaceRecordType_(typePrefix_ + "ProgramAllocations")
 
-    , localLimitsType_("WclLocalLimits")
-    , constantLimitsType_("WclConstantLimits")
-    , globalLimitsType_("WclGlobalLimits")
+    , localLimitsType_(typePrefix_ + "LocalLimits")
+    , constantLimitsType_(typePrefix_ + "ConstantLimits")
+    , globalLimitsType_(typePrefix_ + "GlobalLimits")
 
-    , localMinField_("wcl_locals_min")
-    , localMaxField_("wcl_locals_max")
-    , constantMinField_("wcl_constant_allocations_min")
-    , constantMaxField_("wcl_constant_allocations_max")
+    , localMinField_(variablePrefix_ + "_locals_min")
+    , localMaxField_(variablePrefix_ + "_locals_max")
+    , constantMinField_(variablePrefix_ + "_constant_allocations_min")
+    , constantMaxField_(variablePrefix_ + "_constant_allocations_max")
 
     , privatesField_("pa")
     , localLimitsField_("ll")
     , constantLimitsField_("cl")
     , globalLimitsField_("gl")
 
-    , localRecordName_("wcl_locals")
-    , constantRecordName_("wcl_constant_allocations")
-    , programRecordName_("wcl_allocations_allocation")
-    , addressSpaceRecordName_("wcl_allocs")
+    , localRecordName_(variablePrefix_ + "_locals")
+    , constantRecordName_(variablePrefix_ + "_constant_allocations")
+    , programRecordName_(variablePrefix_ + "_allocations_allocation")
+    , addressSpaceRecordName_(variablePrefix_ + "_allocs")
 {
 }
 
@@ -77,20 +79,20 @@ const std::string WebCLTransformerConfiguration::getNameOfLimitCheckMacro(
     unsigned addressSpaceNum, int limitCount) const
 {
     std::stringstream result;
-    result << "WCL_ADDR_" << getNameOfAddressSpace(addressSpaceNum) << "_" << limitCount;
+    result << macroPrefix_ << "_ADDR_" << getNameOfAddressSpace(addressSpaceNum) << "_" << limitCount;
     return result.str();
 }
 
 const std::string WebCLTransformerConfiguration::getNameOfSizeMacro(unsigned addressSpaceNum) const
 {
     const std::string name =
-        "WCL_ADDRESS_SPACE_" + getNameOfAddressSpace(addressSpaceNum) + "_MIN";
+        macroPrefix_ + "_ADDRESS_SPACE_" + getNameOfAddressSpace(addressSpaceNum) + "_MIN";
     return name;
 }
 
 const std::string WebCLTransformerConfiguration::getNameOfLimitMacro() const
 {
-    return "WCL_LAST";
+    return macroPrefix_ + "_LAST";
 }
 
 const std::string WebCLTransformerConfiguration::getNameOfType(clang::QualType type) const
@@ -101,7 +103,7 @@ const std::string WebCLTransformerConfiguration::getNameOfType(clang::QualType t
 const std::string WebCLTransformerConfiguration::getNameOfSizeParameter(clang::ParmVarDecl *decl) const
 {
     const std::string name = decl->getName();
-    return prefix_ + "_" + name + "_size";
+    return variablePrefix_ + "_" + name + "_size";
 }
 
 const std::string WebCLTransformerConfiguration::getNameOfRelocatedVariable(const clang::VarDecl *decl) const
