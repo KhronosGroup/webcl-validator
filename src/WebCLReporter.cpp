@@ -30,6 +30,21 @@ clang::DiagnosticBuilder WebCLReporter::error(
     return message(clang::DiagnosticsEngine::Error, format, &location);
 }
 
+clang::DiagnosticBuilder WebCLReporter::info(const char *format)
+{
+    return message(clang::DiagnosticsEngine::Note, format);
+}
+
+clang::DiagnosticBuilder WebCLReporter::warning(const char *format)
+{
+    return message(clang::DiagnosticsEngine::Warning, format);
+}
+
+clang::DiagnosticBuilder WebCLReporter::error(const char *format)
+{
+    return message(clang::DiagnosticsEngine::Error, format);
+}
+
 clang::DiagnosticBuilder WebCLReporter::fatal(const char *format)
 {
     return message(clang::DiagnosticsEngine::Fatal, format);
@@ -47,9 +62,6 @@ clang::DiagnosticBuilder WebCLReporter::message(
     clang::SourceLocation sourceLocation;
     if (location) {
         sourceLocation = *location;
-    } else {
-        clang::SourceManager &manager = instance_.getSourceManager();
-        sourceLocation = manager.getLocForEndOfFile(manager.getMainFileID());
     }
 
     clang::DiagnosticsEngine &diags = instance_.getDiagnostics();

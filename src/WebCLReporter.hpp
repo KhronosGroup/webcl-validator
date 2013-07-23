@@ -15,12 +15,16 @@ public:
     explicit WebCLReporter(clang::CompilerInstance &instance);
     ~WebCLReporter();
 
-  clang::DiagnosticBuilder info(
+    clang::DiagnosticBuilder info(
         clang::SourceLocation location, const char *format);
     clang::DiagnosticBuilder warning(
         clang::SourceLocation location, const char *format);
     clang::DiagnosticBuilder error(
         clang::SourceLocation location, const char *format);
+
+    clang::DiagnosticBuilder info(const char *format);
+    clang::DiagnosticBuilder warning(const char *format);
+    clang::DiagnosticBuilder error(const char *format);
     clang::DiagnosticBuilder fatal(const char *format);
 
     bool isFromMainFile(clang::SourceLocation location);
