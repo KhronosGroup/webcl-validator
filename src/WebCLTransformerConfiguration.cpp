@@ -44,6 +44,8 @@ WebCLTransformerConfiguration::WebCLTransformerConfiguration()
     , constantRecordName_(variablePrefix_ + "_constant_allocations")
     , programRecordName_(variablePrefix_ + "_allocations_allocation")
     , addressSpaceRecordName_(variablePrefix_ + "_allocs")
+
+    , localRangeZeroingMacro_(macroPrefix_ + "_LOCAL_RANGE_INIT")
 {
 }
 

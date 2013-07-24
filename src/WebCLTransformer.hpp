@@ -72,10 +72,12 @@ public:
         clang::FunctionDecl *kernelFunc, AddressSpaceLimits &globalLimits,
         AddressSpaceLimits &constantLimits, AddressSpaceLimits &localLimits,
         AddressSpaceInfo &privateAs);
-  
+
+    /// \brief Zero a single local memory range.
+    void createLocalRangeZeroing(std::ostream &out, const std::string &arguments);
+    /// \brief Zero all local memory ranges.
     void createLocalAreaZeroing(clang::FunctionDecl *kernelFunc,
                                 AddressSpaceLimits &localLimits);
-  
   
     void addMemoryAccessCheck(clang::Expr *access, AddressSpaceLimits &limits);
 
@@ -220,6 +222,7 @@ private:
                                 const std::string &name);
     void emitPrologueRecords(std::ostream &out);
 
+    void emitGeneralCode(std::ostream &out);
     void emitLimitMacros(std::ostream &out);
     void emitPointerLimitMacros(std::ostream &out);
     void emitIndexLimitMacros(std::ostream &out);

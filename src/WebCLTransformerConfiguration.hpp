@@ -74,6 +74,8 @@ public:
     const std::string constantRecordName_;
     const std::string programRecordName_;
     const std::string addressSpaceRecordName_;
+
+    const std::string localRangeZeroingMacro_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLTRANSFORMERCONFIGURATION

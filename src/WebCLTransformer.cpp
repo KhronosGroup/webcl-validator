@@ -1,5 +1,6 @@
 #include "WebCLTransformation.hpp"
 #include "WebCLTransformer.hpp"
+#include "general.h"
 
 #include "WebCLDebug.hpp"
 
@@ -335,11 +336,36 @@ void WebCLTransformer::createProgramAllocationsAllocation(
                                << cfg_.programRecordName_ << ";\n";
 }
 
-void WebCLTransformer::createLocalAreaZeroing(clang::FunctionDecl *kernelFunc,
-                            AddressSpaceLimits &localLimits) {
-  kernelPrologue(kernelFunc)
-      << cfg_.indentation_
-      << "// TODO: Creating local memory cleanup macro call for every limit range\n";
+void WebCLTransformer::createLocalRangeZeroing(
+    std::ostream &out, const std::string &arguments)
+{
+    out << cfg_.indentation_
+        << cfg_.localRangeZeroingMacro_ << "(" << arguments << ");\n";
+}
+
+void WebCLTransformer::createLocalAreaZeroing(
+    clang::FunctionDecl *kernelFunc, AddressSpaceLimits &localLimits)
+{
+    int numInitializations = 0;
+    std::ostream &out = kernelPrologue(kernelFunc);
+    out << "\n" << cfg_.indentation_ << "// => Local memory zeroing.\n";
+
+    if (localLimits.hasStaticallyAllocatedLimits()) {
+        createLocalRangeZeroing(out, cfg_.getStaticLimitRef(clang::LangAS::opencl_local));
+        ++numInitializations;
+    }
+
+    AddressSpaceLimits::LimitList &dynamicLimits = localLimits.getDynamicLimits();
+    for (AddressSpaceLimits::LimitList::iterator i = dynamicLimits.begin();
+         i != dynamicLimits.end(); ++i) {
+        const clang::ParmVarDecl *decl = *i;
+        createLocalRangeZeroing(out, cfg_.getDynamicLimitRef(decl));
+        ++numInitializations;
+    }
+
+    if (numInitializations)
+        out << cfg_.indentation_ << "barrier(CLK_LOCAL_MEM_FENCE);\n";
+    out << cfg_.indentation_ << "// <= Local memory zeroing.\n";
 }
 
 void WebCLTransformer::replaceWithRelocated(clang::DeclRefExpr *use, clang::VarDecl *decl) {
@@ -700,6 +726,14 @@ std::string WebCLTransformer::getWclAddrCheckMacroDefinition(unsigned aSpaceNum,
   return retVal.str();
 }
 
+void WebCLTransformer::emitGeneralCode(std::ostream &out)
+{
+    const char *buffer = reinterpret_cast<const char*>(general_cl);
+    size_t length = general_cl_len;
+    const std::string generalClContents(buffer, length);
+    out << "\n" << generalClContents << "\n";
+}
+
 void WebCLTransformer::emitLimitMacros(std::ostream &out)
 {
     out << "#define " << cfg_.getNameOfLimitMacro() << "(type, ptr) \\\n"
@@ -716,8 +750,9 @@ void WebCLTransformer::emitLimitMacros(std::ostream &out)
 
 void WebCLTransformer::emitPrologue(std::ostream &out)
 {
-    emitLimitMacros(out);
     out << modulePrologue_.str();
+    emitGeneralCode(out);
+    emitLimitMacros(out);
 }
 
 void WebCLTransformer::emitTypeInitialization(
