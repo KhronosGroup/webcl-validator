@@ -27,6 +27,8 @@ are accepted by some drivers, but rejected by at least one driver.
   instead of "array[index]".
 - AMD: Segfaults if structure initialization refers to itself:
   __constant struct { int v; __constant int *p; } c = { 0, &c.v };
+- AMD: Segfaults if kernel contains nothing but a single barrier call:
+  __kernel void dummy(int d) { barrier(CLK_LOCAL_MEM_FENCE); }
 - Apple: requires prototype declarations for each helper function
 - Apple: gives error on e.g. signed vs. unsigned comparisons
 
