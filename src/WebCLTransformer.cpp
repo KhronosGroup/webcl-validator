@@ -736,9 +736,6 @@ void WebCLTransformer::emitGeneralCode(std::ostream &out)
 
 void WebCLTransformer::emitLimitMacros(std::ostream &out)
 {
-    out << "#define " << cfg_.getNameOfLimitMacro() << "(type, ptr) \\\n"
-        << cfg_.indentation_ <<  "(((type)(ptr)) - 1)\n\n";
-
     for (RequiredMacroSet::iterator i = usedClampMacros_.begin();
          i != usedClampMacros_.end(); i++) {
       

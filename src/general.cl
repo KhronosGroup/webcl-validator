@@ -1,11 +1,13 @@
 // => General code that doesn't depend on input.
 
+#define _WCL_LAST(type, ptr) (((type)(ptr)) - 1)
+
 // POCL crashes at run time if the parameters are local character
 // pointers.
 typedef int _WclInitType;
 
-#define _WCL_LOCAL_RANGE_INIT(begin, end)       \
-    _wcl_local_range_init((__local _WclInitType *)begin, (__local _WclInitType *)end);
+#define _WCL_LOCAL_RANGE_INIT(begin, end)                               \
+    _wcl_local_range_init((__local _WclInitType *)begin, (__local _WclInitType *)end)
 
 void _wcl_local_range_init(__local _WclInitType *begin, __local _WclInitType *end)
 {
