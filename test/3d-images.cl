@@ -1,5 +1,5 @@
 // RUN: cat %s | %opencl-validator
-// RUN: %webcl-validator %s -- -include %include/_kernel.h 2>&1 | grep -v CHECK | %FileCheck %s
+// RUN: %webcl-validator %s 2>&1 | grep -v CHECK | %FileCheck %s
 
 // We don't want complaints from builtin function declarations.
 // CHECK-NOT: error: WebCL doesn't support 3D images.

@@ -1,5 +1,5 @@
 // RUN: cat %s | %opencl-validator
-// RUN: %webcl-validator %s -- -include %include/_kernel.h 2>/dev/null | grep -v "Processing" | %opencl-validator
+// RUN: %webcl-validator %s 2>/dev/null | grep -v "Processing" | %opencl-validator
 
 struct main_struct {
     int value;

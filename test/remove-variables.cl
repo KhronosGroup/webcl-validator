@@ -1,5 +1,5 @@
 // RUN: cat %s | %opencl-validator
-// RUN: %webcl-validator %s -- -include %include/_kernel.h 2>/dev/null | grep -v "Processing\|CHECK" | %opencl-validator
+// RUN: %webcl-validator %s 2>/dev/null | grep -v "Processing\|CHECK" | %opencl-validator
 
 __constant int removed_constant_1 = 1;
 __constant int * __constant removed_constant_pointer_1 = &removed_constant_1;

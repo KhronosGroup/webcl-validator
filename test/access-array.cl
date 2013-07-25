@@ -1,6 +1,6 @@
 // RUN: cat %s | grep -v DRIVER-MAY-REJECT | %opencl-validator
-// RUN: %webcl-validator %s -- -include %include/_kernel.h 2>/dev/null | grep -v "Processing\|CHECK" | %opencl-validator
-// RUN: %webcl-validator %s -- -include %include/_kernel.h | grep -v CHECK | %FileCheck %s
+// RUN: %webcl-validator %s 2>/dev/null | grep -v "Processing\|CHECK" | %opencl-validator
+// RUN: %webcl-validator %s | grep -v CHECK | %FileCheck %s
 
 // prototypes for apple driver
 int get_indexed_value(__global int *array, int index);

@@ -1,5 +1,5 @@
 // RUN: cat %s | grep -v ^#pragma | %opencl-validator
-// RUN: %webcl-validator %s -- -include %include/_kernel.h
+// RUN: %webcl-validator %s
 
 // All extensions are disabled by default in OpenCL. We don't complain
 // if extensions are disabled explicitly afterwards.

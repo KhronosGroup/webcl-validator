@@ -1,5 +1,5 @@
 // RUN: cat %s | %opencl-validator
-// RUN: %webcl-validator %s -- -include %include/_kernel.h 2>/dev/null | grep -v "Processing\|CHECK" | %opencl-validator
+// RUN: %webcl-validator %s 2>/dev/null | grep -v "Processing\|CHECK" | %opencl-validator
 
 __constant struct { int constant_field; } anonymous_constant = { 0 };
 __constant struct CommonStruct { int constant_field; } first_constant_struct = { 0 };
