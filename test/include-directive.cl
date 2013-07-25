@@ -1,5 +1,5 @@
 // RUN: cat %s | %opencl-validator -I%include/..
-// RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>&1 | grep -v CHECK | %FileCheck %s
+// RUN: %webcl-validator %s -- -include %include/_kernel.h 2>&1 | grep -v CHECK | %FileCheck %s
 
 // We don't allow include directives in main source files.
 // CHECK: error: WebCL doesn't support the include directive.

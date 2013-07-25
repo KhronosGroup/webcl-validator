@@ -1,5 +1,5 @@
 // RUN: cat %s | %opencl-validator
-// RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>&1 | grep -v CHECK | %FileCheck %s
+// RUN: %webcl-validator %s -- -include %include/_kernel.h 2>&1 | grep -v CHECK | %FileCheck %s
 
 // Long kernel names aren't allowed.
 // CHECK: error: WebCL restricts kernel name lengths to 255 characters.

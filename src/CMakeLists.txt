@@ -10,6 +10,7 @@ add_clang_executable(
   general.h
   main.cpp
   WebCLAction.cpp
+  WebCLArguments.cpp
   WebCLConsumer.cpp
   WebCLHelper.cpp
   WebCLPreprocessor.cpp

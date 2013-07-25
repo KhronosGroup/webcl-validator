@@ -1,5 +1,5 @@
 // RUN: cat %s | %opencl-validator
-// RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h -ferror-limit=0 2>&1 | grep "error: " | LC_ALL=C sort | %FileCheck %s
+// RUN: %webcl-validator %s -- -include %include/_kernel.h -ferror-limit=0 2>&1 | grep "error: " | LC_ALL=C sort | %FileCheck %s
 
 struct _wcl_struct { int _wcl_field; };
 struct _WclStruct { int _WclField; };

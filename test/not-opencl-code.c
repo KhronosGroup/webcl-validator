@@ -2,8 +2,10 @@
 // RUN: %webcl-validator %s -- -include %include/_kernel.h 2>&1 | grep -v CHECK | %FileCheck %s
 
 // The intention was to write OpenCL code, but the file extension
-// suggests C code instead, and the language wasn't forced to OpenCL.
-// CHECK: fatal error: Source file '{{[^']*}}' isn't treated as OpenCL code.
+// suggests C code instead.
+
+// CHECK-NOT: fatal
+// CHECK-NOT: error
 
 __kernel void dummy(
     __global int *array)

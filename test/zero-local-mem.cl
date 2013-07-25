@@ -1,6 +1,6 @@
 // RUN: cat %s | %opencl-validator
-// RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h 2>/dev/null | grep -v "Processing\|CHECK" | %opencl-validator
-// RUN: %webcl-validator %s -- -x cl -include %include/_kernel.h | grep -v CHECK | %FileCheck %s
+// RUN: %webcl-validator %s -- -include %include/_kernel.h 2>/dev/null | grep -v "Processing\|CHECK" | %opencl-validator
+// RUN: %webcl-validator %s -- -include %include/_kernel.h | grep -v CHECK | %FileCheck %s
 
 void init_local_mem(
     __local int *int_array, int int_value,
