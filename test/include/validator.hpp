@@ -124,7 +124,7 @@ public:
     virtual bool buildProgram(std::string options) {
         const std::string platformName = getPlatformName();
         if (platformName.find("AMD") != std::string::npos)
-            options.append("-D__PLATFORM_AMD__");
+            options.append("-D__PLATFORM_AMD__ ");
         else if (platformName.find("Portable OpenCL") != std::string::npos)
             options.append("-D__PLATFORM_POCL__ ");
 
