@@ -11,6 +11,7 @@ WebCLPreprocessor::WebCLPreprocessor(clang::CompilerInstance &instance)
 {
     extensions_.insert("cl_khr_fp64");
     extensions_.insert("cl_khr_fp16");
+    extensions_.insert("cl_khr_gl_sharing");
 }
 
 WebCLPreprocessor::~WebCLPreprocessor()

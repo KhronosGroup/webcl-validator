@@ -11,7 +11,7 @@
 #pragma OPENCL EXTENSION cl_khr_int64_extended_atomics : enable
 // CHECK-NOT: error: WebCL doesn't support enabling 'cl_khr_fp16' extension.
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
-// CHECK: error: WebCL doesn't support enabling 'cl_khr_gl_sharing' extension.
+// CHECK-NOT: error: WebCL doesn't support enabling 'cl_khr_gl_sharing' extension.
 #pragma OPENCL EXTENSION cl_khr_gl_sharing : enable
 // CHECK: error: WebCL doesn't support enabling 'cl_khr_gl_event' extension.
 #pragma OPENCL EXTENSION cl_khr_gl_event : enable
