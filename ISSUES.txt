@@ -31,6 +31,7 @@ are accepted by some drivers, but rejected by at least one driver.
   __kernel void dummy(int d) { barrier(CLK_LOCAL_MEM_FENCE); }
 - Apple: requires prototype declarations for each helper function
 - Apple: gives error on e.g. signed vs. unsigned comparisons
+- POCL: Requires kernel called 'main' to return int instead of void.
 
 OpenCL Linux Driver Bugs
 ------------------------
