@@ -4,6 +4,9 @@
 // We don't want complaints from builtin function declarations.
 // CHECK-NOT: error: WebCL doesn't support 3D images.
 
+// POCL doesn't know about image3d_t yet.
+#ifndef __PLATFORM_POCL__
+
 typedef image3d_t typedef_image;
 
 // prototypes for apple driver
@@ -28,3 +31,5 @@ __kernel void kernel_with_3d_image_parameters(
     const int i = get_global_id(0);
     array[i] = function_with_3d_image_parameters(m, t);
 }
+
+#endif // __PLATFORM_POCL__

@@ -1,4 +1,4 @@
-// RUN: cat %s | grep -v DRIVER-MAY-REJECT | %opencl-validator
+// RUN: cat %s | %opencl-validator
 // RUN: %webcl-validator %s 2>&1 | grep -v CHECK | %FileCheck %s
 
 // CHECK-NOT: error: Array index is too small.
@@ -16,10 +16,14 @@ int get_incorrectly_indexed_value(const int triple[6], int index)
     // CHECK: error: Array index is too small.
     // CHECK: error: Array index is too small.
     // CHECK: error: Array index is too small.
-    const int sum3 = triple[-1] + triple[-2] + triple[-3]; // DRIVER-MAY-REJECT
+#ifndef __PLATFORM_AMD__
+    const int sum3 = triple[-1] + triple[-2] + triple[-3];
+#endif
     const int sum4 = triple[6] + triple[7] + triple[8];
     return sum1 + sum2
-        + sum3 // DRIVER-MAY-REJECT
+#ifndef __PLATFORM_AMD__
+        + sum3
+#endif
         + sum4;
 }
 
@@ -33,14 +37,20 @@ void set_incorrectly_indexed_value(__global int *array, int index, int value)
     // CHECK: error: Array index is too small.
     // CHECK: error: Array index is too small.
     // CHECK: error: Array index is too small.
-    triple[0] = triple[-1] + triple[-2] + triple[-3]; // DRIVER-MAY-REJECT
+#ifndef __PLATFORM_AMD__
+    triple[0] = triple[-1] + triple[-2] + triple[-3];
+#endif
     // CHECK: error: Array index is too large.
     // CHECK: error: Invalid array index.
-    triple[1] = triple[4294967296] + triple[9223372036854775808L]; // DRIVER-MAY-REJECT
+#ifndef __PLATFORM_AMD__
+    triple[1] = triple[4294967296] + triple[9223372036854775808L];
+#endif
     // CHECK: error: Array index is too large.
     // CHECK: error: Array index is too large.
     // CHECK: error: Array index is too large.
-    triple[2] = triple[3] + triple[4] + triple[5]; // DRIVER-MAY-REJECT
+#ifndef __PLATFORM_AMD__
+    triple[2] = triple[3] + triple[4] + triple[5];
+#endif
     array[index] = value + triple[0] + triple[1] + triple[2];
 }
 

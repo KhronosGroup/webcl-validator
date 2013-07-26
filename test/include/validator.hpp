@@ -16,7 +16,14 @@ public:
 
     OpenCLValidator()
         : numPlatforms_(0), platform_(0), numDevices_(0), device_(0)
-        , context_(0), queue_(0), program_(0) {
+        , context_(0), queue_(0), program_(0)
+        , code_() {
+        // We might build the same code for multiple platforms.
+        // Therefore we need to consume standard input only once.
+        std::cin >> std::noskipws;
+        std::istream_iterator<char> pos(std::cin);
+        std::istream_iterator<char> end;
+        code_ = std::string(pos, end);
     }
 
     virtual ~OpenCLValidator() {
@@ -109,14 +116,18 @@ public:
             program_ = 0;
         }
 
-        std::cin >> std::noskipws;
-        std::string code((std::istream_iterator<char>(std::cin)), std::istream_iterator<char>());
-        const char *source = code.c_str();
+        const char *source = code_.c_str();
         program_ = clCreateProgramWithSource(context_, 1, &source, NULL, NULL);
         return program_ != 0;
     }
 
     virtual bool buildProgram(std::string options) {
+        const std::string platformName = getPlatformName();
+        if (platformName.find("AMD") != std::string::npos)
+            options.append("-D__PLATFORM_AMD__");
+        else if (platformName.find("Portable OpenCL") != std::string::npos)
+            options.append("-D__PLATFORM_POCL__ ");
+
         options.append("-Werror");
         return clBuildProgram(program_, 1, &device_, options.c_str(), NULL, NULL) == CL_SUCCESS;
     }
@@ -152,6 +163,8 @@ protected:
     cl_context context_;
     cl_command_queue queue_;
     cl_program program_;
+
+    std::string code_;
 };
 
 #endif // WEBCLVALIDATOR_OPENCLVALIDATOR

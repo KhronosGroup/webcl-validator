@@ -1,4 +1,4 @@
-// RUN: cat %s | grep -v DRIVER-MAY-REJECT | %opencl-validator
+// RUN: cat %s | %opencl-validator
 // RUN: %webcl-validator %s 2>/dev/null | grep -v "Processing\|CHECK" | %opencl-validator
 // RUN: %webcl-validator %s | grep -v CHECK | %FileCheck %s
 
@@ -16,11 +16,17 @@ int get_indexed_value(
     // CHECK: const int sum2 = (*(_WCL_ADDR_private_1(const int *, (_wcl_allocs->pa.get_indexed_value__triple)+(0), &_wcl_allocs->pa, (&_wcl_allocs->pa + 1)))) + (*(_WCL_ADDR_private_1(const int *, (_wcl_allocs->pa.get_indexed_value__triple)+(1), &_wcl_allocs->pa, (&_wcl_allocs->pa + 1)))) + (*(_WCL_ADDR_private_1(const int *, (_wcl_allocs->pa.get_indexed_value__triple)+(2), &_wcl_allocs->pa, (&_wcl_allocs->pa + 1))))
     const int sum2 = triple[0] + triple[1] + triple[2];
     // CHECK: const int sum3 = (*(_WCL_ADDR_global_1(__global int *, (array)+(index), _wcl_allocs->gl.access_array__array_min, _wcl_allocs->gl.access_array__array_max))) + (*(_WCL_ADDR_global_1(__global int *, (array)+(0), _wcl_allocs->gl.access_array__array_min, _wcl_allocs->gl.access_array__array_max))) + (*(_WCL_ADDR_private_1(const int *, (_wcl_allocs->pa.get_indexed_value__triple)+(index), &_wcl_allocs->pa, (&_wcl_allocs->pa + 1))))
-    const int sum3 = index[array] + 0[array] + index[triple]; // DRIVER-MAY-REJECT
+#ifndef __PLATFORM_AMD__
+    const int sum3 = index[array] + 0[array] + index[triple];
+#endif
     // CHECK: const int sum4 = (*(_WCL_ADDR_private_1(const int *, (_wcl_allocs->pa.get_indexed_value__triple)+(0), &_wcl_allocs->pa, (&_wcl_allocs->pa + 1)))) + (*(_WCL_ADDR_private_1(const int *, (_wcl_allocs->pa.get_indexed_value__triple)+(1), &_wcl_allocs->pa, (&_wcl_allocs->pa + 1)))) + (*(_WCL_ADDR_private_1(const int *, (_wcl_allocs->pa.get_indexed_value__triple)+(2), &_wcl_allocs->pa, (&_wcl_allocs->pa + 1))))
-    const int sum4 = 0[triple] + 1[triple] + 2[triple]; // DRIVER-MAY-REJECT
+#ifndef __PLATFORM_AMD__
+    const int sum4 = 0[triple] + 1[triple] + 2[triple];
+#endif
     return sum1 + sum2
-        + sum3 + sum4 // DRIVER-MAY-REJECT
+#ifndef __PLATFORM_AMD__
+        + sum3 + sum4
+#endif
         ;
 }
 
@@ -31,7 +37,9 @@ void set_indexed_value(
     // CHECK: (*(_WCL_ADDR_global_1(__global int *, (array)+(index), _wcl_allocs->gl.access_array__array_min, _wcl_allocs->gl.access_array__array_max))) += value;
     array[index] += value;
     // CHECK: (*(_WCL_ADDR_global_1(__global int *, (array)+(index), _wcl_allocs->gl.access_array__array_min, _wcl_allocs->gl.access_array__array_max))) += value;
-    index[array] += value; // DRIVER-MAY-REJECT
+#ifndef __PLATFORM_AMD__
+    index[array] += value;
+#endif
 }
 
 __kernel void access_array(
