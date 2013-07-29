@@ -1,6 +1,51 @@
 Some notes about the system and how does it work
 ================================================
 
+
+General overview
+----------------
+
+The WebCL validator is an executable tool that takes a WebCL C source
+file as its input and outputs a validated version of the input
+source. The validated source contains checks that prevent illegal
+memory references. If validation can't be done, the tool outputs
+nothing but relevant error messages. If everything goes well the
+transformed output source is fed to an OpenCL driver.
+
+The validator has been implemented as a Clang tool. There are actually
+two Clang tools implementing different validation phases embedded into
+a single executable. The first phase tool preprocesses the input
+source and passes it to the second phase tool that applies
+transformations to the preprocessed source.
+
+
+Preprocessing and interfacing
+-----------------------------
+
+Transformations need to be applied on a source that doesn't contain
+any preprocessing directives because the validator phase needs to know
+what it's going to validate. That wouldn't be possible if there were
+any (complicated) branching directives in the code.
+
+Since WebCL C code may contain conditional preprocessor branches any
+implicit preprocessor definitions need to be known. In practice these
+implicit definitions are the features and extensions supported by the
+used OpenCL driver. More specifically, the supported features and
+extensions depend on the used OpenCL device. Therefore the validator
+needs to know which device is used for building its output.
+
+If the validator knows the target device (e.g. it can be passed as a
+command line option), it can deduce the implicit definitions by
+querying the device properties. However, this would introduce a
+dependency to the used OpenCL driver. The validator can function
+without OpenCL driver dependency if the relevant implicit defines are
+passed to the tool as command line options. For this reason each
+implicit define should be passed to the tool with -D option.
+
+
+Validation approach
+-------------------
+
 The validation solution described here is based on already existing
 LLVM IR based implementation. This alternative solution was invented
 as a replacement for a smart pointer based solution that wasn't found
