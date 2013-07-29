@@ -1,12 +1,17 @@
 // RUN: cat %s | %opencl-validator
-// RUN: %webcl-validator %s 2>&1 | grep -v CHECK | %FileCheck %s
+// RUN: %webcl-validator %s | grep -v "Processing\|CHECK" | %opencl-validator
+// RUN: %webcl-validator %s | grep -v "Processing\|CHECK" | %FileCheck %s
 
 __kernel void attack(__global int *array)
 {
     const int i = get_global_id(0);
-    // CHECK: error:
+
+    // CHECK-NOT: #ifdef __ONLY_DEFINED_IN_OPENCL_DRIVER__
+    // CHECK-NOT:     _wcl_allocs = 0;
+    // CHECK-NOT: #endif
 #ifdef __ONLY_DEFINED_IN_OPENCL_DRIVER__
     _wcl_allocs = 0;
 #endif
+
     array[i] = i;
 }

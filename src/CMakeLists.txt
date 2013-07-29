@@ -24,6 +24,7 @@ add_clang_executable(
   WebCLPreprocessor.cpp
   WebCLPrinter.cpp
   WebCLReporter.cpp
+  WebCLTool.cpp
   WebCLTransformation.cpp
   WebCLTransformations.cpp
   WebCLTransformer.cpp

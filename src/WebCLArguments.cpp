@@ -9,63 +9,118 @@
 #include <unistd.h>
 
 WebCLArguments::WebCLArguments(int argc, char const *argv[])
-    : validatorArgc_(0)
+    : preprocessorArgc_(0)
+    , preprocessorArgv_(NULL)
+    , validatorArgc_(0)
     , validatorArgv_(NULL)
+    , sourceDescriptor_(-1)
+    , sourceFilename_(NULL)
     , headerDescriptor_(-1)
     , headerFilename_(NULL)
 {
+    char const *commandName = argv[0];
+    char const *inputFilename = argv[1];
+    const int userOptionOffset = 2;
+    const int numUserOptions = argc - userOptionOffset;
+    assert(argc >= userOptionOffset);
+
+    sourceFilename_ = createEmptyTemporaryFile(sourceDescriptor_);
     char const *buffer = reinterpret_cast<char const*>(kernel_cl);
     size_t length = kernel_cl_len;
     headerFilename_ = createFullTemporaryFile(headerDescriptor_, buffer, length);
 
+    char const *preprocessorInvocation[] = {
+        commandName, inputFilename, "--"
+    };
+    const int preprocessorInvocationSize =
+        sizeof(preprocessorInvocation) / sizeof(preprocessorInvocation[0]);
+    char const *preprocessorOptions[] = {
+        "-E", "-x", "cl"
+    };
+    const int numPreprocessorOptions =
+        sizeof(preprocessorOptions) / sizeof(preprocessorOptions[0]);
+
     // TODO: when we port to llvm-3.3 we can just say -target spir and it
     //       should have valid address space mapping
-    char const *toolOptions[] = {
+    char const *validatorInvocation[] = {
+        commandName, sourceFilename_, "--"
+    };
+    const int validatorInvocationSize =
+        sizeof(validatorInvocation) / sizeof(validatorInvocation[0]);
+    char const *validatorOptions[] = {
         "-x", "cl",
         "-ffake-address-space-map",
         "-include", headerFilename_
     };
-    const int numToolOptions = sizeof(toolOptions) / sizeof(toolOptions[0]);
+    const int numValidatorOptions =
+        sizeof(validatorOptions) / sizeof(validatorOptions[0]);
 
-    validatorArgc_ = argc + 1 + numToolOptions;
+    preprocessorArgc_ = preprocessorInvocationSize + numPreprocessorOptions;
+    validatorArgc_ = validatorInvocationSize + numUserOptions + numValidatorOptions;
+
+    preprocessorArgv_ = new char const *[preprocessorArgc_];
+    if (!preprocessorArgv_) {
+        std::cerr << "Internal error. Can't create argument list for preprocessor."
+                  << std::endl;
+        return;
+    }
     validatorArgv_ = new char const *[validatorArgc_];
     if (!validatorArgv_) {
-        std::cerr << "Internal error. Can't create argument list." << std::endl;
+        std::cerr << "Internal error. Can't create argument list for validator."
+                  << std::endl;
         return;
     }
 
-    const int userOptionOffset = 2;
-    const int toolOptionOffset = 3;
-    assert((argc >= userOptionOffset) && (validatorArgc_ >= toolOptionOffset));
-    // command name and input filename
-    std::copy(argv, argv + userOptionOffset, validatorArgv_);
-    // separator before all options
-    validatorArgv_[toolOptionOffset - 1] = "--";
+    // preprocessor arguments
+    std::copy(preprocessorInvocation,
+              preprocessorInvocation + preprocessorInvocationSize,
+              preprocessorArgv_);
+    std::copy(preprocessorOptions,
+              preprocessorOptions + numPreprocessorOptions,
+              preprocessorArgv_ + preprocessorInvocationSize);
 
-    // user options
-    const int numUserOptions = argc - userOptionOffset;
-    char const **userBegin = argv + userOptionOffset;
-    char const **userEnd = userBegin + numUserOptions;
-    char const **userResult = validatorArgv_ + toolOptionOffset;
-    std::copy(userBegin, userEnd, userResult);
-
-    // tool options
-    char const **toolBegin = toolOptions;
-    char const **toolEnd = toolBegin + numToolOptions;
-    char const **toolResult = userResult + numUserOptions;
-    std::copy(toolBegin, toolEnd, toolResult);
+    // validator arguments
+    std::copy(validatorInvocation,
+              validatorInvocation + validatorInvocationSize,
+              validatorArgv_);
+    std::copy(argv + userOptionOffset,
+              argv + userOptionOffset + numUserOptions,
+              validatorArgv_ + validatorInvocationSize);
+    std::copy(validatorOptions,
+              validatorOptions + numValidatorOptions,
+              validatorArgv_ + validatorInvocationSize + numUserOptions);
 }
 
 WebCLArguments::~WebCLArguments()
 {
+    delete[] preprocessorArgv_;
+    preprocessorArgv_ = NULL;
     delete[] validatorArgv_;
     validatorArgv_ = NULL;
 
+    close(sourceDescriptor_);
+    remove(sourceFilename_);
     close(headerDescriptor_);
     remove(headerFilename_);
 
+    delete[] sourceFilename_;
+    sourceFilename_ = NULL;
     delete[] headerFilename_;
     headerFilename_ = NULL;
+}
+
+int WebCLArguments::getPreprocessorArgc() const
+{
+    if (!arePreprocessorArgumentsOk())
+        return 0;
+    return preprocessorArgc_;
+}
+
+char const **WebCLArguments::getPreprocessorArgv() const
+{
+    if (!arePreprocessorArgumentsOk())
+        return NULL;
+    return preprocessorArgv_;
 }
 
 int WebCLArguments::getValidatorArgc() const
@@ -82,9 +137,28 @@ char const **WebCLArguments::getValidatorArgv() const
     return validatorArgv_;
 }
 
+char const *WebCLArguments::getPreprocessorInput() const
+{
+    if (!arePreprocessorArgumentsOk())
+        return NULL;
+    return preprocessorArgv_[1];
+}
+
+char const *WebCLArguments::getValidatorInput() const
+{
+    if (!areValidatorArgumentsOk())
+        return NULL;
+    return validatorArgv_[1];
+}
+
+bool WebCLArguments::arePreprocessorArgumentsOk() const
+{
+    return sourceFilename_;
+}
+
 bool WebCLArguments::areValidatorArgumentsOk() const
 {
-    return validatorArgv_ && headerFilename_;
+    return arePreprocessorArgumentsOk() && validatorArgv_  && headerFilename_;
 }
 
 char const *WebCLArguments::createEmptyTemporaryFile(int &fd) const

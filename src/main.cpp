@@ -1,9 +1,10 @@
-#include "WebCLAction.hpp"
 #include "WebCLArguments.hpp"
-#include "WebCLDebug.hpp"
+#include "WebCLTool.hpp"
 
-#include "clang/Tooling/CommonOptionsParser.h"
-#include "clang/Tooling/Tooling.h"
+#include <cstdlib>
+#include <iostream>
+#include <set>
+#include <string>
 
 int main(int argc, char const* argv[])
 {
@@ -18,20 +19,27 @@ int main(int argc, char const* argv[])
     }
 
     const WebCLArguments arguments(argc, argv);
-    int validatorArgc = arguments.getValidatorArgc();
-    char const **validatorArgv = arguments.getValidatorArgv();
-    if (!validatorArgc || !validatorArgv)
+
+    int preprocessorArgc = arguments.getPreprocessorArgc();
+    char const **preprocessorArgv = arguments.getPreprocessorArgv();
+    char const *preprocessorInput = arguments.getPreprocessorInput();
+    if (!preprocessorArgc || !preprocessorArgv || !preprocessorInput)
         return EXIT_FAILURE;
 
-    clang::tooling::CommonOptionsParser optionsParser(validatorArgc,
-                                                      validatorArgv);
-    clang::tooling::ClangTool webclTool(optionsParser.GetCompilations(),
-                                        optionsParser.GetSourcePathList());
+    int validatorArgc = arguments.getValidatorArgc();
+    char const **validatorArgv = arguments.getValidatorArgv();
+    char const *validatorInput = arguments.getValidatorInput();
+    if (!validatorArgc || !validatorArgv || !validatorInput)
+        return EXIT_FAILURE;
 
-    clang::tooling::FrontendActionFactory *webCLActionFactory =
-        clang::tooling::newFrontendActionFactory<WebCLAction>();
-    const int status = webclTool.run(webCLActionFactory);
-    delete webCLActionFactory;
+    WebCLTool preprocessorTool(preprocessorArgc, preprocessorArgv,
+                               preprocessorInput, validatorInput);
+    const int preprocessorStatus = preprocessorTool.run();
+    if (preprocessorStatus)
+        return preprocessorStatus;
 
-    return status;
+    WebCLTool validatorTool(validatorArgc, validatorArgv,
+                            validatorInput);
+    const int validatorStatus = validatorTool.run();
+    return validatorStatus;
 }

@@ -44,5 +44,7 @@ bool WebCLPrinter::print()
     }
 
     llvm::outs() << std::string(buffer->begin(), buffer->end());
+    llvm::outs().flush();
+
     return true;
 }
