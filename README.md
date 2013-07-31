@@ -36,6 +36,7 @@ You can now create a build directory and build all three components:
         mkdir /path/build
         cd /path/build
         # cmake uses git-svn if you used git instead of svn
+        # For smaller executable, use -DCMAKE_BUILD_TYPE=MinSizeRel
         cmake -DCMAKE_BUILD_TYPE=Debug /path/llvm
         make -j4 # webcl-validator
         # run regression tests
