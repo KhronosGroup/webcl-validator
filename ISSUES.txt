@@ -42,11 +42,6 @@ hardware vendors seem to cause a lot of problems.
 
 - POCL 0.8 doesn't support image3d_t. We use image3d_t in a test case to
   verify that WebCL Validator doesn't accept it.
-- Intel provides stable Core iX drivers only for Windows and Xeon
-  drivers only for Linux. Older Linux beta driver, that worked on
-  laptop processor, couldn't cope very well with accessing the same
-  vector with two different routes (directly and via a pointer). We
-  haven't tested the new stable drivers yet.
 - AMD provides CPU driver for Linux. However, it started to corrupt
   vector variable contents when barriers were used.
 - Apple CPU driver was not able to run radix test case at all
