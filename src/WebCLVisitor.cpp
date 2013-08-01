@@ -418,11 +418,26 @@ bool WebCLAnalyser::handleCallExpr(clang::CallExpr *expr)
   if (!isFromMainFile(expr->getLocStart())) return true;
   info(expr->getLocStart(), "Found call, adding to bookkeeping to decide later if parameterlist needs fixing.");
 
-  if (helperFunctions_.count(expr->getDirectCallee()) > 0) {
+  clang::FunctionDecl *callee = expr->getDirectCallee();
+  if (!callee) {
+      error(expr->getLocStart(), "Function call is not direct.");
+      return true;
+  }
+
+  if (helperFunctions_.count(callee) > 0) {
     DEBUG( std::cerr << "Looks like it is call to internal function!\n"; );
     internalCalls_.insert(expr);
   } else {
     DEBUG( std::cerr << "Looks like it is call to builtin!\n"; );
+
+    const std::string name = callee->getNameInfo().getAsString();
+    if (builtins_.isUnsupported(name)) {
+      error(expr->getLocStart(), "WebCL doesn't support %0.") << name;
+      return true;
+    } else if (builtins_.isUnsafe(name)) {
+      warning(expr->getLocStart(), "Argument check is required.");
+    }
+
     builtinCalls_.insert(expr);
   }
   

@@ -1,6 +1,7 @@
 #ifndef WEBCLVALIDATOR_WEBCLVISITOR
 #define WEBCLVALIDATOR_WEBCLVISITOR
 
+#include "WebCLBuiltins.hpp"
 #include "WebCLReporter.hpp"
 #include "WebCLTransformer.hpp"
 
@@ -179,7 +180,6 @@ public:
   /// if separate dependence analysis is added to resolve which limits
   /// each memory access should respect.
   typedef std::map<clang::Expr*, clang::VarDecl*> MemoryAccessMap;
-
   
   FunctionDeclSet& getKernelFunctions()  { return kernelFunctions_; };
   FunctionDeclSet& getHelperFunctions()  { return helperFunctions_; };
@@ -200,7 +200,7 @@ private:
 
   bool isPrivate(clang::VarDecl *decl) const;
   void collectVariable(clang::VarDecl *decl);
-  
+
   clang::FunctionDecl *contextFunction_;
   
   FunctionDeclSet kernelFunctions_;
@@ -216,7 +216,8 @@ private:
   DeclRefExprSet  variableUses_;
   MemoryAccessMap pointerAccesses_;
   TypedefList     typedefList_;
-  
+  // all unsupported and unsafe builtins
+  WebCLBuiltins   builtins_;
 };
 
 
