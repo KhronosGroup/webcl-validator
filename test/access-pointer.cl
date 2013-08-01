@@ -10,7 +10,7 @@ int get_pointed_value(
     // CHECK: _WclProgramAllocations *_wcl_allocs,
     __global int *pointer)
 {
-    // CHECK: return (*(_WCL_ADDR_global_1(__global int *, (pointer), _wcl_allocs->gl.access_pointer__array_min, _wcl_allocs->gl.access_pointer__array_max)));
+    // CHECK: return (*(_WCL_ADDR_global_1(__global int *, (pointer), _wcl_allocs->gl.access_pointer__array_min, _wcl_allocs->gl.access_pointer__array_max, _wcl_allocs->gn)));
     return *pointer;
 }
 
@@ -18,7 +18,7 @@ void set_pointed_value(
     // CHECK: _WclProgramAllocations *_wcl_allocs,
     __global int *pointer, int value)
 {
-    // CHECK: (*(_WCL_ADDR_global_1(__global int *, (pointer), _wcl_allocs->gl.access_pointer__array_min, _wcl_allocs->gl.access_pointer__array_max))) = value;
+    // CHECK: (*(_WCL_ADDR_global_1(__global int *, (pointer), _wcl_allocs->gl.access_pointer__array_min, _wcl_allocs->gl.access_pointer__array_max, _wcl_allocs->gn))) = value;
     *pointer = value;
 }
 

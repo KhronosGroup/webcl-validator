@@ -60,18 +60,28 @@ public:
     void createGlobalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);
     void createConstantAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);
     void createLocalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);
-    void createAddressSpaceLimitsField(
-        AddressSpaceLimits &limits, const std::string &type, const std::string &name);
+    void createAddressSpaceLimitsField(const std::string &type, const std::string &name);
+    void createAddressSpaceNullField(
+        const std::string &name, unsigned addressSpace);
     void createProgramAllocationsTypedef(
         AddressSpaceLimits &globalLimits, AddressSpaceLimits &constantLimits,
         AddressSpaceLimits &localLimits, AddressSpaceInfo &privateAs);
   
     void createConstantAddressSpaceAllocation(AddressSpaceInfo &as);
     void createLocalAddressSpaceAllocation(clang::FunctionDecl *kernelFunc);
+    void createAddressSpaceLimitsInitializer(
+        std::ostream &out, clang::FunctionDecl *kernel, AddressSpaceLimits &limits);
+    void createAddressSpaceInitializer(std::ostream& out, AddressSpaceInfo &info);
+
     void createProgramAllocationsAllocation(
         clang::FunctionDecl *kernelFunc, AddressSpaceLimits &globalLimits,
         AddressSpaceLimits &constantLimits, AddressSpaceLimits &localLimits,
         AddressSpaceInfo &privateAs);
+
+    void createAddressSpaceNullAllocation(std::ostream &out, unsigned addressSpace);
+    void createConstantAddressSpaceNullAllocation();
+    void createLocalAddressSpaceNullAllocation(clang::FunctionDecl *kernel);
+    void createGlobalAddressSpaceNullAllocation(clang::FunctionDecl *kernel);
 
     /// \brief Zero a single local memory range.
     void createLocalRangeZeroing(std::ostream &out, const std::string &arguments);
@@ -85,6 +95,7 @@ public:
   
     void addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
                                                unsigned minWidthInBits);
+    void addAddressSpaceNull(std::ostream &out, unsigned addressSpace);
   
     void moveToModulePrologue(clang::Decl *decl);
   
@@ -163,6 +174,7 @@ private:
   
     /// returns initializer for as e.g. { NULL, 5 }
     std::string addressSpaceInitializer(AddressSpaceInfo &as);
+    void createAddressSpaceNullInitializer(std::ostream &out, unsigned addressSpace);
 
     // returns address space limits info as structure
     std::string addressSpaceLimitsAsStruct(AddressSpaceLimits &asLimits);
@@ -174,7 +186,9 @@ private:
     ///     &const_as_arg[0], &const_as_arg[wcl_const_as_arg_size]
     /// }
     std::string addressSpaceLimitsInitializer(
-      clang::FunctionDecl *kernelFunc,AddressSpaceLimits &as);
+      clang::FunctionDecl *kernelFunc, AddressSpaceLimits &as);
+    void createAddressSpaceLimitsNullInitializer(
+        std::ostream &out, unsigned addressSpace);
 
     // use vectors to preserve order, when doing macro additions, we need to do inner first
     typedef std::pair< clang::SourceLocation, clang::SourceLocation > LocationPair;

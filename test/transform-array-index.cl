@@ -9,16 +9,16 @@ __kernel void transform_array_index(
     const int i = get_global_id(0);
 
     int pair[2] = { 0, 0 };
-    // CHECK: (*(_WCL_ADDR_private_1(int *, (_wcl_allocs->pa.transform_array_index__pair)+(i + 0), &_wcl_allocs->pa, (&_wcl_allocs->pa + 1)))) = 0;
+    // CHECK: (*(_WCL_ADDR_private_1(int *, (_wcl_allocs->pa.transform_array_index__pair)+(i + 0), &_wcl_allocs->pa, (&_wcl_allocs->pa + 1), _wcl_allocs->pn))) = 0;
     pair[i + 0] = 0;
-    // CHECK: (*(_WCL_ADDR_private_1(int *, (_wcl_allocs->pa.transform_array_index__pair)+((i + 1)), &_wcl_allocs->pa, (&_wcl_allocs->pa + 1)))) = 1;
+    // CHECK: (*(_WCL_ADDR_private_1(int *, (_wcl_allocs->pa.transform_array_index__pair)+((i + 1)), &_wcl_allocs->pa, (&_wcl_allocs->pa + 1), _wcl_allocs->pn))) = 1;
 #ifndef __PLATFORM_AMD__
     (i + 1)[pair] = 1;
 #endif
 
-    // CHECK: (*(_WCL_ADDR_global_1(__global int *, (array)+(i), _wcl_allocs->gl.transform_array_index__array_min, _wcl_allocs->gl.transform_array_index__array_max))) = (*(_WCL_ADDR_private_1(int *, (_wcl_allocs->pa.transform_array_index__pair)+(i + 0), &_wcl_allocs->pa, (&_wcl_allocs->pa + 1))))
+    // CHECK: (*(_WCL_ADDR_global_1(__global int *, (array)+(i), _wcl_allocs->gl.transform_array_index__array_min, _wcl_allocs->gl.transform_array_index__array_max, _wcl_allocs->gn))) = (*(_WCL_ADDR_private_1(int *, (_wcl_allocs->pa.transform_array_index__pair)+(i + 0), &_wcl_allocs->pa, (&_wcl_allocs->pa + 1), _wcl_allocs->pn)))
     array[i] = pair[i + 0]
-    // CHECK: + (*(_WCL_ADDR_private_1(int *, (_wcl_allocs->pa.transform_array_index__pair)+((i + 1)), &_wcl_allocs->pa, (&_wcl_allocs->pa + 1))))
+    // CHECK: + (*(_WCL_ADDR_private_1(int *, (_wcl_allocs->pa.transform_array_index__pair)+((i + 1)), &_wcl_allocs->pa, (&_wcl_allocs->pa + 1), _wcl_allocs->pn)))
 #ifndef __PLATFORM_AMD__
         + (i + 1)[pair]
 #endif

@@ -98,6 +98,14 @@ std::string WebCLTransformer::addressSpaceInitializer(AddressSpaceInfo &as) {
   return retVal.str();
 }
 
+void WebCLTransformer::createAddressSpaceNullInitializer(
+    std::ostream &out, unsigned addressSpace)
+{
+    if (addressSpace != 0)
+        return;
+    out << "0";
+}
+
 std::string WebCLTransformer::addressSpaceLimitsAsStruct(AddressSpaceLimits &asLimits)
 {
     std::stringstream retVal;
@@ -149,7 +157,7 @@ std::string WebCLTransformer::addressSpaceLimitsAsStruct(AddressSpaceLimits &asL
 }
 
 std::string WebCLTransformer::addressSpaceLimitsInitializer(
-    clang::FunctionDecl *kernelFunc,AddressSpaceLimits &asLimits)
+    clang::FunctionDecl *kernelFunc, AddressSpaceLimits &asLimits)
 {
     std::stringstream retVal;
     retVal << "{ ";
@@ -203,6 +211,12 @@ std::string WebCLTransformer::addressSpaceLimitsInitializer(
     return retVal.str();
 }
 
+void WebCLTransformer::createAddressSpaceLimitsNullInitializer(
+    std::ostream &out, unsigned addressSpace)
+{
+    out << cfg_.getNameOfAddressSpaceNull(addressSpace);
+}
+
 void WebCLTransformer::createAddressSpaceTypedef(
     AddressSpaceInfo &as, const std::string &name)
 {
@@ -252,9 +266,17 @@ void WebCLTransformer::createLocalAddressSpaceLimitsTypedef(AddressSpaceLimits &
 }
 
 void WebCLTransformer::createAddressSpaceLimitsField(
-    AddressSpaceLimits &limits, const std::string &type, const std::string &name)
+    const std::string &type, const std::string &name)
 {
     modulePrologue_ << cfg_.indentation_ << type << " " << name << ";\n";
+}
+
+void WebCLTransformer::createAddressSpaceNullField(
+    const std::string &name, unsigned addressSpace)
+{
+    modulePrologue_ << cfg_.indentation_
+                    << "__" << cfg_.getNameOfAddressSpace(addressSpace)
+                    << " " << cfg_.nullType_ << " *" << name << ";\n";
 }
 
 void WebCLTransformer::createProgramAllocationsTypedef(
@@ -263,19 +285,20 @@ void WebCLTransformer::createProgramAllocationsTypedef(
 {
     modulePrologue_ << "typedef struct {\n";
     if (!globalLimits.empty()) {
-        createAddressSpaceLimitsField(
-            globalLimits, cfg_.globalLimitsType_, cfg_.globalLimitsField_);
+        createAddressSpaceLimitsField(cfg_.globalLimitsType_, cfg_.globalLimitsField_);
+        createAddressSpaceNullField(cfg_.globalNullField_, globalLimits.getAddressSpace());
     }
     if (!constantLimits.empty()) {
-        createAddressSpaceLimitsField(
-            constantLimits, cfg_.constantLimitsType_, cfg_.constantLimitsField_);
+        createAddressSpaceLimitsField(cfg_.constantLimitsType_, cfg_.constantLimitsField_);
+        createAddressSpaceNullField(cfg_.constantNullField_, constantLimits.getAddressSpace());
     }
     if (!localLimits.empty()) {
-        createAddressSpaceLimitsField(
-            localLimits, cfg_.localLimitsType_, cfg_.localLimitsField_);
+        createAddressSpaceLimitsField(cfg_.localLimitsType_, cfg_.localLimitsField_);
+        createAddressSpaceNullField(cfg_.localNullField_, localLimits.getAddressSpace());
     }
     if (!privateAs.empty()) {
         modulePrologue_ << cfg_.indentation_ << cfg_.privateRecordType_<< " " << cfg_.privatesField_ << ";\n";
+        createAddressSpaceNullField(cfg_.privateNullField_, 0);
     }
     modulePrologue_ << "} " << cfg_.addressSpaceRecordType_ << ";\n\n";
 }
@@ -298,42 +321,100 @@ void WebCLTransformer::createLocalAddressSpaceAllocation(clang::FunctionDecl *ke
                                << cfg_.localRecordName_ << ";\n";
 }
 
+void WebCLTransformer::createAddressSpaceLimitsInitializer(
+    std::ostream &out, clang::FunctionDecl *kernel, AddressSpaceLimits &limits)
+{
+    out << cfg_.getIndentation(2) << addressSpaceLimitsInitializer(kernel, limits);
+    out << ",\n" << cfg_.getIndentation(2);
+    createAddressSpaceLimitsNullInitializer(out, limits.getAddressSpace());
+}
+
+void WebCLTransformer::createAddressSpaceInitializer(
+    std::ostream& out, AddressSpaceInfo &info)
+{
+    out << cfg_.getIndentation(2) << addressSpaceInitializer(info);
+    out << ",\n" << cfg_.getIndentation(2);
+    createAddressSpaceNullInitializer(out, 0);
+}
+
 void WebCLTransformer::createProgramAllocationsAllocation(
     clang::FunctionDecl *kernelFunc, AddressSpaceLimits &globalLimits,
     AddressSpaceLimits &constantLimits, AddressSpaceLimits &localLimits,
     AddressSpaceInfo &privateAs)
 {
-    kernelPrologue(kernelFunc) << "\n" << cfg_.indentation_
-                               << cfg_.addressSpaceRecordType_ << " "
-                               << cfg_.programRecordName_ << " = {\n";
+    std::ostream &out = kernelPrologue(kernelFunc);
+
+    out << "\n" << cfg_.indentation_
+        << cfg_.addressSpaceRecordType_ << " " << cfg_.programRecordName_ << " = {\n";
+
     bool hasPrev = false;
+
     if (!globalLimits.empty()) {
-        kernelPrologue(kernelFunc) << cfg_.getIndentation(2)
-                                   << addressSpaceLimitsInitializer(kernelFunc, globalLimits);
+        createAddressSpaceLimitsInitializer(out, kernelFunc, globalLimits);
         hasPrev = true;
     }
+
     if (!constantLimits.empty()) {
-        if (hasPrev) kernelPrologue(kernelFunc) << ",\n";
-        kernelPrologue(kernelFunc) << cfg_.getIndentation(2)
-                                   << addressSpaceLimitsInitializer(kernelFunc, constantLimits);
+        if (hasPrev)
+            out << ",\n";
+        createAddressSpaceLimitsInitializer(out, kernelFunc, constantLimits);
         hasPrev = true;
     }
+
     if (!localLimits.empty()) {
-        if (hasPrev) kernelPrologue(kernelFunc) << ",\n";
-        kernelPrologue(kernelFunc) << cfg_.getIndentation(2)
-                                   << addressSpaceLimitsInitializer(kernelFunc, localLimits);
+        if (hasPrev)
+            out << ",\n";
+        createAddressSpaceLimitsInitializer(out, kernelFunc, localLimits);
         hasPrev = true;
     }
+
     if (!privateAs.empty()) {
-        if (hasPrev) kernelPrologue(kernelFunc) << ",\n";
-        kernelPrologue(kernelFunc) << cfg_.getIndentation(2)
-                                   << addressSpaceInitializer(privateAs) << "\n";
+        if (hasPrev)
+            out << ",\n";
+        createAddressSpaceInitializer(out, privateAs);
+            out << "\n";
     }
-    kernelPrologue(kernelFunc) << "\n" << cfg_.indentation_ << "};\n";
-    kernelPrologue(kernelFunc) << cfg_.indentation_
-                               << cfg_.addressSpaceRecordType_ << " *"
-                               << cfg_.addressSpaceRecordName_ << " = &"
-                               << cfg_.programRecordName_ << ";\n";
+
+    out << "\n" << cfg_.indentation_ << "};\n";
+    out << cfg_.indentation_ << cfg_.addressSpaceRecordType_ << " *"
+        << cfg_.addressSpaceRecordName_ << " = &" << cfg_.programRecordName_ << ";\n";
+}
+
+void WebCLTransformer::createAddressSpaceNullAllocation(
+    std::ostream &out, unsigned addressSpace)
+{
+    const bool isLocal = (addressSpace == clang::LangAS::opencl_local);
+
+    if (isLocal)
+        out << cfg_.indentation_;
+
+    out << "__" << cfg_.getNameOfAddressSpace(addressSpace) << " "
+        << cfg_.nullType_ << " " << cfg_.getNameOfAddressSpaceNull(addressSpace)
+        << "[" << cfg_.getNameOfSizeMacro(addressSpace) << "]";
+
+    if (!isLocal)
+        out << " = { 0 }";
+
+    out << ";\n";
+}
+
+void WebCLTransformer::createConstantAddressSpaceNullAllocation()
+{
+    createAddressSpaceNullAllocation(modulePrologue_, clang::LangAS::opencl_constant);
+}
+
+void WebCLTransformer::createLocalAddressSpaceNullAllocation(clang::FunctionDecl *kernel)
+{
+    createAddressSpaceNullAllocation(kernelPrologue(kernel), clang::LangAS::opencl_local);
+}
+
+void WebCLTransformer::createGlobalAddressSpaceNullAllocation(clang::FunctionDecl *kernel)
+{
+    std::ostream &out = kernelPrologue(kernel);
+    out << cfg_.indentation_
+        << "__" << cfg_.getNameOfAddressSpace(clang::LangAS::opencl_global) << " "
+        << cfg_.nullType_ << " *" << cfg_.getNameOfAddressSpaceNull(clang::LangAS::opencl_global)
+        << " = 0; // largest global area\n";
 }
 
 void WebCLTransformer::createLocalRangeZeroing(
@@ -346,13 +427,15 @@ void WebCLTransformer::createLocalRangeZeroing(
 void WebCLTransformer::createLocalAreaZeroing(
     clang::FunctionDecl *kernelFunc, AddressSpaceLimits &localLimits)
 {
-    int numInitializations = 0;
+    if (localLimits.empty())
+        return;
+
     std::ostream &out = kernelPrologue(kernelFunc);
+
     out << "\n" << cfg_.indentation_ << "// => Local memory zeroing.\n";
 
     if (localLimits.hasStaticallyAllocatedLimits()) {
         createLocalRangeZeroing(out, cfg_.getStaticLimitRef(clang::LangAS::opencl_local));
-        ++numInitializations;
     }
 
     AddressSpaceLimits::LimitList &dynamicLimits = localLimits.getDynamicLimits();
@@ -360,11 +443,11 @@ void WebCLTransformer::createLocalAreaZeroing(
          i != dynamicLimits.end(); ++i) {
         const clang::ParmVarDecl *decl = *i;
         createLocalRangeZeroing(out, cfg_.getDynamicLimitRef(decl));
-        ++numInitializations;
     }
 
-    if (numInitializations)
-        out << cfg_.indentation_ << "barrier(CLK_LOCAL_MEM_FENCE);\n";
+    createLocalRangeZeroing(out, cfg_.getNullLimitRef(clang::LangAS::opencl_local));
+
+    out << cfg_.indentation_ << "barrier(CLK_LOCAL_MEM_FENCE);\n";
     out << cfg_.indentation_ << "// <= Local memory zeroing.\n";
 }
 
@@ -385,21 +468,22 @@ std::string WebCLTransformer::getClampMacroCall(std::string addr, std::string ty
   
   std::stringstream retVal;
 
-  unsigned limitCount = limits.count();
-  
-  retVal << cfg_.getNameOfLimitCheckMacro(limits.getAddressSpace(), limitCount)
+  const unsigned limitCount = limits.count();
+  const unsigned addressSpace = limits.getAddressSpace();
+
+  retVal << cfg_.getNameOfLimitCheckMacro(addressSpace, limitCount)
          << "(" << type << ", " << addr;
-  
+
   if (limits.hasStaticallyAllocatedLimits()) {
-    retVal << ", " << cfg_.getStaticLimitRef(limits.getAddressSpace());
+    retVal << ", " << cfg_.getStaticLimitRef(addressSpace);
   }
 
   for (AddressSpaceLimits::LimitList::iterator i = limits.getDynamicLimits().begin();
        i != limits.getDynamicLimits().end(); i++) {
     retVal << ", " << cfg_.getDynamicLimitRef(*i);
   }
-  
-  retVal << ")";
+
+  retVal << ", " << cfg_.getNameOfAddressSpaceNullPtrRef(addressSpace) << ")";
 
   // add macro implementations afterwards
   usedClampMacros_.insert(ClampMacroKey(limits.getAddressSpace(), limitCount));
@@ -505,9 +589,20 @@ void WebCLTransformer::flushQueuedTransformations() {
 }
 
 void WebCLTransformer::addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
-                                                             unsigned minWidthInBits) {
-    modulePrologue_ << "#define " << cfg_.getNameOfSizeMacro(addressSpace)
-                    << " (" << minWidthInBits << ")\n";
+                                                             unsigned minWidthInBits)
+{
+    modulePrologue_ << "#define " << cfg_.getNameOfSizeMacro(addressSpace) << " ("
+                    << "sizeof(" << cfg_.nullType_ << ") * "
+                    << "((" << minWidthInBits << " + (CHAR_BIT - 1)) / CHAR_BIT)"
+                    << ")\n";
+}
+
+void WebCLTransformer::addAddressSpaceNull(std::ostream &out, unsigned addressSpace)
+{
+    out << "__" << cfg_.getNameOfAddressSpace(addressSpace)
+        << " uchar " << cfg_.getNameOfAddressSpaceNull(addressSpace)
+        << "[(" << cfg_.getNameOfSizeMacro(addressSpace)
+        << " + (sizeof(uchar) - 1)) / sizeof(uchar)] = { '\0' };\n";
 }
 
 void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)
@@ -695,9 +790,8 @@ void WebCLTransformer::emitAddressSpaceRecord(
 }
 
 std::string WebCLTransformer::getWclAddrCheckMacroDefinition(unsigned aSpaceNum,
-                                                             unsigned limitCount) {
-
-  std::string asNull = cfg_.getNameOfAddressSpaceNullPtrRef(aSpaceNum);
+                                                             unsigned limitCount)
+{
   std::stringstream retVal;
   std::stringstream retValPostfix;
   retVal  << "#define " << cfg_.getNameOfLimitCheckMacro(aSpaceNum, limitCount)
@@ -705,7 +799,7 @@ std::string WebCLTransformer::getWclAddrCheckMacroDefinition(unsigned aSpaceNum,
   for (unsigned i = 0; i < limitCount; i++) {
       retVal << ", min" << i << ", max" << i;
   }
-  retVal << ") \\\n";
+  retVal << ", asnull) \\\n";
   retVal << cfg_.indentation_ << "( \\\n";
 
   for (unsigned i = 0; i < limitCount; i++) {
@@ -720,7 +814,7 @@ std::string WebCLTransformer::getWclAddrCheckMacroDefinition(unsigned aSpaceNum,
   }
   
   retVal << cfg_.getIndentation(limitCount + 1)
-         << "((type)(" << asNull << "))"
+         << "((type)(asnull))"
          << retValPostfix.str() << " )";
   
   return retVal.str();

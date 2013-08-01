@@ -45,6 +45,12 @@ WebCLTransformerConfiguration::WebCLTransformerConfiguration()
     , programRecordName_(variablePrefix_ + "_allocations_allocation")
     , addressSpaceRecordName_(variablePrefix_ + "_allocs")
 
+    , nullType_("uint")
+    , privateNullField_("pn")
+    , localNullField_("ln")
+    , constantNullField_("cn")
+    , globalNullField_("gn")
+
     , localRangeZeroingMacro_(macroPrefix_ + "_LOCAL_RANGE_INIT")
 {
 }
@@ -71,10 +77,26 @@ const std::string WebCLTransformerConfiguration::getNameOfAddressSpace(unsigned 
       }
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfAddressSpaceNullPtrRef(unsigned addressSpaceNumber) const
+const std::string WebCLTransformerConfiguration::getNameOfAddressSpaceNull(unsigned addressSpaceNum) const
 {
-    // TODO: implement me! Probably we need to inject null to each address space struct
-    return "min0";
+    return variablePrefix_ + "_" + getNameOfAddressSpace(addressSpaceNum) + "_null";
+}
+
+const std::string WebCLTransformerConfiguration::getNameOfAddressSpaceNullPtrRef(unsigned addressSpaceNum) const
+{
+    const std::string prefix = addressSpaceRecordName_ + "->";
+
+    switch (addressSpaceNum)
+    {
+    case clang::LangAS::opencl_global:
+        return prefix + globalNullField_;
+    case clang::LangAS::opencl_constant:
+        return prefix + constantNullField_;
+    case clang::LangAS::opencl_local:
+        return prefix + localNullField_;
+    }
+
+    return prefix + privateNullField_;
 }
 
 const std::string WebCLTransformerConfiguration::getNameOfLimitCheckMacro(
@@ -155,11 +177,11 @@ const std::string WebCLTransformerConfiguration::getIndentation(unsigned int lev
     return indentation;
 }
 
-const std::string WebCLTransformerConfiguration::getStaticLimitRef(unsigned addressSpaceNumber) const
+const std::string WebCLTransformerConfiguration::getStaticLimitRef(unsigned addressSpaceNum) const
 {
     std::string prefix = addressSpaceRecordName_ + "->";
 
-    switch (addressSpaceNumber) {
+    switch (addressSpaceNum) {
     case clang::LangAS::opencl_constant:
         prefix += constantLimitsField_ + ".";
         return prefix + constantMinField_ + ", " + prefix + constantMaxField_;
@@ -201,4 +223,11 @@ const std::string WebCLTransformerConfiguration::getDynamicLimitRef(const clang:
     retVal << prefix << getNameOfLimitField(decl, false) << ", "
            << prefix << getNameOfLimitField(decl, true);
     return retVal.str();
+}
+
+const std::string WebCLTransformerConfiguration::getNullLimitRef(unsigned addressSpaceNum) const
+{
+    assert(addressSpaceNum == clang::LangAS::opencl_local);
+    const std::string localNull = getNameOfAddressSpaceNull(addressSpaceNum);
+    return localNull + ", " + localNull + " + " + getNameOfSizeMacro(addressSpaceNum);
 }

@@ -333,12 +333,17 @@ public:
          i != kernels.end(); ++i) {
       
       clang::FunctionDecl *func = *i;
-      
+
       // Create allocation for local address space according to
       // earlier typedef. This is required if there are static
       // allocations but not if there are only dynamic allocations.
       if (addressSpaceHandler.hasLocalAddressSpace())
           transformer.createLocalAddressSpaceAllocation(func);
+
+      if (!globalLimits_.empty())
+          transformer.createGlobalAddressSpaceNullAllocation(func);
+      if (!localLimits_.empty())
+          transformer.createLocalAddressSpaceNullAllocation(func);
 
       // allocate wcl_allocations_allocation and create the wcl_allocs
       // pointer to it, give all the data it needs to be able to create
@@ -383,6 +388,11 @@ public:
       return !addressSpaceHandler.getPrivateAddressSpace().empty() ||
           !globalLimits_.empty() || !constantLimits_.empty() || !localLimits_.empty();
   };
+
+  bool hasConstantLimits()
+  {
+      return !constantLimits_.empty();
+  };
   
 private:
   AddressSpaceLimits globalLimits_;
@@ -400,10 +410,9 @@ private:
 /// TODO: refactor when ready to separate file
 class MemoryAccessHandler {
 public:
-  MemoryAccessHandler(WebCLAnalyser &analyser,
-                WebCLTransformer &transformer,
-                KernelHandler &kernelHandler,
-                clang::ASTContext &context) {
+    MemoryAccessHandler(
+        WebCLAnalyser &analyser, WebCLTransformer &transformer,
+        KernelHandler &kernelHandler, clang::ASTContext &context) {
 
     // we need to make sure that current transformations
     // are applied already (we are going to apply check macros now)
@@ -442,6 +451,9 @@ public:
       
       transformer.addMinimumRequiredContinuousAreaLimit(i->first, i->second);
     }
+
+    if (kernelHandler.hasConstantLimits())
+        transformer.createConstantAddressSpaceNullAllocation();
   }
 
   ~MemoryAccessHandler() {};
@@ -493,8 +505,8 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
 
     // Emits pointer checks for all memory accesses and injects
     // required check macro definitions to prolog.
-    MemoryAccessHandler
-      memoryAccessHandler(analyser_, *transformer_, kernelHandler, context);
+    MemoryAccessHandler memoryAccessHandler(
+          analyser_, *transformer_, kernelHandler, context);
   
     // TODO: make sure that when we are calling kernel, that we have enough
     // memory allocated to do all the memory accesses
