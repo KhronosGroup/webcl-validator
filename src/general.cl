@@ -1,6 +1,7 @@
 // => General code that doesn't depend on input.
 
 #define _WCL_LAST(type, ptr) (((type)(ptr)) - 1)
+#define _WCL_FILLCHAR ((char)0xCC)
 
 // POCL crashes at run time if the parameters are local character
 // pointers.
@@ -28,12 +29,12 @@ void _wcl_local_range_init(__local _WclInitType *begin, __local _WclInitType *en
     __local char *item_begin = start + (item_index * item_elements);
     __local const char *item_end = item_begin + item_elements;
     for (__local char *item_i = item_begin; item_i < item_end; ++item_i)
-        *item_i = '\0';
+        *item_i = _WCL_FILLCHAR;
 
     const size_t loop_elements = xyz_items * item_elements;
     __local char *item_final = start + (loop_elements + item_index);
     if (item_final < stop)
-        *item_final = '\0';
+        *item_final = _WCL_FILLCHAR;
 }
 
 // <= General code that doesn't depend on input.
