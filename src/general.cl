@@ -7,6 +7,11 @@
 // pointers.
 typedef int _WclInitType;
 
+#ifdef cl_khr_initialize_memory
+#pragma OPENCL EXTENSION cl_khr_initialize_memory : enable
+#define _WCL_LOCAL_RANGE_INIT(begin, end)
+#else
+
 #define _WCL_LOCAL_RANGE_INIT(begin, end)                               \
     _wcl_local_range_init((__local _WclInitType *)begin, (__local _WclInitType *)end)
 
@@ -36,5 +41,7 @@ void _wcl_local_range_init(__local _WclInitType *begin, __local _WclInitType *en
     if (item_final < stop)
         *item_final = _WCL_FILLCHAR;
 }
+
+#endif // cl_khr_initialize_memory
 
 // <= General code that doesn't depend on input.

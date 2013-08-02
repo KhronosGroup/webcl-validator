@@ -2,6 +2,8 @@
 // RUN: %webcl-validator %s | grep -v "Processing\|CHECK" | %opencl-validator
 // RUN: %webcl-validator %s | grep -v "Processing\|CHECK" | %FileCheck %s
 
+// CHECK
+
 __kernel void attack(__global int *array)
 {
     const int i = get_global_id(0);
@@ -15,3 +17,4 @@ __kernel void attack(__global int *array)
 
     array[i] = i;
 }
+// CHECK: #endif // cl_khr_initialize_memory

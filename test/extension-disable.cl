@@ -17,7 +17,6 @@
 #pragma OPENCL EXTENSION cl_khr_local_int32_extended_atomics : disable
 #pragma OPENCL EXTENSION cl_khr_byte_addressable_store : disable
 #pragma OPENCL EXTENSION cl_khr_3d_image_writes : disable
-#pragma OPENCL EXTENSION all : disable
 
 __kernel void dummy(
     __global int *array)
