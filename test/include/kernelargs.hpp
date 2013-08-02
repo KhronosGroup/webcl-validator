@@ -19,9 +19,9 @@ class KernelArgs
 {
 public:
     KernelArgs(cl_kernel kernel, bool genArraySizeArgs) :
-        _kernel(kernel),
-        _argi(0),
-        _genArraySizeArgs(genArraySizeArgs)
+        kernel_(kernel),
+        argi_(0),
+        genArraySizeArgs_(genArraySizeArgs)
     {
     }
 
@@ -39,22 +39,23 @@ public:
 
     void appendArray(size_t argsize, const void *argval, cl_ulong arrayLength)
     {
-        cl_int ret = clSetKernelArg(_kernel, _argi++, argsize, static_cast<const void *>(argval));
+        cl_int ret = clSetKernelArg(kernel_, argi_++, argsize, static_cast<const void *>(argval));
         if (ret != CL_SUCCESS)
-            std::cerr << "clSetKernelArg failed for arg " << (_argi - 1) << std::endl;
+            std::cerr << "clSetKernelArg failed for arg " << (argi_ - 1) << std::endl;
 
-        if (_genArraySizeArgs)
+        if (genArraySizeArgs_)
         {
-            ret = clSetKernelArg(_kernel, _argi++, sizeof(arrayLength), &arrayLength);
+            ret = clSetKernelArg(kernel_, argi_++, sizeof(arrayLength), &arrayLength);
             if (ret != CL_SUCCESS)
                 std::cerr << "clSetKernelArg failed for array length parameter" << std::endl;
         }
     }
 
 private:
-    cl_kernel _kernel;
-    cl_uint _argi;
-    bool _genArraySizeArgs;
+
+    cl_kernel kernel_;
+    cl_uint argi_;
+    bool genArraySizeArgs_;
 };
 
 #endif

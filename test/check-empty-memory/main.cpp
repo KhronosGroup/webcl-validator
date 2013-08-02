@@ -8,7 +8,7 @@
 
 namespace
 {
-    const char FillChar = 0xCC;
+    const unsigned char FillChar = 0xCC;
     typedef std::vector<cl_platform_id> platform_vector;
     typedef std::vector<cl_device_id> device_vector;
 }
@@ -18,8 +18,6 @@ platform_vector getPlatformsIDs()
     const platform_vector::size_type maxPlatforms = 10;
     platform_vector platformIds(maxPlatforms);
 
-    cl_platform_id platform_id = NULL;
-    cl_device_id device_id = NULL;
     cl_uint numOfPlatforms = 0;
     cl_int ret = clGetPlatformIDs(maxPlatforms, platformIds.data(), &numOfPlatforms);
     if (ret != CL_SUCCESS)
@@ -71,10 +69,10 @@ std::string readAllInput()
     return std::string(begin, end);
 }
 
-bool verifyZeroed(const char *buf, int size)
+bool verifyZeroed(const unsigned char *buf, int size)
 {
-    const char *end = buf + size;
-    for (const char *p = buf; p != end; ++p)
+    const unsigned char *end = buf + size;
+    for (const unsigned char *p = buf; p != end; ++p)
     {
         if (*p != FillChar)
             return false;
@@ -143,7 +141,7 @@ bool testSource(cl_device_id device, std::string const& source, bool isTransform
     {
         ret = clFinish(command_queue);
 
-        char *buf = new char[Length * sizeof(cl_float4)]; // allocate by largest buffer
+        unsigned char *buf = new unsigned char[Length * sizeof(cl_float4)]; // allocate by largest buffer
         int sizeInBytes = Length * sizeof(cl_int);
         ret = clEnqueueReadBuffer(command_queue, outArg0, CL_TRUE, 0, sizeInBytes, buf, 0, NULL, NULL);
         if (!verifyZeroed(buf, sizeInBytes))
