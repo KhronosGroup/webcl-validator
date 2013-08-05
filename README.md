@@ -25,10 +25,14 @@ The repositories can be found from:
 
 **Clang:**
 
+        git clone https://github.com/KhronosGroup/webcl-clang-dev.git
+        or
         git clone ssh://git@github.com/KhronosGroup/webcl-clang-dev.git
 
 **WebCL Validator:**
 
+        git clone https://github.com/KhronosGroup/webcl-validator.git
+        or
         git clone ssh://git@github.com/KhronosGroup/webcl-validator.git
 
 You can now create a build directory and build all three components:
@@ -57,14 +61,14 @@ Running
 Run the following command to let WebCL Validator transform your WebCL
 kernels:
 
-        webcl-validator kernel.cl -- -x cl -include _kernel.h
+        webcl-validator kernel.cl [-- CLANG OPTIONS]
 
-Option *-x cl* forces sources to be interpreted as OpenCL code even if
-they wouldn't use the *.cl* suffix. Option *-include _kernel.h*
-automatically includes OpenCL type and builtin definitions.
+The validator adds some Clang options automatically. Option *-x cl*
+forces sources to be interpreted as OpenCL code even if they wouldn't
+use the *.cl* suffix. Option *-include FILE* automatically includes
+helper code, such as OpenCL type and builtin definitions.
 
-You can find the WebCL Validator, _kernel.h and example WebCL kernels
-from:
+You can find the WebCL Validator and example WebCL kernels from:
 
         /path/build/bin
         /path/llvm/tools/clang/tools/webcl-validator/test

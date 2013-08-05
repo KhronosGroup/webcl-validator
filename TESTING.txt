@@ -1,0 +1,76 @@
+WebCL Validator Testing
+=======================
+
+This document describes briefly how the WebCL Validator can be
+tested. A list of test equipment already used for testing is also
+given.
+
+
+Equipment
+---------
+
+Here is a list of devices and drivers that we have so far used for
+testing.
+
+T1: Intel driver and processor
+    OS: Linux Ubuntu 13.04
+    Driver: intel_sdk_for_ocl_applications_2013_xe_sdk_3.0.67279_x64.tgz
+    Device: Intel(R) Core(TM) i7-3520M CPU @ 2.90GHz
+
+T2: AMD driver and Intel processor
+    OS: Linux Ubuntu 12.04
+    Driver: AMD-APP-SDK-v2.8-lnx64.tgz
+    Device: Intel(R) Core(TM) i7-2640M CPU @ 2.80GHz.
+
+T3: POCL driver and Intel processor
+    OS: Linux Ubuntu 12.04
+    Driver: pocl-0.7.tar.gz
+    Device: Intel(R) Core(TM) i7-2640M CPU @ 2.80GHz.
+
+T4: Apple driver and Intel processor
+    OS: Mac OSX
+    Driver:
+    Device:
+
+See the ISSUES.txt document about problems in different drivers.
+
+
+Testing Method
+--------------
+
+The WebCL Validator project creates two binaries that are used with
+all test cases: bin/webcl-validator and bin/opencl-validator. The
+opencl-validator binary simply checks that an OpenCL C file gets built
+without errors with the installed OpenCL driver.
+
+Most of the test cases are OpenCL C files in test/*.cl or
+test/*.c. These are usually tested in three phases:
+
+    1. Feed the test file to bin/opencl-validator and check that it's
+       accepted as valid OpenCL C input.
+
+    2. Feed the test file to bin/webcl-validator and check that no
+       error are generated. If there are no errors, feed the validator
+       output to bin/opencl-validator to check that the validator
+       produces valid OpenCL C output.
+
+    3. Feed the validator output to LLVM tool bin/FileCheck to check
+       that certain transformations, that are relevant to the test
+       case, are present.
+
+When you run 'make check-webcl-validator', each test file under the
+test directory is tested as described above. This process is
+controlled by the 'RUN' and 'CHECK' comments in each test file.
+
+The testing method described above doesn't run any OpenCL kernels, it
+just ensures that the validator performs necessary source
+transformations. Test cases that run kernels are located in
+subdirectories of the main testing directory like test/radix-sort and
+test/check-empty-memory. You just need to write a makefile that builds
+a binary for running the kernel and then use the 'RUN' comment to make
+the testing framework execute the binary.
+
+Please note that essentially all test cases use standard OpenCL C
+files as input, which are then transformed, built and optionally
+executed using the system OpenCL driver. The validator hasn't been
+integrated with browser and Javascript host code yet.

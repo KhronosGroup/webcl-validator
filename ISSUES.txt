@@ -1,57 +1,112 @@
 This document describes issues in Clang and OpenCL drivers that we
 have encountered while developing the WebCL Validator.
 
-
-
 OpenCL Drivers
 ==============
 
-This section describes OpenCL driver related issues.
+This section describes OpenCL driver related compiler and run-time
+issues. Refer to TESTING.txt for more detailed test equipment setups.
 
-OpenCL Driver Differences
--------------------------
+OpenCL Compiler Differences
+---------------------------
 
-We have seen some differences in OpenCL drivers. These are not bugs,
+We have seen some differences in OpenCL drivers. These aren't bugs,
 the differences just illustrate how different vendors interpret the
-OpenCL specification either more strictly or more loosely. We should
-resort to using the lowest common denominator. Each of the cases below
-are accepted by some drivers, but rejected by at least one driver.
+OpenCL specification either more strictly or more loosely. Each of the
+cases below are accepted by some drivers, but rejected by at least one
+driver.
 
-- Intel: Doesn't support "__local int array[]" as function
-  parameter. One needs to use "__local int *array" instead.
-- AMD: Doesn't like "size_t" types as kernel parameters.
-- AMD: Doesn't allow you to index vectors as in "uint4 v; v[0] = 0;".
-- AMD: Doesn't allow you to access vector fields from pointer. You
-  need to use "uint4 *p = &v; (*p).x = 0;" instead of "p->x = 0;".
-- AMD: Compiler segfaults if array is indexed with "index[array]"
-  instead of "array[index]".
-- AMD: Segfaults if structure initialization refers to itself:
-  __constant struct { int v; __constant int *p; } c = { 0, &c.v };
-- AMD: Segfaults if kernel contains nothing but a single barrier call:
-  __kernel void dummy(int d) { barrier(CLK_LOCAL_MEM_FENCE); }
-- Apple: requires prototype declarations for each helper function
-- Apple: gives error on e.g. signed vs. unsigned comparisons
-- POCL: Requires kernel called 'main' to return int instead of void.
+Issue C1: Intel compiler doesn't support "__local int array[]" as
+          function parameter, because OpenCL specification doesn't
+          require that. One needs to use "__local int *array" instead.
+Workaround: The validator could transform "array[]" to "*array".
 
-OpenCL Linux Driver Bugs
-------------------------
+Issue C2: AMD compiler doesn't like "size_t" types as kernel
+          parameters.
+Workaround: The validator uses "ulong" when it needs to generate size
+            parameters for memory objects. The validator could
+            transform "size_t" to "ulong" for other kernel parameters.
 
-We have also found nasty bugs in OpenCL drivers. For this reason
-we suggest that POCL is used for now as the binary drivers of
-hardware vendors seem to cause a lot of problems.
+Issue C3: AMD compiler doesn't allow you to index vectors as in
+          uint4 v; v[0] = 0;
+          because the OpenCL specification doesn't require that.
+Workaround: The validator could transform "v[0]" to "v.x". The
+            validator could emit an error message for "v[i]".
 
-- POCL 0.8 doesn't support image3d_t. We use image3d_t in a test case to
-  verify that WebCL Validator doesn't accept it.
-- AMD provides CPU driver for Linux. However, it started to corrupt
-  vector variable contents when barriers were used.
-- Apple CPU driver was not able to run radix test case at all
-  when unsortedValues_ buffer is created with CL_MEM_USE_HOST_PTR
-  calling clEnqueueNDRangeKernel() fails stating 
-  CL_INVALID_WORK_GROUP_SIZE if the same buffer is created with
-  CL_MEM_COPY_HOST_PTR then running the kernel causes 
-  CL_OUT_OF_RESOURCES error.
+Issue C4: AMD compiler doesn't allow you to access vector fields with
+          a pointer, because the OpenCL specification doesn't require
+          that. You need to use "uint4 *p = &v; (*p).x = 0;" instead
+          of "p->x = 0;".
+Workaround: The validator could transform "p->x" to "(*p).x".
 
+Issue C5: Apple compiler requires prototype declarations for each
+          helper function.
+Workaround: To avoid warnings/errors, the validator could make each
+            helper function static, or generate a prototype for them.
 
+Issue C6: Apple compiler gives warnings/errors on e.g. signed
+          vs. unsigned comparisons.
+Workaround: ?
+
+OpenCL Compiler Bugs
+--------------------
+
+Issue B1: AMD compiler segfaults if array is indexed with
+          "index[array]" instead of "array[index]".
+Workaround: The validator transforms both forms to "*(array + index)".
+
+Issue B2: AMD compiler segfaults if structure initialization refers to
+          itself:
+          __constant struct { int v; __constant int *p; } c = { 0, &c.v };
+Workaround: ?
+
+Issue B3: AMD compiler segfaults if kernel contains nothing but a
+          single barrier call:
+          __kernel void dummy(int d) { barrier(CLK_LOCAL_MEM_FENCE); }
+Workaround: It's unlikely that anyone wants to use this kind of kernel
+            in practice.
+
+Issue B4: POCL compiler requires kernel called 'main' to return int
+          instead of void. This is a general problem with Clang based
+          tools, since OpenCL support is not complete in Clang.
+Workaround: ?
+
+Issue B5: POCL compiler may crash when structure pointers are cast to
+          character pointers in function call arguments. This is
+          required in check-empty-memory test where address space
+          limits are passed to local memory initialization
+          routine. AMD and Intel compilers work fine.
+Workaround: Sometimes casting indirectly via pointers to larger types
+            may help, but not always. For example, type* -> char* may
+            crash but type* -> int* -> char* may work.
+
+OpenCL Driver Bugs
+------------------
+
+We have also found nasty run-time bugs in OpenCL drivers. For this
+reason we suggest that Intel or POCL driver is used for now as the
+binary drivers of some hardware vendors seem to cause a lot of
+problems.
+
+Issue D1: POCL 0.8 driver doesn't support image3d_t.
+Workaround: The validator already rejects image3d_t use because it's
+            not supported in WebCL. This is only a minor issue in our
+            test cases.
+
+Issue D2: AMD driver compiles and executes our radix-sort test
+          case. However, the results are incorrect because certain
+          vector variable contents become corrupted when barriers are
+          used. At least Intel and POCL drivers produce correct
+          results.
+Workaround: ?
+
+Issue D3: Apple CPU driver wasn't able to run radix-sort test case at
+          all when unsortedValues_ buffer is created with
+          CL_MEM_USE_HOST_PTR. Calling clEnqueueNDRangeKernel() fails
+          stating CL_INVALID_WORK_GROUP_SIZE. If the same buffer is
+          created with CL_MEM_COPY_HOST_PTR, then running the kernel
+          causes CL_OUT_OF_RESOURCES error.
+Workaround: ?
 
 Clang
 =====
@@ -85,6 +140,10 @@ currently handled properly.
 Printing of AST
 ---------------
 
+These fixes can be abandoned. We don't need them anymore since we have
+decided to use Clang's rewriting mechanism instead of printing the AST
+with Clang's AST node printers.
+
 Fixed locally, not in upstream:
 Image access qualifiers aren't printed, because they are missing from
 the AST.
@@ -103,6 +162,7 @@ __attribute__((opencl_kernel_function)).
 
 Preprocessing
 -------------
+
 Fixed locally, not in upstream:
 Clang supports a bunch of preprosessor callbacks. This mechanism needs
 to be extended with OpenCL extension pragmas.
@@ -115,17 +175,10 @@ Clang doesn't handle indexing of arrays with large integer constant
 expressions (>= 2^63) properly.
 
 Static vector initialisers are not working properly in clang 3.2
------------------------------------------------------------------
+----------------------------------------------------------------
 
 http://clang-developers.42468.n3.nabble.com/getSourceRange-for-InitListExpr-td4033036.html
 Also opened bug report: http://llvm.org/bugs/show_bug.cgi?id=16560
 
-for now bug can be circumvented by having vector initializations wrapped inside ().
-
-i.e (float4)(0,0,0,0) -> ((float4)(0,0,0,0))
-
-
-
-
-
-
+For now the bug can be circumvented by having vector initializations
+wrapped inside parentheses: (float4)(0,0,0,0) -> ((float4)(0,0,0,0)).
