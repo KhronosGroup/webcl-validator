@@ -5,8 +5,10 @@
 #include "WebCLReporter.hpp"
 
 #include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/Tooling/Refactoring.h"
 
 #include "llvm/ADT/APInt.h"
+
 
 #include <vector>
 
@@ -23,6 +25,7 @@ namespace clang {
 
 class WebCLTransformations;
 class WebCLTransformerConfiguration;
+
 
 /// \brief Transforms an AST node by rewriting its contents in the
 /// source code domain.

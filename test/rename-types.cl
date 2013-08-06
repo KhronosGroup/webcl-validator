@@ -7,6 +7,8 @@ __constant struct CommonStruct second_constant_struct = { 0 };
 typedef struct { int constant_field; } CommonTypedef;
 __constant CommonTypedef constant_typedef = { 0 };
 
+int rename_privates(void);
+
 int rename_privates()
 {
     struct { int private_field_1; } anonymous_private_1 = { 0 };

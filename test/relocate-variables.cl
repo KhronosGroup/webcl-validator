@@ -147,6 +147,8 @@ __constant ConstantMainStruct constant_main_struct = {
     { { 0, 0, 0, 0 } }
 };
 
+int relocate_private_variables(void);
+
 int relocate_private_variables()
 {
     int int_value = 0;

@@ -6,6 +6,12 @@ void init_local_mem(
     __local int *int_array, int int_value,
     __local char *char_array, char char_value,
     __local float *float_array, float float_value,
+    __local float4 *vector_array, float4 vector_value);
+
+void init_local_mem(
+    __local int *int_array, int int_value,
+    __local char *char_array, char char_value,
+    __local float *float_array, float float_value,
     __local float4 *vector_array, float4 vector_value)
 {
     int_array[0] = int_value;

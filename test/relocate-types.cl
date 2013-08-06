@@ -43,6 +43,8 @@ struct CFPStruct;
 __constant struct CFRStruct { int field; struct CFRStruct *frstruct; struct CFPStruct *fpstruct; } relocated_cf1 = { 0, 0, 0 };
 __constant struct CFPStruct { int field; struct CFRStruct *frstruct; struct CFPStruct *fpstruct; } preserved_cf1 = { 0, 0, 0 };
 
+int relocate_privates(void);
+
 int relocate_privates()
 {
     struct { int field; } relocated_1 = { 1 };

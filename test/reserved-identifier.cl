@@ -9,6 +9,10 @@ typedef struct { int _wcl_field; } _wcl_typedef;
 typedef struct { int _WclField; } _WclTypedef;
 typedef struct { int _WCL_FIELD; } _WCL_TYPEDEF;
 
+int _wcl_function(int _wcl_parameter);
+int _WclFunction(int _WclParameter);
+int _WCL_FUNCTION(int _WCL_PARAMETER);
+
 int _wcl_function(int _wcl_parameter)
 {
     struct _wcl_struct _wcl_variable = { 1 };

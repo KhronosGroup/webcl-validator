@@ -15,6 +15,8 @@ typedef uint _WclInitType;
 #define _WCL_LOCAL_RANGE_INIT(begin, end)                               \
     _wcl_local_range_init((__local _WclInitType *)begin, (__local _WclInitType *)end)
 
+void _wcl_local_range_init(__local _WclInitType *begin, __local _WclInitType *end);
+
 void _wcl_local_range_init(__local _WclInitType *begin, __local _WclInitType *end)
 {
     __local uchar *start = (__local uchar *)begin;
