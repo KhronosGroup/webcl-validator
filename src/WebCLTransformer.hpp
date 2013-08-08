@@ -6,6 +6,9 @@
 #include "WebCLTransformations.hpp"
 #include "WebCLTransformerConfiguration.hpp"
 
+// Replacement class and applyAllReplacements function
+#include "clang/Tooling/Refactoring.h"
+
 #include <map>
 #include <set>
 #include <utility>
@@ -190,33 +193,34 @@ private:
     void createAddressSpaceLimitsNullInitializer(
         std::ostream &out, unsigned addressSpace);
 
-    // use vectors to preserve order, when doing macro additions, we need to do inner first
-    typedef std::pair< clang::SourceLocation, clang::SourceLocation > LocationPair;
-    typedef std::pair< LocationPair, std::string >                    ReplacementPair;
-    typedef std::pair< clang::SourceLocation, std::string >           InsertionPair;
-    typedef std::vector< LocationPair >                               RemovalContainer;
-    typedef std::vector< ReplacementPair >                            ReplacementContainer;
-    typedef std::vector< InsertionPair >                              InsertionContainer;
+    // NOTE: we should refactor all functionality of
+    //       insertText, removeText, ... etc. to separate class
+    //       since this is basically extended functionality to rewriter
+    //       interface (our own low level modification handling).
+    typedef std::pair< int, int >                  ModifiedRange;
+    typedef std::map< ModifiedRange, std::string > RangeModifications;
+    RangeModifications modifiedRanges_;
+    // filtered ranges, which has only the top level modifications and does not
+    // include nested ones (top level should already contain nested changes as string)
+    typedef std::set<ModifiedRange>             RangeModificationsFilter;
+    RangeModificationsFilter filteredModifiedRanges_;
+    // if we should regenerate the filtered ranges data
+    bool isFilteredRangesDirty_;
   
     // transformation methods, which does not do transformation yet, but waits
     // if there is other transformation done for the same location and merge them first
-    void insertText(clang::SourceLocation loc, std::string text) {
-      inserts_.push_back(
-          InsertionPair(loc, text));
-    };
-    void removeText(clang::SourceRange range) {
-      removals_.push_back(
-          LocationPair(range.getBegin(), range.getEnd()));
-    };
-    void replaceText(clang::SourceRange range, std::string text) {
-      replacements_.push_back(
-          ReplacementPair( LocationPair(range.getBegin(), range.getEnd()), text));
-    };
-
-    // organize transformations so that remove / replace is done first and insert after
-    RemovalContainer     removals_;
-    ReplacementContainer replacements_;
-    InsertionContainer   inserts_;
+    void insertText(clang::SourceLocation loc, std::string text);
+    void removeText(clang::SourceRange range);
+    void replaceText(clang::SourceRange range, std::string text);
+    RangeModificationsFilter& filteredModifiedRanges();
+  
+    /// \brief if for asked source range has been added transformations, return transformed result
+    /// e.g. if location is [20, 50] we would find all transformations inside is
+    //       [20,22], [25,30], [33,45] and before that all transformations inside those ranges
+    //       [34,37] etc..
+    //       I have pretty much no good idea how to handle this good enough...
+    //       TODO: print source locations and find out...
+    std::string getTransformedText(clang::SourceRange range);
 
     bool checkIdentifiers();
     bool rewritePrologue();

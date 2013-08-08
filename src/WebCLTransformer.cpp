@@ -12,6 +12,7 @@
 WebCLTransformer::WebCLTransformer(
     clang::CompilerInstance &instance, clang::Rewriter &rewriter)
     : WebCLReporter(instance)
+    , isFilteredRangesDirty_(false)
     , cfg_()
     , transformations_(instance, rewriter, cfg_)
 {
@@ -27,6 +28,9 @@ bool WebCLTransformer::rewrite()
         return false;
 
     bool status = true;
+
+    // do all replacements stored in refactoring first ()
+    flushQueuedTransformations();
 
     status = status && rewritePrologue();
   
@@ -518,15 +522,15 @@ void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLim
   clang::Rewriter &rewriter = transformations_.getRewriter();
 
   std::stringstream memAddress;
-  // NOTE: source end locations are wrong after replacements...
-  clang::SourceRange baseRange = clang::SourceRange(base->getLocStart(), base->getLocStart().getLocWithOffset(1));
+  clang::SourceRange baseRange = clang::SourceRange(base->getLocStart(), base->getLocEnd());
   const std::string original = rewriter.getRewrittenText(access->getSourceRange());
-  const std::string baseStr = rewriter.getRewrittenText(baseRange);
+  const std::string baseStr = getTransformedText(baseRange);
 
+  // TODO: get strings from our rewriter instead of rewriter to get also nested transformations / relocations to work
   memAddress << "(" << baseStr << ")";
   std::string indexStr;
   if (index) {
-    indexStr = rewriter.getRewrittenText(index->getSourceRange());
+    indexStr = getTransformedText(index->getSourceRange());
     memAddress << "+(" << indexStr << ")";
   }
   
@@ -538,14 +542,18 @@ void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLim
   if (!field.empty()) {
     retVal << "." << field;
   }
-
+  
   DEBUG(
     std::cerr << "Creating memcheck for: " << original
               << "\n                 base: " << baseStr
               << "\n                index: " << indexStr
               << "\n          replacement: " << retVal.str()
-              << "\n----------------------------\n"; );
+              << "\n----------------------------\n";
+    access->dump();
+    std::cerr << "============================\n\n"; );
+  
   replaceText(access->getSourceRange(), retVal.str());
+  DEBUG( std::cerr << "============================\n\n"; );
 }
 
 void WebCLTransformer::addRelocationInitializer(clang::ParmVarDecl *parmDecl) {
@@ -567,25 +575,19 @@ void WebCLTransformer::moveToModulePrologue(clang::Decl *decl) {
 void WebCLTransformer::flushQueuedTransformations() {
   
   clang::Rewriter &rewriter = transformations_.getRewriter();
+  clang::tooling::Replacements replacements;
+  // go through modifications and replace them to source
+  for (RangeModificationsFilter::iterator i = filteredModifiedRanges().begin();
+       i != filteredModifiedRanges().end(); i++) {
+    
+    clang::SourceLocation startLoc = clang::SourceLocation::getFromRawEncoding(i->first);
+    clang::SourceLocation endLoc = clang::SourceLocation::getFromRawEncoding(i->second);
+    replacements.insert(clang::tooling::Replacement(rewriter.getSourceMgr(),
+                                                    clang::CharSourceRange::getTokenRange(startLoc, endLoc),
+                                                    modifiedRanges_[*i]));
+  }
+  clang::tooling::applyAllReplacements(replacements, rewriter);
   
-  // if we replace / remove after insert, rewriter seems to fail
-  // transformation applying order 1. removals, 2. replacements, 3. insertions
-  for (RemovalContainer::iterator iter = removals_.begin();
-       iter != removals_.end(); iter++) {
-    rewriter.RemoveText(clang::SourceRange(iter->first, iter->second));
-  }
-  for (ReplacementContainer::iterator iter = replacements_.begin();
-       iter != replacements_.end(); iter++) {
-    rewriter.ReplaceText(clang::SourceRange(iter->first.first, iter->first.second), iter->second );
-  }
-  for (InsertionContainer::iterator iter = inserts_.begin();
-       iter != inserts_.end(); iter++) {
-    rewriter.InsertText(iter->first, iter->second);
-  }
-  
-  removals_.clear();
-  replacements_.clear();
-  inserts_.clear();
 }
 
 void WebCLTransformer::addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
@@ -641,6 +643,229 @@ void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
         decl,
         new WebCLSizeParameterInsertion(
             transformations_, decl));
+}
+
+// FUTURE: this text editing should be encapsulated to separate class, since it is really providing the
+//         low level support for modifying the sources. Also implemenatation can be made whole lot
+//         smarter afterwards
+
+// transformation methods, which does not do transformation yet, but waits
+// if there is other transformation done for the same location and merge them first
+void WebCLTransformer::insertText(clang::SourceLocation loc, std::string text) {
+  isFilteredRangesDirty_ = true;
+  int rawLoc = loc.getRawEncoding();
+  
+  RangeModifications::iterator start =
+    modifiedRanges_.lower_bound(ModifiedRange(rawLoc, rawLoc));
+
+  clang::SourceRange range(loc, loc);
+  
+  // if there was modification starting from this insert directly to them
+  if (start != modifiedRanges_.end() && start->first.first == rawLoc) {
+    for (RangeModifications::iterator i = start; i != modifiedRanges_.end(); i++) {
+      // stop if we are not anymore in the same start location
+      if (i->first.first != rawLoc) {
+        break;
+      }
+      DEBUG( std::cerr << "Insert old " << i->second
+               << " new:" << text + i->second << "\n"; );
+      i->second = text + i->second;
+    }
+  } else {
+    clang::Rewriter &rewriter = transformations_.getRewriter();
+    modifiedRanges_[ModifiedRange(rawLoc, rawLoc)] =
+        text + rewriter.getRewrittenText(range);
+    DEBUG( std::cerr << "Insert range: " << rawLoc << ":" << rawLoc << " " << rewriter.getRewrittenText(range) << " new: " << text+rewriter.getRewrittenText(range) << "\n"; );
+  }
+}
+
+void WebCLTransformer::removeText(clang::SourceRange range) {
+  isFilteredRangesDirty_ = true;
+  clang::Rewriter &rewriter = transformations_.getRewriter();
+  DEBUG( std::cerr << "Remove SourceLoc " << range.getBegin().getRawEncoding() << ":" << range.getEnd().getRawEncoding() << " " << rewriter.getRewrittenText(range) << "\n"; );
+  replaceText(range, "");
+}
+
+void WebCLTransformer::replaceText(clang::SourceRange range, std::string text) {
+  isFilteredRangesDirty_ = true;
+  clang::Rewriter &rewriter = transformations_.getRewriter();
+  int rawStart = range.getBegin().getRawEncoding();
+  int rawEnd = range.getEnd().getRawEncoding();
+  modifiedRanges_[ModifiedRange(rawStart, rawEnd)] = text;
+  DEBUG( std::cerr << "Replace SourceLoc " << rawStart << ":" << rawEnd << " " << rewriter.getRewrittenText(range) << " with: " << text << "\n"; );
+}
+
+WebCLTransformer::RangeModificationsFilter& WebCLTransformer::filteredModifiedRanges() {
+
+  // filter nested ranges out from added range modifications
+  if (isFilteredRangesDirty_) {
+    filteredModifiedRanges_.clear();
+
+    int currentStart = -1;
+    int biggestEnd = -1;
+    
+    // find out only toplevel ranges without nested areas
+    for (RangeModifications::iterator i = modifiedRanges_.begin(); i != modifiedRanges_.end(); i++) {
+      
+      DEBUG( std::cerr << "Range " << i->first.first << ":" << i->first.second << " = " << i->second << "\n"; );
+      
+      if (i->first.first < biggestEnd) {
+        DEBUG( std::cerr << "Skipping: " << "\n"; );
+        continue;
+      }
+      
+      if (currentStart != i->first.first) {
+        if (currentStart != -1) {
+          // This is a big vague because
+          // area size might be zero in location ids
+          // if current area cannot overlap earlier or if no earlier or it does not overlap => add area
+          if (currentStart != biggestEnd ||
+              filteredModifiedRanges_.empty() ||
+              currentStart != filteredModifiedRanges_.rbegin()->second) {
+            DEBUG( std::cerr << "Added range: " << currentStart << ":" << biggestEnd << "\n"; );
+            filteredModifiedRanges_.insert(ModifiedRange(currentStart, biggestEnd));
+          }
+        }
+        currentStart = i->first.first;
+      }
+      
+      biggestEnd = i->first.second;
+    }
+    
+    // if last currentStart, biggestEnd is not nested... this is a bit nasty because source location start and end might be
+    // the same which is a big ambigious...
+    if (currentStart != biggestEnd ||
+        filteredModifiedRanges_.empty() ||
+        currentStart != filteredModifiedRanges_.rbegin()->second) {
+      DEBUG( std::cerr << "Added range: " << currentStart << ":" << biggestEnd << "\n"; );
+      filteredModifiedRanges_.insert(ModifiedRange(currentStart, biggestEnd));
+    }    
+  }
+  isFilteredRangesDirty_ = false;
+  return filteredModifiedRanges_;
+}
+
+std::string WebCLTransformer::getTransformedText(clang::SourceRange range) {
+
+  clang::Rewriter &rewriter = transformations_.getRewriter();
+
+  int rawStart = range.getBegin().getRawEncoding();
+  int rawEnd = range.getEnd().getRawEncoding();
+
+  RangeModifications::iterator start =
+    modifiedRanges_.lower_bound(ModifiedRange(rawStart, rawStart));
+  
+  RangeModifications::iterator end =
+    modifiedRanges_.lower_bound(ModifiedRange(rawEnd, rawEnd));
+
+  std::string retVal;
+  
+  // if there is exact match, return it
+  if (modifiedRanges_.count(ModifiedRange(rawStart, rawEnd))) {
+    retVal = modifiedRanges_[ModifiedRange(rawStart, rawEnd)];
+  } else if (start == end) {
+    // if no matches and start == end get from rewriter
+    retVal = rewriter.getRewrittenText(range);
+  } else {
+
+    // splits source rawStart and rawEnd to pieces which are read from either modified areas table or from original source
+
+    // TODO: refactor to use filteredModifiedRanges() like flushing does
+    // ===== start of filtering nested modified ranges =====
+    int currentStart = -1;
+    int biggestEnd = -1;
+    std::vector<ModifiedRange> filteredRanges;
+    
+    // find out only toplevel ranges without nested areas
+    for (RangeModifications::iterator i = start; i != end; i++) {
+
+      DEBUG( std::cerr << "Range " << i->first.first << ":" << i->first.second << " = " << i->second << "\n"; );
+      
+      if (i->first.first < biggestEnd) {
+        DEBUG( std::cerr << "Skipping: " << "\n"; );
+        continue;
+      }
+      
+      if (currentStart != i->first.first) {
+        if (currentStart != -1) {
+          // This is a big vague because
+          // area size might be zero in location ids
+          // if current area cannot overlap earlier or if no earlier or it does not overlap => add area
+          if (currentStart != biggestEnd ||
+              filteredRanges.empty() ||
+              currentStart != filteredRanges.back().second) {
+            DEBUG( std::cerr << "Added range: " << currentStart << ":" << biggestEnd << "\n"; );
+            filteredRanges.push_back(ModifiedRange(currentStart, biggestEnd));
+          }
+        }
+        currentStart = i->first.first;
+      }
+      
+      biggestEnd = i->first.second;
+    }
+
+    // if last currentStart, biggestEnd is not nested... this is a bit nasty because source location start and end might be
+    // the same which is a big ambigious...
+    if (currentStart != biggestEnd ||
+        filteredRanges.empty() ||
+        currentStart != filteredRanges.back().second) {
+      DEBUG( std::cerr << "Added range: " << currentStart << ":" << biggestEnd << "\n"; );
+      filteredRanges.push_back(ModifiedRange(currentStart, biggestEnd));
+    }
+    
+    // ===== end of filtering =====
+    
+    // NOTE: easier way to do following could be to get first the whole range as string and then just replace
+    // filtered modified ranges, whose original length and start index is easy to find out
+    
+    std::stringstream result;
+    // concat pieces from original sources and replacements from rawStart to rawEnd
+    int current = rawStart;
+    bool offsetStartLoc = false;
+    
+    for (unsigned i = 0; i < filteredRanges.size(); i++) {
+      ModifiedRange range = filteredRanges[i];
+      if (range.first != current) {
+        // get range from rewriter current, range.first
+        clang::SourceLocation startLoc = clang::SourceLocation::getFromRawEncoding(current);
+        clang::SourceLocation endLoc = clang::SourceLocation::getFromRawEncoding(range.first);
+        int endLocSize = rewriter.getRangeSize(clang::SourceRange(endLoc, endLoc));
+        int startLocSize = 0;
+        if (offsetStartLoc) {
+          startLocSize = rewriter.getRangeSize(clang::SourceRange(startLoc, startLoc));
+        }
+        // get source and exclude start and end tokens in case if they were already included
+        // in modified range.
+        std::string source = rewriter.getRewrittenText(clang::SourceRange(startLoc, endLoc));
+        DEBUG( std::cerr << "Source (" << startLoc.getRawEncoding() << ":" << endLoc.getRawEncoding() << "): "
+                         << source.substr(startLocSize, source.length() - startLocSize - endLocSize) << "\n"; );
+        
+        result << source.substr(startLocSize, source.length() - startLocSize - endLocSize);
+      }
+      // get range.first, range.second from our bookkeeping
+      result << modifiedRanges_[ModifiedRange(range.first, range.second)];
+      current = range.second;
+      offsetStartLoc = true;
+      DEBUG( std::cerr << "Result (" << range.first << ":" << range.second << "): " << modifiedRanges_[ModifiedRange(range.first, range.second)] << "\n"; );
+    }
+    
+    // get rest from sources if we have not yet rendered until end
+    if (current != rawEnd) {
+      clang::SourceLocation startLoc = clang::SourceLocation::getFromRawEncoding(current);
+      clang::SourceLocation endLoc = clang::SourceLocation::getFromRawEncoding(rawEnd);
+      assert(offsetStartLoc);
+      int startLocSize = rewriter.getRangeSize(clang::SourceRange(startLoc, startLoc));
+      std::string source = rewriter.getRewrittenText(clang::SourceRange(startLoc, endLoc));
+      result << source.substr(startLocSize);
+      DEBUG( std::cerr << "Result (" << startLoc.getRawEncoding() << ":" << endLoc.getRawEncoding() << "): " << source.substr(startLocSize) << "\n"; );
+    }
+
+    retVal = result.str();
+  }
+  
+  std::cerr << "Get SourceLoc " << rawStart << ":" << rawEnd << " : " << retVal << "\n";
+
+  return retVal;
 }
 
 bool WebCLTransformer::checkIdentifiers()
@@ -708,7 +933,6 @@ bool WebCLTransformer::rewriteTransformations()
 {
     bool status = true;
   
-    flushQueuedTransformations();
   
     status = status && transformations_.rewriteTransformations();
 

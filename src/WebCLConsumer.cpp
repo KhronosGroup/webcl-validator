@@ -201,7 +201,6 @@ public:
   /// address space records.
   void removeRelocatedVariables()
   {
-    removeRelocatedVariables(privates_);
     removeRelocatedVariables(locals_);
     removeRelocatedVariables(constants_);
   }
@@ -414,10 +413,6 @@ public:
         WebCLAnalyser &analyser, WebCLTransformer &transformer,
         KernelHandler &kernelHandler, clang::ASTContext &context) {
 
-    // we need to make sure that current transformations
-    // are applied already (we are going to apply check macros now)
-    transformer.flushQueuedTransformations();
-    
     // go through memory accesses from analyser
     WebCLAnalyser::MemoryAccessMap &pointerAccesses =
       analyser.getPointerAceesses();
