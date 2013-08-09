@@ -378,8 +378,12 @@ void WebCLTransformer::createProgramAllocationsAllocation(
     if (!privateAs.empty()) {
         if (hasPrev)
             out << ",\n";
-        createAddressSpaceInitializer(out, privateAs);
-            out << "\n";
+        // we pretty much cannot initialize this in the start since if e.g. variables
+        // are used to initialize private variables, we cannot move initialization to start of function
+        // since value might be different in that phase.
+        //createAddressSpaceInitializer(out, privateAs);
+      
+            out << cfg_.indentation_ << "{ }\n";
     }
 
     out << "\n" << cfg_.indentation_ << "};\n";
@@ -1065,11 +1069,18 @@ void WebCLTransformer::emitTypeInitialization(
 {
     const clang::Type *type = qualType.getTypePtrOrNull();
     if (type && type->isArrayType()) {
-        out << "{ 0 }";
-        return;
+      out << "{ ";
+      emitTypeInitialization(out, type->getAsArrayTypeUnsafe()->getElementType());
+      out << " }";
+    } else if (type && type->isStructureType()) {
+      out << "{ ";
+//    add just empty initializer ()
+//      type->getAsStructureType()
+//      emitTypeInitialization(out, type->getAsArrayTypeUnsafe()->getElementType());
+      out << " }";
+    } else {
+      out << "0";
     }
-
-    out << "0";
 }
 
 void WebCLTransformer::emitVariableInitialization(

@@ -206,6 +206,7 @@ public:
   /// address space records.
   void removeRelocatedVariables()
   {
+    // maybe not even necessary, compiler should be able to optimize these automatically
     removeRelocatedVariables(locals_);
     removeRelocatedVariables(constants_);
   }
@@ -349,6 +350,8 @@ public:
       if (!localLimits_.empty())
           transformer.createLocalAddressSpaceNullAllocation(func);
 
+      
+      // TODO: move this after relocations...
       // allocate wcl_allocations_allocation and create the wcl_allocs
       // pointer to it, give all the data it needs to be able to create
       // also static initializator and prevent need for separate private
