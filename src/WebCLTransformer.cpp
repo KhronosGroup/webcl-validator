@@ -95,10 +95,13 @@ std::string WebCLTransformer::addressSpaceInitializer(AddressSpaceInfo &as) {
     //       i.e. if initialization is value of some other variable..
     //       maybe we just have to output zero initializer and assert
     //       to struct/table initialization.
+
     emitVariableInitialization(retVal, (*declIter));
     comma = ", ";
   }
   retVal << " }";
+
+  DEBUG( std::cerr << "Created address space initializer: " << retVal.str() << "\n"; );
   return retVal.str();
 }
 
@@ -1074,15 +1077,13 @@ void WebCLTransformer::emitVariableInitialization(
 {
     const clang::Expr *init =  decl->getInit();
   
-    // init->dump();
-
     if (!init || !init->isConstantInitializer(instance_.getASTContext(), false)) {
         emitTypeInitialization(out, decl->getType());
         return;
     }
 
     clang::Rewriter &rewriter = transformations_.getRewriter();
-    const std::string original = rewriter.getRewrittenText(init->getSourceRange());
+    const std::string original = getTransformedText(init->getSourceRange());
     out << original;
 }
 

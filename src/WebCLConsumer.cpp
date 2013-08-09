@@ -130,9 +130,6 @@ public:
     transformer_.createLocalAddressSpaceTypedef(getLocalAddressSpace());
     transformer_.createConstantAddressSpaceTypedef(getConstantAddressSpace());
     
-    // allocate space for constant address space and pass original constants
-    // for initialzations
-    transformer_.createConstantAddressSpaceAllocation(getConstantAddressSpace());
   };
   
   ~AddressSpaceHandler() {};
@@ -151,6 +148,14 @@ public:
 
   AddressSpaceInfo &getConstantAddressSpace() {
     return getOrCreateAddressSpaceInfo(&constants_);
+  };
+  
+  /// Must be run after reloactions to get correct variablenamereferences to
+  /// initializations
+  void emitConstantAddressSpaceAllocation() {
+    // allocate space for constant address space and pass original constants
+    // for initialzations
+    transformer_.createConstantAddressSpaceAllocation(getConstantAddressSpace());    
   };
   
   /// Fixes DeclRefExpr uses of variables to point to address space.
@@ -496,8 +501,10 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
     // Now that limits and all new address spaces are created do the replacements
     // so that struct fields are used instead of original variable declarations.
     addressSpaceHandler.doRelocations();
-    addressSpaceHandler.removeRelocatedVariables();
 
+    addressSpaceHandler.removeRelocatedVariables();
+    addressSpaceHandler.emitConstantAddressSpaceAllocation();
+  
     // Emits pointer checks for all memory accesses and injects
     // required check macro definitions to prolog.
     MemoryAccessHandler memoryAccessHandler(
