@@ -209,7 +209,6 @@ private:
   
     // transformation methods, which does not do transformation yet, but waits
     // if there is other transformation done for the same location and merge them first
-    void insertText(clang::SourceLocation loc, std::string text);
     void removeText(clang::SourceRange range);
     void replaceText(clang::SourceRange range, std::string text);
     RangeModificationsFilter& filteredModifiedRanges();

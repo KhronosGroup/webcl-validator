@@ -575,19 +575,22 @@ void WebCLTransformer::moveToModulePrologue(clang::Decl *decl) {
 void WebCLTransformer::flushQueuedTransformations() {
   
   clang::Rewriter &rewriter = transformations_.getRewriter();
+  
   clang::tooling::Replacements replacements;
   // go through modifications and replace them to source
   for (RangeModificationsFilter::iterator i = filteredModifiedRanges().begin();
        i != filteredModifiedRanges().end(); i++) {
     
-    clang::SourceLocation startLoc = clang::SourceLocation::getFromRawEncoding(i->first);
-    clang::SourceLocation endLoc = clang::SourceLocation::getFromRawEncoding(i->second);
+    clang::SourceLocation startLoc =
+        clang::SourceLocation::getFromRawEncoding(i->first);
+    clang::SourceLocation endLoc =
+        clang::SourceLocation::getFromRawEncoding(i->second);
     replacements.insert(clang::tooling::Replacement(rewriter.getSourceMgr(),
                                                     clang::CharSourceRange::getTokenRange(startLoc, endLoc),
                                                     modifiedRanges_[*i]));
   }
+
   clang::tooling::applyAllReplacements(replacements, rewriter);
-  
 }
 
 void WebCLTransformer::addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
@@ -613,7 +616,14 @@ void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)
 
     if (decl->getNumParams() > 0) {
       clang::SourceLocation addLoc = decl->getParamDecl(0)->getLocStart();
-      insertText(addLoc, parameter + ", ");
+
+      // hack to get previous location
+      clang::SourceLocation prevLoc =
+      clang::SourceLocation::getFromRawEncoding(addLoc.getRawEncoding()-1);
+      clang::SourceRange prevRange = clang::SourceRange(prevLoc, prevLoc);
+      std::string replacement = transformations_.getRewriter().getRewrittenText(prevRange) + parameter + ", ";
+      
+      replaceText(prevRange, replacement);
     } else {
       // in case of empty args, we need to replcace content inside parenthesis
       // empty params might be e.g. (void)
@@ -632,9 +642,12 @@ void WebCLTransformer::addRecordArgument(clang::CallExpr *call)
     addLoc = call->getArg(0)->getLocStart();
     allocsArg += ", ";
   }
-
-  // cant translate yet, since there might be other transformations coming to same position
-  insertText(addLoc, allocsArg);
+  // NOTE: hack to get previous sourcelocation of addloc (might not work correctly with future llvm versions, correct fix would be to write nice and working rewriter wrapper)
+  clang::SourceLocation prevLoc =
+    clang::SourceLocation::getFromRawEncoding(addLoc.getRawEncoding()-1);
+  clang::SourceRange prevRange = clang::SourceRange(prevLoc, prevLoc);
+  allocsArg = transformations_.getRewriter().getRewrittenText(prevRange) + allocsArg;
+  replaceText(prevRange, allocsArg);
 }
 
 void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
@@ -649,35 +662,6 @@ void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
 //         low level support for modifying the sources. Also implemenatation can be made whole lot
 //         smarter afterwards
 
-// transformation methods, which does not do transformation yet, but waits
-// if there is other transformation done for the same location and merge them first
-void WebCLTransformer::insertText(clang::SourceLocation loc, std::string text) {
-  isFilteredRangesDirty_ = true;
-  int rawLoc = loc.getRawEncoding();
-  
-  RangeModifications::iterator start =
-    modifiedRanges_.lower_bound(ModifiedRange(rawLoc, rawLoc));
-
-  clang::SourceRange range(loc, loc);
-  
-  // if there was modification starting from this insert directly to them
-  if (start != modifiedRanges_.end() && start->first.first == rawLoc) {
-    for (RangeModifications::iterator i = start; i != modifiedRanges_.end(); i++) {
-      // stop if we are not anymore in the same start location
-      if (i->first.first != rawLoc) {
-        break;
-      }
-      DEBUG( std::cerr << "Insert old " << i->second
-               << " new:" << text + i->second << "\n"; );
-      i->second = text + i->second;
-    }
-  } else {
-    clang::Rewriter &rewriter = transformations_.getRewriter();
-    modifiedRanges_[ModifiedRange(rawLoc, rawLoc)] =
-        text + rewriter.getRewrittenText(range);
-    DEBUG( std::cerr << "Insert range: " << rawLoc << ":" << rawLoc << " " << rewriter.getRewrittenText(range) << " new: " << text+rewriter.getRewrittenText(range) << "\n"; );
-  }
-}
 
 void WebCLTransformer::removeText(clang::SourceRange range) {
   isFilteredRangesDirty_ = true;
@@ -747,6 +731,9 @@ WebCLTransformer::RangeModificationsFilter& WebCLTransformer::filteredModifiedRa
 
 std::string WebCLTransformer::getTransformedText(clang::SourceRange range) {
 
+  // TODO: make sure that transformed text gets also insertions... !!!!!!!! but how in case if the same area has insertion
+  //       and replacements? (in that case do not replace insertion)
+  
   clang::Rewriter &rewriter = transformations_.getRewriter();
 
   int rawStart = range.getBegin().getRawEncoding();
@@ -756,7 +743,7 @@ std::string WebCLTransformer::getTransformedText(clang::SourceRange range) {
     modifiedRanges_.lower_bound(ModifiedRange(rawStart, rawStart));
   
   RangeModifications::iterator end =
-    modifiedRanges_.lower_bound(ModifiedRange(rawEnd, rawEnd));
+    modifiedRanges_.upper_bound(ModifiedRange(rawEnd, rawEnd));
 
   std::string retVal;
   
