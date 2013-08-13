@@ -124,13 +124,12 @@ public:
     virtual bool buildProgram(std::string options) {
         const std::string platformName = getPlatformName();
         if (platformName.find("AMD") != std::string::npos)
-            options.append("-D__PLATFORM_AMD__ ");
+            options.append("-D__PLATFORM_AMD__");
         else if (platformName.find("Portable OpenCL") != std::string::npos)
-            options.append("-D__PLATFORM_POCL__ ");
+            options.append("-D__PLATFORM_POCL__");
         else if (platformName.find("Intel(R) OpenCL") != std::string::npos)
             options.append("-D__PLATFORM_INTEL__");
 
-        options.append("-Werror");
         return clBuildProgram(program_, 1, &device_, options.c_str(), NULL, NULL) == CL_SUCCESS;
     }
 

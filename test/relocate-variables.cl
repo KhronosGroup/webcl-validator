@@ -2,6 +2,10 @@
 // RUN: %webcl-validator %s 2>/dev/null | grep -v "Processing\|CHECK" | %opencl-validator
 // RUN: %webcl-validator %s | grep -v CHECK | %FileCheck %s
 
+#ifdef __PLATFORM_AMD__
+#error "Avoiding further problems!"
+#endif
+
 typedef struct {
     int int_value;
     char char_value;

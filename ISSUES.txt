@@ -41,12 +41,13 @@ Workaround: The validator could transform "p->x" to "(*p).x".
 
 Issue C5: Apple compiler requires prototype declarations for each
           helper function.
-Workaround: To avoid warnings/errors, the validator could make each
-            helper function static, or generate a prototype for them.
+Workaround: To avoid warnings, the validator could make each helper
+            function static, or generate a prototype for them. Minor
+            issue that could be ignored.
 
-Issue C6: Apple compiler gives warnings/errors on e.g. signed
-          vs. unsigned comparisons.
-Workaround: ?
+Issue C6: Apple compiler gives warnings on e.g. signed vs. unsigned
+          comparisons.
+Workaround: Minor issue that could be ignored.
 
 OpenCL Compiler Bugs
 --------------------
