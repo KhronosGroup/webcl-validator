@@ -200,6 +200,7 @@ public:
          privDecl != privates_.end(); privDecl++) {
 
       if ((*privDecl)->hasInit()) {
+        assert(analyser_.isInsideForStmt(*privDecl) == false && "Cannot currently relocate variables declared inside for statement. Make sure that you have not taken address of counter variable anywhere with & operator.");
         transformer_.addRelocationInitializer(*privDecl);
       }
     }

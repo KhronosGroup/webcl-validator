@@ -76,6 +76,11 @@ bool WebCLVisitor::VisitDeclRefExpr(clang::DeclRefExpr *expr)
   return handleDeclRefExpr(expr);
 }
 
+bool WebCLVisitor::VisitForStmt(clang::ForStmt *stmt)
+{
+  return handleForStmt(stmt);
+}
+
 bool WebCLVisitor::handleTranslationUnitDecl(clang::TranslationUnitDecl *decl)
 {
     return true;
@@ -132,6 +137,10 @@ bool WebCLVisitor::handleTypedefDecl(clang::TypedefDecl *decl)
 }
 
 bool WebCLVisitor::handleDeclRefExpr(clang::DeclRefExpr *expr) {
+  return true;
+}
+
+bool WebCLVisitor::handleForStmt(clang::ForStmt *stmt) {
   return true;
 }
 
@@ -459,6 +468,19 @@ bool WebCLAnalyser::handleDeclRefExpr(clang::DeclRefExpr *expr) {
 
   // we should be able to get parent map from here:
   // instance_.getASTContext();
+  return true;
+}
+
+bool WebCLAnalyser::handleForStmt(clang::ForStmt *stmt) {
+  
+  if (clang::DeclStmt *declStmt = llvm::dyn_cast<clang::DeclStmt>(stmt->getInit())) {
+    for (clang::DeclStmt::decl_iterator i = declStmt->decl_begin(); i != declStmt->decl_end(); i++) {
+      clang::VarDecl *varDecl = llvm::dyn_cast<clang::VarDecl>(*i);
+      assert(varDecl && "Unexpected type.");
+      info(varDecl->getLocStart(), "Found variable declaration made inside for statement declaration.");
+      declarationsMadeInForStatements_.insert(varDecl);
+    }
+  }
   return true;
 }
 

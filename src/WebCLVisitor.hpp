@@ -54,6 +54,8 @@ public:
     bool VisitTypedefDecl(clang::TypedefDecl *decl);
     /// \see clang::RecursiveASTVisitor::VisitDeclRefExpr
     bool VisitDeclRefExpr(clang::DeclRefExpr *decl);
+    /// \see clang::RecursiveASTVisitor::VisitForStmt
+    bool VisitForStmt(clang::ForStmt *stmt);
   
 protected:
 
@@ -69,6 +71,7 @@ protected:
     virtual bool handleCallExpr(clang::CallExpr *expr);
     virtual bool handleTypedefDecl(clang::TypedefDecl *decl);
     virtual bool handleDeclRefExpr(clang::DeclRefExpr *expr);
+    virtual bool handleForStmt(clang::ForStmt *stmt);
 };
 
 /// \brief Complains about WebCL limitations in OpenCL C code.
@@ -161,6 +164,8 @@ public:
   /// Go through all decl references to see if they need to be fixed
   virtual bool handleDeclRefExpr(clang::DeclRefExpr *expr);
 
+  virtual bool handleForStmt(clang::ForStmt *stmt);
+
   /// This was handled in earlier passes, but not sure if necessary
   /// the VarDecl handler seeme to catch these too.
   /// TODO: remove if not needed
@@ -194,7 +199,11 @@ public:
 
   bool hasAddressReferences(clang::VarDecl *decl) {
     return declarationsWithAddressOfAccess_.count(decl) > 0;
-  }
+  };
+
+  bool isInsideForStmt(clang::VarDecl *decl) {
+    return declarationsMadeInForStatements_.count(decl) > 0;
+  };
   
 private:
 
@@ -212,6 +221,8 @@ private:
   VarDeclSet      privateVariables_;
   /// set of variables, which has been accessed with &-operator
   VarDeclSet      declarationsWithAddressOfAccess_;
+  /// set of variables, which has been declared in for( <declaration> ; ; )
+  VarDeclSet      declarationsMadeInForStatements_;
   /// all uses of variable declarations
   DeclRefExprSet  variableUses_;
   MemoryAccessMap pointerAccesses_;

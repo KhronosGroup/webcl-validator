@@ -590,19 +590,19 @@ void WebCLTransformer::addRelocationInitializerFromFunctionArg(clang::ParmVarDec
 /// compiler should afterwards optimize these.
 void WebCLTransformer::addRelocationInitializer(clang::VarDecl *decl) {
 
-  // TODO: how about initializations in for loop? finding ; will not work etc...
-  
   if (!decl->getType().getTypePtr()->isArrayType()) {
     clang::SourceLocation addLoc = findLocForNext(decl->getLocEnd(), ';');
     clang::SourceRange replaceRange(addLoc, addLoc);
     std::stringstream inits;
-    inits << getTransformedText(replaceRange) << ";" + cfg_.getReferenceToRelocatedVariable(decl) << " = " << decl->getNameAsString() << ";";
+    inits << getTransformedText(replaceRange) << ";";
+
+    // we have to assign arrays with memcpy
+    if (decl->getType().getTypePtr()->isArrayType()) {
+      inits << "_WCL_MEMCPY(" << cfg_.getReferenceToRelocatedVariable(decl) << "," << decl->getNameAsString() << ");";
+    } else {
+      inits << cfg_.getReferenceToRelocatedVariable(decl) << " = " << decl->getNameAsString() << ";";
+    }
     replaceText(replaceRange, inits.str());
-  } else {
-    // TODO: in case of array we need to add some memcpy funniness,
-    //       so for now we assert and asku user to initialize differently
-    //       if really needed, then write memcpy and use it to initalize relocated array
-    //       with original data
   }
 }
 
