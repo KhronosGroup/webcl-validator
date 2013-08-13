@@ -589,20 +589,21 @@ void WebCLTransformer::addRelocationInitializerFromFunctionArg(clang::ParmVarDec
 /// e.g. int foo = 1; ===> int foo = 1; _wcl_allocs->pa.helper_function_name__foo = foo;
 /// compiler should afterwards optimize these.
 void WebCLTransformer::addRelocationInitializer(clang::VarDecl *decl) {
+
+  // TODO: how about initializations in for loop? finding ; will not work etc...
   
-  // TODO: in case of array we need to add some memcpy funniness,
-  //       so for now we assert and asku user to initialize differently
-  //       if really needed, then write memcpy and use it to initalize relocated array
-  //       with original data
-  
-  clang::SourceLocation addLoc = findLocForNext(decl->getLocEnd(), ';');
-  
-  clang::SourceRange replaceRange(addLoc, addLoc);
-  
-  std::stringstream inits;
-  inits << getTransformedText(replaceRange) << ";" + cfg_.getReferenceToRelocatedVariable(decl) << " = " << decl->getNameAsString() << ";";
-  replaceText(replaceRange, inits.str());
-    
+  if (!decl->getType().getTypePtr()->isArrayType()) {
+    clang::SourceLocation addLoc = findLocForNext(decl->getLocEnd(), ';');
+    clang::SourceRange replaceRange(addLoc, addLoc);
+    std::stringstream inits;
+    inits << getTransformedText(replaceRange) << ";" + cfg_.getReferenceToRelocatedVariable(decl) << " = " << decl->getNameAsString() << ";";
+    replaceText(replaceRange, inits.str());
+  } else {
+    // TODO: in case of array we need to add some memcpy funniness,
+    //       so for now we assert and asku user to initialize differently
+    //       if really needed, then write memcpy and use it to initalize relocated array
+    //       with original data
+  }
 }
 
 void WebCLTransformer::moveToModulePrologue(clang::Decl *decl) {
