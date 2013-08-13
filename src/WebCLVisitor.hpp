@@ -198,6 +198,9 @@ public:
   
 private:
 
+  /// @return Whether a function takes a pointer parameter.
+  bool hasUnsafeParameters(clang::FunctionDecl *decl);
+
   bool isPrivate(clang::VarDecl *decl) const;
   void collectVariable(clang::VarDecl *decl);
 

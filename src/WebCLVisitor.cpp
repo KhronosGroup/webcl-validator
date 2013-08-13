@@ -435,7 +435,9 @@ bool WebCLAnalyser::handleCallExpr(clang::CallExpr *expr)
       error(expr->getLocStart(), "WebCL doesn't support %0.") << name;
       return true;
     } else if (builtins_.isUnsafe(name)) {
-      warning(expr->getLocStart(), "Argument check is required.");
+      error(expr->getLocStart(), "Builtin argument check is required.");
+    } else if (hasUnsafeParameters(callee)) {
+      error(expr->getLocStart(), "Unsafe builtin not recognized.");
     }
 
     builtinCalls_.insert(expr);
@@ -460,6 +462,16 @@ bool WebCLAnalyser::handleDeclRefExpr(clang::DeclRefExpr *expr) {
   // we should be able to get parent map from here:
   // instance_.getASTContext();
   return true;
+}
+
+bool WebCLAnalyser::hasUnsafeParameters(clang::FunctionDecl *decl)
+{
+    for (unsigned int i = 0; i < decl->getNumParams(); ++i) {
+        const clang::ParmVarDecl *param = decl->getParamDecl(i);
+        if (param->getType().getTypePtr()->isPointerType())
+            return true;
+    }
+    return false;
 }
 
 bool WebCLAnalyser::isPrivate(clang::VarDecl *decl) const
