@@ -590,20 +590,19 @@ void WebCLTransformer::addRelocationInitializerFromFunctionArg(clang::ParmVarDec
 /// compiler should afterwards optimize these.
 void WebCLTransformer::addRelocationInitializer(clang::VarDecl *decl) {
 
-  if (!decl->getType().getTypePtr()->isArrayType()) {
-    clang::SourceLocation addLoc = findLocForNext(decl->getLocEnd(), ';');
-    clang::SourceRange replaceRange(addLoc, addLoc);
-    std::stringstream inits;
-    inits << getTransformedText(replaceRange) << ";";
+  clang::SourceLocation addLoc = findLocForNext(decl->getLocEnd(), ';');
+  clang::SourceRange replaceRange(addLoc, addLoc);
+  std::stringstream inits;
+  inits << getTransformedText(replaceRange) << ";";
 
-    // we have to assign arrays with memcpy
-    if (decl->getType().getTypePtr()->isArrayType()) {
-      inits << "_WCL_MEMCPY(" << cfg_.getReferenceToRelocatedVariable(decl) << "," << decl->getNameAsString() << ");";
-    } else {
-      inits << cfg_.getReferenceToRelocatedVariable(decl) << " = " << decl->getNameAsString() << ";";
-    }
-    replaceText(replaceRange, inits.str());
+  // we have to assign arrays with memcpy
+  if (decl->getType().getTypePtr()->isArrayType()) {
+    inits << "_WCL_MEMCPY(" << cfg_.getReferenceToRelocatedVariable(decl) << "," << decl->getNameAsString() << ");";
+  } else {
+    inits << cfg_.getReferenceToRelocatedVariable(decl) << " = " << decl->getNameAsString() << ";";
   }
+  replaceText(replaceRange, inits.str());
+
 }
 
 void WebCLTransformer::moveToModulePrologue(clang::Decl *decl) {

@@ -62,7 +62,9 @@ __kernel void awesomize(
     size_t wgsize = get_local_size(0);
 
     TempStruct private_struct = { {0, 1, 2} };
-
+    int uninit_table[3];
+    int table[3] = {1,2,3};
+    table[1] = 1;
     __local size_t lottery_winner;
 
     init_scratch(gid, wgid, &private_struct, input, factors, scratch);
