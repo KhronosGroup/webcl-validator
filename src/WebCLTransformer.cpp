@@ -8,6 +8,7 @@
 #include "clang/AST/Expr.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Rewrite/Core/Rewriter.h"
+#include "clang/Lex/Lexer.h"
 
 WebCLTransformer::WebCLTransformer(
     clang::CompilerInstance &instance, clang::Rewriter &rewriter)
@@ -362,28 +363,29 @@ void WebCLTransformer::createProgramAllocationsAllocation(
     }
 
     if (!constantLimits.empty()) {
-        if (hasPrev)
+        if (hasPrev) {
             out << ",\n";
+        }
         createAddressSpaceLimitsInitializer(out, kernelFunc, constantLimits);
         hasPrev = true;
     }
 
     if (!localLimits.empty()) {
-        if (hasPrev)
+        if (hasPrev) {
             out << ",\n";
+        }
         createAddressSpaceLimitsInitializer(out, kernelFunc, localLimits);
         hasPrev = true;
     }
 
     if (!privateAs.empty()) {
-        if (hasPrev)
+      if (hasPrev) {
             out << ",\n";
-        // we pretty much cannot initialize this in the start since if e.g. variables
-        // are used to initialize private variables, we cannot move initialization to start of function
-        // since value might be different in that phase.
-        //createAddressSpaceInitializer(out, privateAs);
-      
-            out << cfg_.indentation_ << "{ }\n";
+      }
+      // we pretty much cannot initialize this in the start since if e.g. variables
+      // are used to initialize private variables, we cannot move initialization to start of function
+      // since value might be different in that phase.
+      out << cfg_.indentation_ << "{ }\n";
     }
 
     out << "\n" << cfg_.indentation_ << "};\n";
@@ -563,13 +565,44 @@ void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLim
   DEBUG( std::cerr << "============================\n\n"; );
 }
 
-void WebCLTransformer::addRelocationInitializer(clang::ParmVarDecl *parmDecl) {
+/// Adds to function prologue assignment from function argument to relocated variable.
+///
+/// if reloacted variable was function argument, add initialization row
+/// to start of function
+/// i.e.
+/// void foo(int arg) { bar(&arg); } ->
+/// void foo(WclProgramAllocations *wcl_allocs, int arg) {
+///     wcl_allocs->pa.foo__arg = arg;
+///     bar(&wcl_acllocs->pa.foo__arg); }
+///
+void WebCLTransformer::addRelocationInitializerFromFunctionArg(clang::ParmVarDecl *parmDecl) {
   const clang::FunctionDecl *parent = llvm::dyn_cast<const clang::FunctionDecl>(parmDecl->getParentFunctionOrMethod());
   // add only once
   if (parameterRelocationInitializations_.count(parmDecl) == 0) {
     functionPrologue(parent) << "\n" << cfg_.getReferenceToRelocatedVariable(parmDecl) << " = " << parmDecl->getNameAsString() << ";\n";
     parameterRelocationInitializations_.insert(parmDecl);
   }
+}
+
+/// Adds initialization for relocated private variable after original variable initialization.
+///
+/// e.g. int foo = 1; ===> int foo = 1; _wcl_allocs->pa.helper_function_name__foo = foo;
+/// compiler should afterwards optimize these.
+void WebCLTransformer::addRelocationInitializer(clang::VarDecl *decl) {
+  
+  // TODO: in case of array we need to add some memcpy funniness,
+  //       so for now we assert and asku user to initialize differently
+  //       if really needed, then write memcpy and use it to initalize relocated array
+  //       with original data
+  
+  clang::SourceLocation addLoc = findLocForNext(decl->getLocEnd(), ';');
+  
+  clang::SourceRange replaceRange(addLoc, addLoc);
+  
+  std::stringstream inits;
+  inits << getTransformedText(replaceRange) << ";" + cfg_.getReferenceToRelocatedVariable(decl) << " = " << decl->getNameAsString() << ";";
+  replaceText(replaceRange, inits.str());
+    
 }
 
 void WebCLTransformer::moveToModulePrologue(clang::Decl *decl) {
@@ -622,15 +655,10 @@ void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)
     std::string parameter = cfg_.addressSpaceRecordType_ + " *" + cfg_.addressSpaceRecordName_;
 
     if (decl->getNumParams() > 0) {
-      clang::SourceLocation addLoc = decl->getParamDecl(0)->getLocStart();
-
-      // hack to get previous location
-      clang::SourceLocation prevLoc =
-      clang::SourceLocation::getFromRawEncoding(addLoc.getRawEncoding()-1);
-      clang::SourceRange prevRange = clang::SourceRange(prevLoc, prevLoc);
-      std::string replacement = transformations_.getRewriter().getRewrittenText(prevRange) + parameter + ", ";
-      
-      replaceText(prevRange, replacement);
+      clang::SourceLocation addLoc = findLocForNext(decl->getLocStart(), '(');
+      clang::SourceRange addRange = clang::SourceRange(addLoc, addLoc);
+      std::string replacement = transformations_.getRewriter().getRewrittenText(addRange) + parameter + ", ";
+      replaceText(addRange, replacement);
     } else {
       // in case of empty args, we need to replcace content inside parenthesis
       // empty params might be e.g. (void)
@@ -643,18 +671,14 @@ void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)
 
 void WebCLTransformer::addRecordArgument(clang::CallExpr *call)
 {
-  clang::SourceLocation addLoc = call->getRParenLoc();
+  clang::SourceLocation addLoc = findLocForNext(call->getLocStart(), '(');
   std::string allocsArg = cfg_.addressSpaceRecordName_;
   if (call->getNumArgs() > 0) {
-    addLoc = call->getArg(0)->getLocStart();
     allocsArg += ", ";
   }
-  // NOTE: hack to get previous sourcelocation of addloc (might not work correctly with future llvm versions, correct fix would be to write nice and working rewriter wrapper)
-  clang::SourceLocation prevLoc =
-    clang::SourceLocation::getFromRawEncoding(addLoc.getRawEncoding()-1);
-  clang::SourceRange prevRange = clang::SourceRange(prevLoc, prevLoc);
-  allocsArg = transformations_.getRewriter().getRewrittenText(prevRange) + allocsArg;
-  replaceText(prevRange, allocsArg);
+  clang::SourceRange addRange = clang::SourceRange(addLoc, addLoc);
+  allocsArg = transformations_.getRewriter().getRewrittenText(addRange) + allocsArg;
+  replaceText(addRange, allocsArg);
 }
 
 void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
@@ -669,6 +693,25 @@ void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
 //         low level support for modifying the sources. Also implemenatation can be made whole lot
 //         smarter afterwards
 
+clang::SourceLocation WebCLTransformer::findLocForNext(clang::SourceLocation startLoc, char charToFind) {
+
+  const clang::SourceManager &SM = instance_.getSourceManager();
+  std::pair<clang::FileID, unsigned> locInfo = SM.getDecomposedLoc(startLoc);
+  bool invalidTemp = false;
+  clang::StringRef file = SM.getBufferData(locInfo.first, &invalidTemp);
+  assert(invalidTemp == false);
+  const char *tokenBegin = file.data() + locInfo.second;
+  
+  clang::Lexer lexer(SM.getLocForStartOfFile(locInfo.first), instance_.getLangOpts(),
+                     file.begin(), tokenBegin, file.end());
+  
+  // just raw find for next semicolon and get SourceLocation
+  const char* endOfFile = SM.getCharacterData(SM.getLocForEndOfFile(locInfo.first));
+  const char* semiColonPos = SM.getCharacterData(startLoc);
+  while (*semiColonPos != charToFind && semiColonPos != endOfFile) { semiColonPos++; };
+  
+  return lexer.getSourceLocation(semiColonPos);
+}
 
 void WebCLTransformer::removeText(clang::SourceRange range) {
   isFilteredRangesDirty_ = true;

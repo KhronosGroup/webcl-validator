@@ -263,6 +263,22 @@ int relocate_private_variables()
         { 0, 0, 0, 0 },
         &constant_array_pointer_struct,
         { { 0, 0, 0, 0 } }
+    }, constant_main_struct2 = {
+        { 0, '\0', 0.0f, ((float4)(0.0f)) },
+        &constant_primitive_struct,
+        { { 0, '\0', 0.0f, ((float4)(0.0f)) } },
+
+        { 0, 0, 0, 0 },
+        &constant_primitive_pointer_struct,
+        { { 0, 0, 0, 0 } },
+
+        { { 0 }, { '\0' }, { 0.0f }, { ((float4)(0.0f)) } },
+        &constant_array_struct,
+        { { { 0 }, { '\0' }, { 0.0f }, { ((float4)(0.0f)) } } },
+
+        { 0, 0, 0, 0 },
+        &constant_array_pointer_struct,
+        { { 0, 0, 0, 0 } }
     };
 
     PrivateMainStruct main_struct = {

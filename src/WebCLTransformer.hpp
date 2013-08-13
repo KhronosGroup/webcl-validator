@@ -94,7 +94,8 @@ public:
   
     void addMemoryAccessCheck(clang::Expr *access, AddressSpaceLimits &limits);
 
-    void addRelocationInitializer(clang::ParmVarDecl *parmDecl);
+    void addRelocationInitializerFromFunctionArg(clang::ParmVarDecl *parmDecl);
+    void addRelocationInitializer(clang::VarDecl *decl);
   
     void addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
                                                unsigned minWidthInBits);
@@ -144,6 +145,7 @@ private:
   
     // set to keep track that we are not doing paramRelocationInitializations multiple times
     std::set< clang::ParmVarDecl* > parameterRelocationInitializations_;
+    std::set< clang::VarDecl* > privateRelocationInitializations_;
   
     // \brief kernel prologue comes before function prologue... kernel might have also functionPrologue
     std::stringstream& kernelPrologue(const clang::FunctionDecl *kernel) {
@@ -193,6 +195,9 @@ private:
     void createAddressSpaceLimitsNullInitializer(
         std::ostream &out, unsigned addressSpace);
 
+    /// \brief Looks char by char forward until the position where next requested character is found
+    clang::SourceLocation findLocForNext(clang::SourceLocation startLoc, char charToFind);
+  
     // NOTE: we should refactor all functionality of
     //       insertText, removeText, ... etc. to separate class
     //       since this is basically extended functionality to rewriter
