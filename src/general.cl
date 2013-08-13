@@ -1,5 +1,7 @@
 // => General code that doesn't depend on input.
 
+#define _WCL_MEMCPY(src, dst) for(ulong i = 0; i < sizeof((src))/sizeof((src)[0]); i++) { (dst)[i] = (src)[i]; }
+
 #define _WCL_LAST(type, ptr) (((type)(ptr)) - 1)
 #define _WCL_FILLCHAR ((uchar)0xCC)
 
