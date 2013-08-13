@@ -158,23 +158,6 @@ WebCLRestrictor::~WebCLRestrictor()
 {
 }
 
-bool WebCLRestrictor::handleFunctionDecl(clang::FunctionDecl *decl)
-{
-    if (decl->hasAttr<clang::OpenCLKernelAttr>()) {
-        const clang::DeclarationNameInfo nameInfo = decl->getNameInfo();
-        const clang::IdentifierInfo *idInfo = nameInfo.getName().getAsIdentifierInfo();
-        if (!idInfo) {
-            error(nameInfo.getLoc(),
-                  "Invalid kernel name.\n");
-        } else if (idInfo->getLength() > 255) {
-            error(nameInfo.getLoc(),
-                  "WebCL restricts kernel name lengths to 255 characters.\n");
-        }
-    }
-
-    return true;
-}
-
 bool WebCLRestrictor::handleParmVarDecl(clang::ParmVarDecl *decl)
 { 
     const clang::TypeSourceInfo *info = decl->getTypeSourceInfo();

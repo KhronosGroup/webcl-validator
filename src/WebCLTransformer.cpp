@@ -884,6 +884,12 @@ bool WebCLTransformer::checkIdentifiers()
         clang::IdentifierInfo *identifier = i->getValue();
         const char *name = identifier->getNameStart();
 
+        static const unsigned int maxLength = 255;
+        if (identifier->getLength() > maxLength) {
+            error("Identifier '%0' exceeds maximum length of %1 characters.") << name << maxLength;
+            status = false;
+        }
+
         for (int p = 0; p < numPrefixes ; ++p) {
             const char *prefix = prefixes[p];
 

@@ -79,9 +79,6 @@ public:
     explicit WebCLRestrictor(clang::CompilerInstance &instance);
     virtual ~WebCLRestrictor();
 
-    /// \see WebCLVisitor::handleFunctionDecl
-    virtual bool handleFunctionDecl(clang::FunctionDecl *decl);
-
     /// \see WebCLVisitor::handleParmVar
     virtual bool handleParmVarDecl(clang::ParmVarDecl *decl);
 
