@@ -82,9 +82,6 @@ public:
     explicit WebCLRestrictor(clang::CompilerInstance &instance);
     virtual ~WebCLRestrictor();
 
-    /// \see WebCLVisitor::handleFunctionDecl
-    virtual bool handleFunctionDecl(clang::FunctionDecl *decl);
-
     /// \see WebCLVisitor::handleParmVar
     virtual bool handleParmVarDecl(clang::ParmVarDecl *decl);
 
@@ -206,6 +203,9 @@ public:
   };
   
 private:
+
+  /// @return Whether a function takes a pointer parameter.
+  bool hasUnsafeParameters(clang::FunctionDecl *decl);
 
   bool isPrivate(clang::VarDecl *decl) const;
   void collectVariable(clang::VarDecl *decl);

@@ -167,23 +167,6 @@ WebCLRestrictor::~WebCLRestrictor()
 {
 }
 
-bool WebCLRestrictor::handleFunctionDecl(clang::FunctionDecl *decl)
-{
-    if (decl->hasAttr<clang::OpenCLKernelAttr>()) {
-        const clang::DeclarationNameInfo nameInfo = decl->getNameInfo();
-        const clang::IdentifierInfo *idInfo = nameInfo.getName().getAsIdentifierInfo();
-        if (!idInfo) {
-            error(nameInfo.getLoc(),
-                  "Invalid kernel name.\n");
-        } else if (idInfo->getLength() > 255) {
-            error(nameInfo.getLoc(),
-                  "WebCL restricts kernel name lengths to 255 characters.\n");
-        }
-    }
-
-    return true;
-}
-
 bool WebCLRestrictor::handleParmVarDecl(clang::ParmVarDecl *decl)
 { 
     const clang::TypeSourceInfo *info = decl->getTypeSourceInfo();
@@ -444,7 +427,9 @@ bool WebCLAnalyser::handleCallExpr(clang::CallExpr *expr)
       error(expr->getLocStart(), "WebCL doesn't support %0.") << name;
       return true;
     } else if (builtins_.isUnsafe(name)) {
-      warning(expr->getLocStart(), "Argument check is required.");
+      error(expr->getLocStart(), "Builtin argument check is required.");
+    } else if (hasUnsafeParameters(callee)) {
+      error(expr->getLocStart(), "Unsafe builtin not recognized.");
     }
 
     builtinCalls_.insert(expr);
@@ -482,6 +467,16 @@ bool WebCLAnalyser::handleForStmt(clang::ForStmt *stmt) {
     }
   }
   return true;
+}
+
+bool WebCLAnalyser::hasUnsafeParameters(clang::FunctionDecl *decl)
+{
+    for (unsigned int i = 0; i < decl->getNumParams(); ++i) {
+        const clang::ParmVarDecl *param = decl->getParamDecl(i);
+        if (param->getType().getTypePtr()->isPointerType())
+            return true;
+    }
+    return false;
 }
 
 bool WebCLAnalyser::isPrivate(clang::VarDecl *decl) const
