@@ -637,7 +637,6 @@ void WebCLTransformer::addMinimumRequiredContinuousAreaLimit(unsigned addressSpa
                                                              unsigned minWidthInBits)
 {
     modulePrologue_ << "#define " << cfg_.getNameOfSizeMacro(addressSpace) << " ("
-                    << "sizeof(" << cfg_.nullType_ << ") * "
                     << "((" << minWidthInBits << " + (CHAR_BIT - 1)) / CHAR_BIT)"
                     << ")\n";
 }
@@ -1040,22 +1039,6 @@ void WebCLTransformer::emitVariable(std::ostream &out, const clang::VarDecl *dec
     }
 }
 
-void WebCLTransformer::emitAddressSpaceRecord(
-    std::ostream &out, const VariableDeclarations &variables, const std::string &name)
-{
-    if (variables.empty()) return;
-    out << "typedef struct {\n";
-
-    for (VariableDeclarations::iterator i = variables.begin(); i != variables.end(); ++i) {
-        out << cfg_.indentation_;
-        emitVariable(out, (*i));
-        out << ";\n";
-    }
-
-    out << "} " << name << ";\n"
-        << "\n";
-}
-
 std::string WebCLTransformer::getWclAddrCheckMacroDefinition(unsigned aSpaceNum,
                                                              unsigned limitCount)
 {
@@ -1113,6 +1096,7 @@ void WebCLTransformer::emitPrologue(std::ostream &out)
     emitLimitMacros(out);
 }
 
+/// \brief Emits empty initializer for type.
 void WebCLTransformer::emitTypeInitialization(
     std::ostream &out, clang::QualType qualType)
 {
@@ -1122,11 +1106,7 @@ void WebCLTransformer::emitTypeInitialization(
       emitTypeInitialization(out, type->getAsArrayTypeUnsafe()->getElementType());
       out << " }";
     } else if (type && type->isStructureType()) {
-      out << "{ ";
-//    add just empty initializer ()
-//      type->getAsStructureType()
-//      emitTypeInitialization(out, type->getAsArrayTypeUnsafe()->getElementType());
-      out << " }";
+      out << "{ }";
     } else {
       out << "0";
     }
@@ -1142,7 +1122,6 @@ void WebCLTransformer::emitVariableInitialization(
         return;
     }
 
-    clang::Rewriter &rewriter = transformations_.getRewriter();
     const std::string original = getTransformedText(init->getSourceRange());
     out << original;
 }

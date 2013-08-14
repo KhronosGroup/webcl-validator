@@ -240,8 +240,7 @@ private:
     void emitVariable(std::ostream &out, const clang::VarDecl *decl);
     void emitVariable(std::ostream &out, const clang::VarDecl *decl,
                       const std::string &name);
-    void emitAddressSpaceRecord(std::ostream &out, const VariableDeclarations &variables,
-                                const std::string &name);
+
     void emitPrologueRecords(std::ostream &out);
 
     void emitGeneralCode(std::ostream &out);
