@@ -39,16 +39,16 @@ __kernel void zero_local_mem(
     // Initialization should occur after zeroing.
 
     __local int int_variable;
-    // CHECK: _wcl_locals.zero_local_mem__int_variable = 1;
+    // CHECK: _wcl_locals._wcl_int_variable = 1;
     int_variable = 1;
     __local char char_variable;
-    // CHECK: _wcl_locals.zero_local_mem__char_variable = 'a';
+    // CHECK: _wcl_locals._wcl_char_variable = 'a';
     char_variable = 'a';
     __local float float_variable;
-    // CHECK: _wcl_locals.zero_local_mem__float_variable = 1.0f;
+    // CHECK: _wcl_locals._wcl_float_variable = 1.0f;
     float_variable = 1.0f;
     __local float4 vector_variable;
-    // CHECK: _wcl_locals.zero_local_mem__vector_variable = ((float4)(1.0f));
+    // CHECK: _wcl_locals._wcl_vector_variable = ((float4)(1.0f));
     vector_variable = ((float4)(1.0f));
 
     const int i = get_global_id(0);

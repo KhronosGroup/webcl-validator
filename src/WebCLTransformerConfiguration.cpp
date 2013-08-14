@@ -52,6 +52,9 @@ WebCLTransformerConfiguration::WebCLTransformerConfiguration()
     , globalNullField_("gn")
 
     , localRangeZeroingMacro_(macroPrefix_ + "_LOCAL_RANGE_INIT")
+
+    , localVariableRenamer_(variablePrefix_ + "_")
+    , privateVariableRenamer_(variablePrefix_ + "_")
 {
 }
 
@@ -147,26 +150,41 @@ const std::string WebCLTransformerConfiguration::getNameOfSizeParameter(clang::P
     return variablePrefix_ + "_" + name + "_size";
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfRelocatedVariable(const clang::VarDecl *decl) const
+const std::string WebCLTransformerConfiguration::getNameOfRelocatedVariable(const clang::VarDecl *decl)
 {
-  if (decl->getType().getAddressSpace() == clang::LangAS::opencl_constant) {
-    return decl->getName().str();
-  }
-  
-  const clang::FunctionDecl *func =
-    llvm::dyn_cast<clang::FunctionDecl>(decl->getParentFunctionOrMethod());
-  if (func) return func->getName().str() + "__" + decl->getName().str();
-  return decl->getName().str();
+    std::ostringstream out;
+
+    switch (decl->getType().getAddressSpace()) {
+    case 0:
+        privateVariableRenamer_.rename(out, decl);
+        break;
+    case clang::LangAS::opencl_local:
+        localVariableRenamer_.rename(out, decl);
+        break;
+    default:
+        out << decl->getName().str();
+        break;
+    }
+
+    return out.str();
 }
 
 const std::string WebCLTransformerConfiguration::getNameOfLimitField(
     const clang::VarDecl *decl, bool isMax) const
 {
-    const std::string name = getNameOfRelocatedVariable(decl);
-    return name + "_" + (isMax ? maxSuffix_ : minSuffix_);
+    std::ostringstream out;
+
+    const clang::FunctionDecl *function =
+        llvm::dyn_cast<clang::FunctionDecl>(decl->getParentFunctionOrMethod());
+    if (function)
+        out << function->getName().str() << "__";
+
+    out << decl->getName().str() << "_" << (isMax ? maxSuffix_ : minSuffix_);
+
+    return out.str();
 }
 
-const std::string WebCLTransformerConfiguration::getReferenceToRelocatedVariable(const clang::VarDecl *decl) const
+const std::string WebCLTransformerConfiguration::getReferenceToRelocatedVariable(const clang::VarDecl *decl)
 {
   std::string prefix;
 

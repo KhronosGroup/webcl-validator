@@ -1,6 +1,8 @@
 #ifndef WEBCLVALIDATOR_WEBCLTRANSFORMERCONFIGURATION
 #define WEBCLVALIDATOR_WEBCLTRANSFORMERCONFIGURATION
 
+#include "WebCLRenamer.hpp"
+
 #include "clang/AST/Type.h"
 
 #include <string>
@@ -32,9 +34,9 @@ public:
     const std::string getNameOfAddressSpace(clang::QualType type) const;
     const std::string getNameOfType(clang::QualType type) const;
     const std::string getNameOfSizeParameter(clang::ParmVarDecl *decl) const;
-    const std::string getNameOfRelocatedVariable(const clang::VarDecl *decl)  const;
+    const std::string getNameOfRelocatedVariable(const clang::VarDecl *decl);
     const std::string getNameOfLimitField(const clang::VarDecl *decl, bool isMax) const;
-    const std::string getReferenceToRelocatedVariable(const clang::VarDecl *decl) const;
+    const std::string getReferenceToRelocatedVariable(const clang::VarDecl *decl);
     const std::string getIndentation(unsigned int levels) const;
 
     const std::string getStaticLimitRef(unsigned addressSpaceNum) const;
@@ -87,6 +89,11 @@ public:
     const std::string globalNullField_;
 
     const std::string localRangeZeroingMacro_;
+
+private:
+
+    WebCLRenamer localVariableRenamer_;
+    WebCLRenamer privateVariableRenamer_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLTRANSFORMERCONFIGURATION
