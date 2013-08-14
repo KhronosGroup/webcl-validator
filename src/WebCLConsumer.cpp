@@ -210,9 +210,12 @@ public:
   /// address space records.
   void removeRelocatedVariables()
   {
-    // maybe not even necessary, compiler should be able to optimize these automatically
-    removeRelocatedVariables(locals_);
-    removeRelocatedVariables(constants_);
+    // Shouldn't be necessary, it is trivial to compiler to remove these later on
+    // (current removing implementation breaks if there is multiple variables in one declaration statement)
+    // FUTURE: implement removal also for private relocated variables, which are not
+    //         used in initializations
+    // removeRelocatedVariables(locals_);
+    // removeRelocatedVariables(constants_);
   };
 
   /// \brief Returns true if variable declaration is moved to address space struct
