@@ -1,6 +1,5 @@
 // RUN: cat %s | %opencl-validator
-// RUN: %webcl-validator %s 2>/dev/null | grep -v "Processing\|CHECK" | %opencl-validator
-// RUN: %webcl-validator %s | grep -v CHECK | %FileCheck %s
+// RUN: %webcl-validator %s 2>&1 | grep "Cannot currently relocate variables declared inside for statement"
 
 __kernel void initializer_in_for_statement(__global int *array)
 {
