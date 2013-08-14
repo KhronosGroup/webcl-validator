@@ -1,6 +1,10 @@
 // RUN: cat %s | %opencl-validator
 // RUN: %webcl-validator %s 2>/dev/null | grep -v "Processing\|CHECK" | %opencl-validator
 
+#ifdef __PLATFORM_AMD__
+#error "Avoiding further problems!"
+#endif
+
 __constant int removed_constant_1 = 1;
 __constant int * __constant removed_constant_pointer_1 = &removed_constant_1;
 __constant int removed_constant_array_1[1] = { 1 };
