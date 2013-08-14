@@ -47,8 +47,9 @@ __kernel void access_array(
     __global int *array)
 {
     // CHECK: _WclProgramAllocations _wcl_allocations_allocation = {
-    // CHECK:     { &array[0], &array[_wcl_array_size] }
-    // CHECK:     { { 0, 1, 2 } }
+    // CHECK:     { &array[0], &array[_wcl_array_size] },
+    // CHECK:      _wcl_global_null,
+    // CHECK:     { }
     // CHECK: };
 
     const int i = get_global_id(0);
