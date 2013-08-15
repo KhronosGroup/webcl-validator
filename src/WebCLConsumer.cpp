@@ -433,7 +433,12 @@ public:
       analyser.getPointerAceesses();
 
     std::map< unsigned, unsigned > maxAccess;
-    
+    // add default 8 bit align
+    maxAccess[clang::LangAS::opencl_constant] = 8;
+    maxAccess[clang::LangAS::opencl_global] = 8;
+    maxAccess[clang::LangAS::opencl_local] = 8;
+    maxAccess[0] = 8;
+      
     for (WebCLAnalyser::MemoryAccessMap::iterator i = pointerAccesses.begin();
          i != pointerAccesses.end(); ++i) {
       

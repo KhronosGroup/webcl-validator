@@ -50,7 +50,7 @@ public:
     /// Applies all AST transformations.
     bool rewrite();
 
-    void createAddressSpaceTypedef(AddressSpaceInfo &as, const std::string &name);
+    void createAddressSpaceTypedef(AddressSpaceInfo &as, const std::string &name, const std::string &alignment);
     void createPrivateAddressSpaceTypedef(AddressSpaceInfo &as);
     void createLocalAddressSpaceTypedef(AddressSpaceInfo &as);
     void createConstantAddressSpaceTypedef(AddressSpaceInfo &as);
@@ -141,6 +141,10 @@ private:
     RequiredMacroSet usedClampMacros_;
     FunctionPrologueMap kernelPrologues_;
     FunctionPrologueMap functionPrologues_;
+  
+    // this is stream for things that needs to be absolutely at first in program even before typedefs
+    std::stringstream preModulePrologue_;
+    // stream for other initializations at start of module like typedefs and address space structures
     std::stringstream modulePrologue_;
   
     // set to keep track that we are not doing paramRelocationInitializations multiple times

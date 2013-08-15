@@ -24,7 +24,10 @@ public:
     const std::string getNameOfAddressSpaceNullPtrRef(unsigned addressSpaceNum) const;
     const std::string getNameOfLimitCheckMacro(
         unsigned addressSpaceNum, int limitCount) const;
+    const std::string getNameOfSizeMacro(const std::string &asName) const;
     const std::string getNameOfSizeMacro(unsigned addressSpaceNum) const;
+    const std::string getNameOfAlignMacro(const std::string &asName) const;
+    const std::string getNameOfAlignMacro(unsigned addressSpaceNum) const;
     const std::string getNameOfLimitMacro() const;
     const std::string getNameOfAddressSpace(clang::QualType type) const;
     const std::string getNameOfType(clang::QualType type) const;

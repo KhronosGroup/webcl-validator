@@ -226,28 +226,28 @@ void WebCLTransformer::createAddressSpaceLimitsNullInitializer(
 }
 
 void WebCLTransformer::createAddressSpaceTypedef(
-    AddressSpaceInfo &as, const std::string &name)
+    AddressSpaceInfo &as, const std::string &name, const std::string &alignment)
 {
     if (!as.empty()) {
         modulePrologue_ << "typedef struct "
                         << addressSpaceInfoAsStruct(as)
-                        << " " << name << ";\n\n";
+                        << " __attribute__ ((aligned (" << alignment << "))) " << name << ";\n\n";
     }
 }
 
 void WebCLTransformer::createPrivateAddressSpaceTypedef(AddressSpaceInfo &as)
 {
-    createAddressSpaceTypedef(as, cfg_.privateRecordType_);
+    createAddressSpaceTypedef(as, cfg_.privateRecordType_, cfg_.getNameOfAlignMacro("private"));
 }
 
 void WebCLTransformer::createLocalAddressSpaceTypedef(AddressSpaceInfo &as)
 {
-    createAddressSpaceTypedef(as, cfg_.localRecordType_);
+    createAddressSpaceTypedef(as, cfg_.localRecordType_, cfg_.getNameOfAlignMacro("local"));
 }
 
 void WebCLTransformer::createConstantAddressSpaceTypedef(AddressSpaceInfo &as)
 {
-    createAddressSpaceTypedef(as, cfg_.constantRecordType_);
+    createAddressSpaceTypedef(as, cfg_.constantRecordType_, cfg_.getNameOfAlignMacro("constant"));
 }
 
 void WebCLTransformer::createAddressSpaceLimitsTypedef(
@@ -636,9 +636,20 @@ void WebCLTransformer::flushQueuedTransformations() {
 void WebCLTransformer::addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
                                                              unsigned minWidthInBits)
 {
-    modulePrologue_ << "#define " << cfg_.getNameOfSizeMacro(addressSpace) << " ("
-                    << "((" << minWidthInBits << " + (CHAR_BIT - 1)) / CHAR_BIT)"
-                    << ")\n";
+    preModulePrologue_ << "#define " << cfg_.getNameOfSizeMacro(addressSpace) << " ("
+                       << "((" << minWidthInBits << " + (CHAR_BIT - 1)) / CHAR_BIT)"
+                       << ")\n";
+
+    // get aligment rounded to next power of two
+    unsigned minAlignment = 1;
+    while (minWidthInBits != 0) {
+      minWidthInBits = minWidthInBits>>1;
+      minAlignment = minAlignment<<1;
+    }
+    minAlignment = minAlignment>>1;
+
+    preModulePrologue_ << "#define " << cfg_.getNameOfAlignMacro(addressSpace) << " "
+                       << "(" << minAlignment << "/CHAR_BIT)\n";
 }
 
 void WebCLTransformer::addAddressSpaceNull(std::ostream &out, unsigned addressSpace)
@@ -1091,6 +1102,7 @@ void WebCLTransformer::emitLimitMacros(std::ostream &out)
 
 void WebCLTransformer::emitPrologue(std::ostream &out)
 {
+    out << preModulePrologue_.str();
     out << modulePrologue_.str();
     emitGeneralCode(out);
     emitLimitMacros(out);

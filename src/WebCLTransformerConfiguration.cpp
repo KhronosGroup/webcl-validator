@@ -107,11 +107,28 @@ const std::string WebCLTransformerConfiguration::getNameOfLimitCheckMacro(
     return result.str();
 }
 
+const std::string WebCLTransformerConfiguration::getNameOfSizeMacro(const std::string &asName) const
+{
+  const std::string name =
+  macroPrefix_ + "_ADDRESS_SPACE_" + asName + "_MIN";
+  return name;
+}
+
 const std::string WebCLTransformerConfiguration::getNameOfSizeMacro(unsigned addressSpaceNum) const
 {
-    const std::string name =
-        macroPrefix_ + "_ADDRESS_SPACE_" + getNameOfAddressSpace(addressSpaceNum) + "_MIN";
-    return name;
+  return getNameOfSizeMacro(getNameOfAddressSpace(addressSpaceNum));
+}
+
+const std::string WebCLTransformerConfiguration::getNameOfAlignMacro(const std::string &asName) const
+{
+  const std::string name =
+  macroPrefix_ + "_ADDRESS_SPACE_" + asName + "_ALIGNMENT";
+  return name;
+}
+
+const std::string WebCLTransformerConfiguration::getNameOfAlignMacro(unsigned addressSpaceNum) const
+{
+  return getNameOfAlignMacro(getNameOfAddressSpace(addressSpaceNum));
 }
 
 const std::string WebCLTransformerConfiguration::getNameOfLimitMacro() const

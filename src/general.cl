@@ -36,7 +36,7 @@ void _wcl_local_range_init(__local _WclInitType *begin, __local _WclInitType *en
         get_local_id(2);
     const size_t num_elements = stop - start;
     const size_t item_elements = num_elements / xyz_items;
-
+/*
     __local uchar *item_begin = start + (item_index * item_elements);
     __local const uchar *item_end = item_begin + item_elements;
     for (__local uchar *item_i = item_begin; item_i < item_end; ++item_i)
@@ -46,6 +46,7 @@ void _wcl_local_range_init(__local _WclInitType *begin, __local _WclInitType *en
     __local uchar *item_final = start + (loop_elements + item_index);
     if (item_final < stop)
         *item_final = _WCL_FILLCHAR;
+*/
 }
 
 #endif // cl_khr_initialize_memory

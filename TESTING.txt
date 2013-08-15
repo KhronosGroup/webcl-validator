@@ -28,9 +28,14 @@ T3: POCL driver and Intel processor
     Device: Intel(R) Core(TM) i7-2640M CPU @ 2.80GHz.
 
 T4: Apple driver and Intel processor
+    OS: Mac OSX 10.8.4 
+    Driver: Apple
+    Device: Apple/Intel(R) Core(TM) i5-3210M CPU @ 2.50GHz.
+
+T5: POCL driver and Intel processor
     OS: Mac OSX
-    Driver:
-    Device:
+    Driver: pocl-trunk rev.753 with optimized llvm 3.3
+    Device: Apple/Intel(R) Core(TM) i5-3210M CPU @ 2.50GHz.
 
 See the ISSUES.txt document about problems in different drivers.
 
