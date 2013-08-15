@@ -758,10 +758,10 @@ WebCLTransformer::RangeModificationsFilter& WebCLTransformer::filteredModifiedRa
     // find out only toplevel ranges without nested areas
     for (RangeModifications::iterator i = modifiedRanges_.begin(); i != modifiedRanges_.end(); i++) {
       
-      DEBUG( std::cerr << "Range " << i->first.first << ":" << i->first.second << " = " << i->second << "\n"; );
+      // DEBUG( std::cerr << "Range " << i->first.first << ":" << i->first.second << " = " << i->second << "\n"; );
       
       if (i->first.first < biggestEnd) {
-        DEBUG( std::cerr << "Skipping: " << "\n"; );
+        // DEBUG( std::cerr << "Skipping: " << "\n"; );
         continue;
       }
       
@@ -773,7 +773,7 @@ WebCLTransformer::RangeModificationsFilter& WebCLTransformer::filteredModifiedRa
           if (currentStart != biggestEnd ||
               filteredModifiedRanges_.empty() ||
               currentStart != filteredModifiedRanges_.rbegin()->second) {
-            DEBUG( std::cerr << "Added range: " << currentStart << ":" << biggestEnd << "\n"; );
+            // DEBUG( std::cerr << "Added range: " << currentStart << ":" << biggestEnd << "\n"; );
             filteredModifiedRanges_.insert(ModifiedRange(currentStart, biggestEnd));
           }
         }
@@ -788,7 +788,7 @@ WebCLTransformer::RangeModificationsFilter& WebCLTransformer::filteredModifiedRa
     if (currentStart != biggestEnd ||
         filteredModifiedRanges_.empty() ||
         currentStart != filteredModifiedRanges_.rbegin()->second) {
-      DEBUG( std::cerr << "Added range: " << currentStart << ":" << biggestEnd << "\n"; );
+      // DEBUG( std::cerr << "Added range: " << currentStart << ":" << biggestEnd << "\n"; );
       filteredModifiedRanges_.insert(ModifiedRange(currentStart, biggestEnd));
     }    
   }

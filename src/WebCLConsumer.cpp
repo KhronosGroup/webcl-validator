@@ -30,17 +30,20 @@ WebCLConsumer::~WebCLConsumer()
 class InputNormaliser {
 public:
   InputNormaliser(WebCLAnalyser &analyser, WebCLTransformer &transformer) {
+
+    // FUTURE: this should be separate pass after macro expansion, but before
+    //         instrumentation to prepare code for instrumentation and then code
+    //         should be parsed again and fed to instrumentation
     
-    // go thorugh all non kernel functions and add first parameter
+    // FUTURE: move declaration part from each for loop to be before for statement
+    
+    // go through all typedefs and structure definitions and move them to start of module
     WebCLAnalyser::TypedefList &typedefs = analyser.getTypedefs();
     for (WebCLAnalyser::TypedefList::iterator i = typedefs.begin();
          i != typedefs.end(); ++i) {
       transformer.moveToModulePrologue(*i);
     }
-    
-    // NOTE: if #define directoves are causing problems,
-    //       make sure that they are expanded before transformation.
-    
+
   };
   
   InputNormaliser() {};
