@@ -27,6 +27,7 @@ namespace clang {
     class Expr;
     class ParmVarDecl;
     class Rewriter; 
+    class TypedefDecl;
     class VarDecl;
     class DeclRefExpr;
 }
@@ -101,7 +102,7 @@ public:
                                                unsigned minWidthInBits);
     void addAddressSpaceNull(std::ostream &out, unsigned addressSpace);
   
-    void moveToModulePrologue(clang::Decl *decl);
+    void moveToModulePrologue(clang::TypedefDecl *decl);
   
     // applies already added transformation to source
     void flushQueuedTransformations();

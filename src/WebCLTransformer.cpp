@@ -605,11 +605,18 @@ void WebCLTransformer::addRelocationInitializer(clang::VarDecl *decl) {
 
 }
 
-void WebCLTransformer::moveToModulePrologue(clang::Decl *decl) {
-  clang::Rewriter &rewriter = transformations_.getRewriter();
-  const std::string typedefText = rewriter.getRewrittenText(decl->getSourceRange());
-  removeText(decl->getSourceRange());
-  modulePrologue_ << typedefText << ";\n\n";
+void WebCLTransformer::moveToModulePrologue(clang::TypedefDecl *decl)
+{
+    const std::string name = cfg_.getNameOfRelocatedTypedef(decl);
+    if (!name.size()) {
+        error(decl->getLocStart(), "Identically named typedefs aren't supported yet.");
+        return;
+    }
+
+    clang::Rewriter &rewriter = transformations_.getRewriter();
+    const std::string typedefText = rewriter.getRewrittenText(decl->getSourceRange());
+    removeText(decl->getSourceRange());
+    modulePrologue_ << typedefText << ";\n\n";
 }
 
 void WebCLTransformer::flushQueuedTransformations() {

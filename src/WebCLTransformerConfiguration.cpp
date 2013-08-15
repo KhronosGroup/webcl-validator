@@ -55,6 +55,7 @@ WebCLTransformerConfiguration::WebCLTransformerConfiguration()
 
     , localVariableRenamer_(variablePrefix_ + "_")
     , privateVariableRenamer_(variablePrefix_ + "_")
+    , typedefRenamer_("")
 {
 }
 
@@ -148,6 +149,22 @@ const std::string WebCLTransformerConfiguration::getNameOfSizeParameter(clang::P
 {
     const std::string name = decl->getName();
     return variablePrefix_ + "_" + name + "_size";
+}
+
+const std::string WebCLTransformerConfiguration::getNameOfRelocatedTypedef(const clang::TypedefDecl *decl)
+{
+    std::ostringstream out;
+
+    typedefRenamer_.rename(out, decl);
+
+    // Indicate error if renaming is needed.
+    const std::string original = decl->getName();
+    const std::string renamed = out.str();
+    if (original.compare(renamed))
+        return std::string();
+
+    // Renaming wasn't needed.
+    return original;
 }
 
 const std::string WebCLTransformerConfiguration::getNameOfRelocatedVariable(const clang::VarDecl *decl)
