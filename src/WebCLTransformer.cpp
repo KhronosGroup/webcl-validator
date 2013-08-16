@@ -109,9 +109,15 @@ std::string WebCLTransformer::addressSpaceInitializer(AddressSpaceInfo &as) {
 void WebCLTransformer::createAddressSpaceNullInitializer(
     std::ostream &out, unsigned addressSpace)
 {
-    if (addressSpace != 0)
-        return;
-    out << "0";
+  switch(addressSpace) {
+    case clang::LangAS::opencl_global:
+      out << "0";
+      break;
+    case clang::LangAS::opencl_local:
+    case clang::LangAS::opencl_constant:
+      out << cfg_.getNameOfAddressSpaceNull(addressSpace);
+      break;
+  }
 }
 
 std::string WebCLTransformer::addressSpaceLimitsAsStruct(AddressSpaceLimits &asLimits)
@@ -393,6 +399,34 @@ void WebCLTransformer::createProgramAllocationsAllocation(
         << cfg_.addressSpaceRecordName_ << " = &" << cfg_.programRecordName_ << ";\n";
 }
 
+void WebCLTransformer::createAddressSpaceNullAllocation(
+    std::ostream &out, unsigned addressSpace)
+{
+    const bool isLocal = (addressSpace == clang::LangAS::opencl_local);
+
+    if (isLocal)
+        out << cfg_.indentation_;
+
+    out << "__" << cfg_.getNameOfAddressSpace(addressSpace) << " "
+        << cfg_.nullType_ << " " << cfg_.getNameOfAddressSpaceNull(addressSpace)
+        << "[" << cfg_.getNameOfSizeMacro(addressSpace) << "]";
+
+    if (!isLocal)
+        out << " = { 0 }";
+
+    out << ";\n";
+}
+
+void WebCLTransformer::createConstantAddressSpaceNullAllocation()
+{
+    createAddressSpaceNullAllocation(modulePrologue_, clang::LangAS::opencl_constant);
+}
+
+void WebCLTransformer::createLocalAddressSpaceNullAllocation(clang::FunctionDecl *kernel)
+{
+    createAddressSpaceNullAllocation(kernelPrologue(kernel), clang::LangAS::opencl_local);
+}
+
 void WebCLTransformer::initializeAddressSpaceNull(clang::FunctionDecl *kernel,
                                                   AddressSpaceLimits &limits)
 {
@@ -403,15 +437,6 @@ void WebCLTransformer::initializeAddressSpaceNull(clang::FunctionDecl *kernel,
   
   std::string nullType =  "__" + cfg_.getNameOfAddressSpace(limits.getAddressSpace()) + " " + cfg_.nullType_ + "*";
 
-  // special handling for local address space (TODO: refactor to separate function)
-  if (limits.getAddressSpace() == clang::LangAS::opencl_local) {
-    // TODO: reserve separate null only if static address space is not big enough, currently this is done because multiple kernels
-    //       might have different args, but minimum access limits are resolved module basis
-    out << cfg_.indentation_ << "__local uchar local_null_ptr[" << cfg_.getNameOfSizeMacro(limits.getAddressSpace()) << "];\n";
-    out << cfg_.indentation_ << cfg_.getNameOfAddressSpaceNullPtrRef(limits.getAddressSpace()) << " = (" << nullType << ")local_null_ptr;\n";
-    return;
-  }
-  
   out << cfg_.indentation_
       << cfg_.getNameOfAddressSpaceNullPtrRef(limits.getAddressSpace()) << " = (" << nullType << ")(";
   
@@ -431,9 +456,9 @@ void WebCLTransformer::initializeAddressSpaceNull(clang::FunctionDecl *kernel,
   out << ");\n";
   
   out << cfg_.indentation_
-      << "if (" << cfg_.getNameOfAddressSpaceNullPtrRef(limits.getAddressSpace()) << " == (" << nullType << ")0) return; // not enough space to meet the minimum access. \n";
+      << "if (" << cfg_.getNameOfAddressSpaceNullPtrRef(limits.getAddressSpace()) << " == (" << nullType << ")0) return; // not enough space to meet the minimum access. Would be great if we could give info about the problem for the user. \n";
 }
- 
+
 void WebCLTransformer::createLocalRangeZeroing(
     std::ostream &out, const std::string &arguments)
 {
@@ -461,6 +486,8 @@ void WebCLTransformer::createLocalAreaZeroing(
         const clang::ParmVarDecl *decl = *i;
         createLocalRangeZeroing(out, cfg_.getDynamicLimitRef(decl));
     }
+
+    createLocalRangeZeroing(out, cfg_.getNullLimitRef(clang::LangAS::opencl_local));
 
     out << cfg_.indentation_ << "barrier(CLK_LOCAL_MEM_FENCE);\n";
     out << cfg_.indentation_ << "// <= Local memory zeroing.\n";

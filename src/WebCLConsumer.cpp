@@ -159,6 +159,7 @@ public:
     // allocate space for constant address space and pass original constants
     // for initialzations
     transformer_.createConstantAddressSpaceAllocation(getConstantAddressSpace());    
+    transformer_.createConstantAddressSpaceNullAllocation();
   };
   
   /// Fixes DeclRefExpr uses of variables to point to address space.
@@ -355,6 +356,8 @@ public:
       if (addressSpaceHandler.hasLocalAddressSpace())
           transformer.createLocalAddressSpaceAllocation(func);
 
+      // Allocate space for local null ptr
+      transformer.createLocalAddressSpaceNullAllocation(func);
       
       // allocate wcl_allocations_allocation and create the wcl_allocs
       // pointer to it, give all the data it needs to be able to create
@@ -365,11 +368,9 @@ public:
               func, globalLimits_, constantLimits_, localLimits_,
               addressSpaceHandler.getPrivateAddressSpace());
       }
-
-      // Initialize null pointers for each address space in the program
-      transformer.initializeAddressSpaceNull(func, constantLimits_);
+      
+      // Initialize null pointers for global and private addres spaces
       transformer.initializeAddressSpaceNull(func, globalLimits_);
-      transformer.initializeAddressSpaceNull(func, localLimits_);
       if (!addressSpaceHandler.getPrivateAddressSpace().empty()) {
           transformer.initializeAddressSpaceNull(func, privateLimits_);        
       }

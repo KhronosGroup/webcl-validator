@@ -23,7 +23,7 @@ public:
     ~WebCLTransformerConfiguration();
 
     const std::string getNameOfAddressSpace(unsigned addressSpaceNum) const;
-    const std::string getNameOfAddressSpaceNullPtrRef(unsigned addressSpaceNum) const;
+    const std::string getNameOfAddressSpaceNull(unsigned addressSpace) const;    const std::string getNameOfAddressSpaceNullPtrRef(unsigned addressSpaceNum) const;
     const std::string getNameOfLimitCheckMacro(
         unsigned addressSpaceNum, int limitCount) const;
     const std::string getNameOfSizeMacro(const std::string &asName) const;
@@ -42,7 +42,8 @@ public:
 
     const std::string getStaticLimitRef(unsigned addressSpaceNum) const;
     const std::string getDynamicLimitRef(const clang::VarDecl *decl) const;
-
+    const std::string getNullLimitRef(unsigned addressSpaceNum) const;
+  
     const std::string typePrefix_;
     const std::string variablePrefix_;
     const std::string macroPrefix_;

@@ -81,7 +81,11 @@ public:
         clang::FunctionDecl *kernelFunc, AddressSpaceLimits &globalLimits,
         AddressSpaceLimits &constantLimits, AddressSpaceLimits &localLimits,
         AddressSpaceInfo &privateAs);
-
+  
+    void createAddressSpaceNullAllocation(std::ostream &out, unsigned addressSpace);
+    void createConstantAddressSpaceNullAllocation();
+    void createLocalAddressSpaceNullAllocation(clang::FunctionDecl *kernel);
+  
     void initializeAddressSpaceNull(clang::FunctionDecl *kernel, AddressSpaceLimits &limits);
 
     /// \brief Zero a single local memory range.
