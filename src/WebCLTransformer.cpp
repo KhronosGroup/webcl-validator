@@ -637,8 +637,13 @@ void WebCLTransformer::addRelocationInitializer(clang::VarDecl *decl) {
 void WebCLTransformer::moveToModulePrologue(clang::NamedDecl *decl)
 {
     const std::string name = cfg_.getNameOfRelocatedTypeDecl(decl);
-    if (!name.size()) {
-        error(decl->getLocStart(), "Identically named typedefs aren't supported.");
+    if (clang::RecordDecl* structDecl = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+        if (structDecl->isAnonymousStructOrUnion() || structDecl->getNameAsString().empty()) {
+          error(structDecl->getLocStart(), "Anonymous structs should have been eliminated in this phase.");
+        }
+    }
+    if (name.empty()) {
+        error(decl->getLocStart(), "Identically named types aren't supported.");
         return;
     }
 
