@@ -82,10 +82,7 @@ public:
         AddressSpaceLimits &constantLimits, AddressSpaceLimits &localLimits,
         AddressSpaceInfo &privateAs);
 
-    void createAddressSpaceNullAllocation(std::ostream &out, unsigned addressSpace);
-    void createConstantAddressSpaceNullAllocation();
-    void createLocalAddressSpaceNullAllocation(clang::FunctionDecl *kernel);
-    void createGlobalAddressSpaceNullAllocation(clang::FunctionDecl *kernel);
+    void initializeAddressSpaceNull(clang::FunctionDecl *kernel, AddressSpaceLimits &limits);
 
     /// \brief Zero a single local memory range.
     void createLocalRangeZeroing(std::ostream &out, const std::string &arguments);
@@ -100,7 +97,6 @@ public:
   
     void addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
                                                unsigned minWidthInBits);
-    void addAddressSpaceNull(std::ostream &out, unsigned addressSpace);
   
     void moveToModulePrologue(clang::TypedefDecl *decl);
   

@@ -222,7 +222,7 @@ std::string WebCLTransformer::addressSpaceLimitsInitializer(
 void WebCLTransformer::createAddressSpaceLimitsNullInitializer(
     std::ostream &out, unsigned addressSpace)
 {
-    out << cfg_.getNameOfAddressSpaceNull(addressSpace);
+    out << "0";
 }
 
 void WebCLTransformer::createAddressSpaceTypedef(
@@ -393,43 +393,47 @@ void WebCLTransformer::createProgramAllocationsAllocation(
         << cfg_.addressSpaceRecordName_ << " = &" << cfg_.programRecordName_ << ";\n";
 }
 
-void WebCLTransformer::createAddressSpaceNullAllocation(
-    std::ostream &out, unsigned addressSpace)
+void WebCLTransformer::initializeAddressSpaceNull(clang::FunctionDecl *kernel,
+                                                  AddressSpaceLimits &limits)
 {
-    const bool isLocal = (addressSpace == clang::LangAS::opencl_local);
+  // init null only if there is limits.
+  if (limits.empty()) return;
+  
+  std::ostream &out = kernelPrologue(kernel);
+  
+  std::string nullType =  "__" + cfg_.getNameOfAddressSpace(limits.getAddressSpace()) + " " + cfg_.nullType_ + "*";
 
-    if (isLocal)
-        out << cfg_.indentation_;
+  // special handling for local address space (TODO: refactor to separate function)
+  if (limits.getAddressSpace() == clang::LangAS::opencl_local) {
+    // TODO: reserve separate null only if static address space is not big enough, currently this is done because multiple kernels
+    //       might have different args, but minimum access limits are resolved module basis
+    out << cfg_.indentation_ << "__local uchar local_null_ptr[" << cfg_.getNameOfSizeMacro(limits.getAddressSpace()) << "];\n";
+    out << cfg_.indentation_ << cfg_.getNameOfAddressSpaceNullPtrRef(limits.getAddressSpace()) << " = (" << nullType << ")local_null_ptr;\n";
+    return;
+  }
+  
+  out << cfg_.indentation_
+      << cfg_.getNameOfAddressSpaceNullPtrRef(limits.getAddressSpace()) << " = (" << nullType << ")(";
+  
+  std::string orIfNeed = "";
 
-    out << "__" << cfg_.getNameOfAddressSpace(addressSpace) << " "
-        << cfg_.nullType_ << " " << cfg_.getNameOfAddressSpaceNull(addressSpace)
-        << "[" << cfg_.getNameOfSizeMacro(addressSpace) << "]";
-
-    if (!isLocal)
-        out << " = { 0 }";
-
-    out << ";\n";
+  if (limits.hasStaticallyAllocatedLimits()) {
+      out << "_WCL_SET_NULL(" << nullType << ", " << cfg_.getNameOfSizeMacro(limits.getAddressSpace()) << ", " << cfg_.getStaticLimitRef(limits.getAddressSpace()) << ") ";
+      orIfNeed = " || ";
+  }
+  
+  for(AddressSpaceLimits::LimitList::iterator i = limits.getDynamicLimits().begin();
+      i != limits.getDynamicLimits().end(); i++) {
+      out << orIfNeed << "_WCL_SET_NULL(" << nullType << ", " << cfg_.getNameOfSizeMacro(limits.getAddressSpace()) << "," << cfg_.getDynamicLimitRef(*i) << ")";
+      orIfNeed = " || ";
+  }
+  
+  out << ");\n";
+  
+  out << cfg_.indentation_
+      << "if (" << cfg_.getNameOfAddressSpaceNullPtrRef(limits.getAddressSpace()) << " == (" << nullType << ")0) return; // not enough space to meet the minimum access. \n";
 }
-
-void WebCLTransformer::createConstantAddressSpaceNullAllocation()
-{
-    createAddressSpaceNullAllocation(modulePrologue_, clang::LangAS::opencl_constant);
-}
-
-void WebCLTransformer::createLocalAddressSpaceNullAllocation(clang::FunctionDecl *kernel)
-{
-    createAddressSpaceNullAllocation(kernelPrologue(kernel), clang::LangAS::opencl_local);
-}
-
-void WebCLTransformer::createGlobalAddressSpaceNullAllocation(clang::FunctionDecl *kernel)
-{
-    std::ostream &out = kernelPrologue(kernel);
-    out << cfg_.indentation_
-        << "__" << cfg_.getNameOfAddressSpace(clang::LangAS::opencl_global) << " "
-        << cfg_.nullType_ << " *" << cfg_.getNameOfAddressSpaceNull(clang::LangAS::opencl_global)
-        << " = 0; // largest global area\n";
-}
-
+ 
 void WebCLTransformer::createLocalRangeZeroing(
     std::ostream &out, const std::string &arguments)
 {
@@ -457,8 +461,6 @@ void WebCLTransformer::createLocalAreaZeroing(
         const clang::ParmVarDecl *decl = *i;
         createLocalRangeZeroing(out, cfg_.getDynamicLimitRef(decl));
     }
-
-    createLocalRangeZeroing(out, cfg_.getNullLimitRef(clang::LangAS::opencl_local));
 
     out << cfg_.indentation_ << "barrier(CLK_LOCAL_MEM_FENCE);\n";
     out << cfg_.indentation_ << "// <= Local memory zeroing.\n";
@@ -657,14 +659,6 @@ void WebCLTransformer::addMinimumRequiredContinuousAreaLimit(unsigned addressSpa
 
     preModulePrologue_ << "#define " << cfg_.getNameOfAlignMacro(addressSpace) << " "
                        << "(" << minAlignment << "/CHAR_BIT)\n";
-}
-
-void WebCLTransformer::addAddressSpaceNull(std::ostream &out, unsigned addressSpace)
-{
-    out << "__" << cfg_.getNameOfAddressSpace(addressSpace)
-        << " uchar " << cfg_.getNameOfAddressSpaceNull(addressSpace)
-        << "[(" << cfg_.getNameOfSizeMacro(addressSpace)
-        << " + (sizeof(uchar) - 1)) / sizeof(uchar)] = { '\0' };\n";
 }
 
 void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)

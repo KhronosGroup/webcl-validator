@@ -9,6 +9,9 @@
 // pointers.
 typedef uint _WclInitType;
 
+// NOTE: this expects that null pointer is type of uint*
+#define _WCL_SET_NULL(type, req_bytes, min, max) ( ((((type)max)-((type)min))*sizeof(uint) >= req_bytes) ? ((type)min) : ((type)0) )
+
 #ifdef cl_khr_initialize_memory
 #pragma OPENCL EXTENSION cl_khr_initialize_memory : enable
 #define _WCL_LOCAL_RANGE_INIT(begin, end)
@@ -29,12 +32,12 @@ typedef uint _WclInitType;
     size_t items_offset = items_per_kernel * item_index;     \
     size_t reminders = item_count % xyz_items;               \
     if (item_index < reminders) {                            \
-        start[xyz_items*items_per_kernel + item_index] = _WCL_FILLCHAR;       \
-    }                                                                         \
-    for (size_t i = 0; i < items_per_kernel; i++) {                           \
-        start[items_offset+i] = _WCL_FILLCHAR;                                \
-    }                                                                         \
-} while (0)                                                                   \
+        start[xyz_items*items_per_kernel + item_index] = _WCL_FILLCHAR; \
+    }                                                                   \
+    for (size_t i = 0; i < items_per_kernel; i++) {                     \
+        start[items_offset+i] = _WCL_FILLCHAR;                          \
+    }                                                                   \
+} while (0)                                                             \
 
 #endif // cl_khr_initialize_memory
 

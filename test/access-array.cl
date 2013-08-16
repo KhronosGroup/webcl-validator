@@ -48,7 +48,7 @@ __kernel void access_array(
 {
     // CHECK: _WclProgramAllocations _wcl_allocations_allocation = {
     // CHECK:     { &array[0], &array[_wcl_array_size] },
-    // CHECK:      _wcl_global_null,
+    // CHECK:      0,
     // CHECK:     { }
     // CHECK: };
 

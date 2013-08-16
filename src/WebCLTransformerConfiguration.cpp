@@ -81,11 +81,6 @@ const std::string WebCLTransformerConfiguration::getNameOfAddressSpace(unsigned 
       }
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfAddressSpaceNull(unsigned addressSpaceNum) const
-{
-    return variablePrefix_ + "_" + getNameOfAddressSpace(addressSpaceNum) + "_null";
-}
-
 const std::string WebCLTransformerConfiguration::getNameOfAddressSpaceNullPtrRef(unsigned addressSpaceNum) const
 {
     const std::string prefix = addressSpaceRecordName_ + "->";
@@ -277,9 +272,3 @@ const std::string WebCLTransformerConfiguration::getDynamicLimitRef(const clang:
     return retVal.str();
 }
 
-const std::string WebCLTransformerConfiguration::getNullLimitRef(unsigned addressSpaceNum) const
-{
-    assert(addressSpaceNum == clang::LangAS::opencl_local);
-    const std::string localNull = getNameOfAddressSpaceNull(addressSpaceNum);
-    return localNull + ", " + localNull + " + " + getNameOfSizeMacro(addressSpaceNum);
-}

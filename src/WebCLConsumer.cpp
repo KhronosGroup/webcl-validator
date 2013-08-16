@@ -355,13 +355,7 @@ public:
       if (addressSpaceHandler.hasLocalAddressSpace())
           transformer.createLocalAddressSpaceAllocation(func);
 
-      if (!globalLimits_.empty())
-          transformer.createGlobalAddressSpaceNullAllocation(func);
-      if (!localLimits_.empty())
-          transformer.createLocalAddressSpaceNullAllocation(func);
-
       
-      // TODO: move this after relocations...
       // allocate wcl_allocations_allocation and create the wcl_allocs
       // pointer to it, give all the data it needs to be able to create
       // also static initializator and prevent need for separate private
@@ -370,6 +364,14 @@ public:
           transformer.createProgramAllocationsAllocation(
               func, globalLimits_, constantLimits_, localLimits_,
               addressSpaceHandler.getPrivateAddressSpace());
+      }
+
+      // Initialize null pointers for each address space in the program
+      transformer.initializeAddressSpaceNull(func, constantLimits_);
+      transformer.initializeAddressSpaceNull(func, globalLimits_);
+      transformer.initializeAddressSpaceNull(func, localLimits_);
+      if (!addressSpaceHandler.getPrivateAddressSpace().empty()) {
+          transformer.initializeAddressSpaceNull(func, privateLimits_);        
       }
 
       // inject code that does zero initializing for all local memory ranges
@@ -408,9 +410,24 @@ public:
 
   bool hasConstantLimits()
   {
-      return !constantLimits_.empty();
+    return !constantLimits_.empty();
   };
-  
+
+  bool hasGlobalLimits()
+  {
+    return !globalLimits_.empty();
+  };
+
+  bool hasLocalLimits()
+  {
+      return !localLimits_.empty();
+  };
+
+  bool hasPrivateLimits()
+  {
+    return !privateLimits_.empty();
+  };
+
 private:
   AddressSpaceLimits globalLimits_;
   AddressSpaceLimits constantLimits_;
@@ -469,9 +486,6 @@ public:
       
       transformer.addMinimumRequiredContinuousAreaLimit(i->first, i->second);
     }
-
-    if (kernelHandler.hasConstantLimits())
-        transformer.createConstantAddressSpaceNullAllocation();
   }
 
   ~MemoryAccessHandler() {};
