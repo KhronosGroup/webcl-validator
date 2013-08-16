@@ -7,7 +7,7 @@
 
 WebCLTool::WebCLTool(int argc, char const **argv,
                      char const *input, char const *output)
-    : compilations_(NULL), paths_(), tool_(NULL), factory_(NULL)
+    : compilations_(NULL), paths_(), tool_(NULL), output_(output)
 {
     compilations_ =
         clang::tooling::FixedCompilationDatabase::loadFromCommandLine(argc, argv);
@@ -22,18 +22,10 @@ WebCLTool::WebCLTool(int argc, char const **argv,
         std::cerr << "Internal error. Can't create tool." << std::endl;
         return;
     }
-
-    factory_ = new WebCLActionFactory(output);
-    if (!factory_) {
-        std::cerr << "Internal error. Can't create factory." << std::endl;
-        return;
-    }
 }
 
 WebCLTool::~WebCLTool()
 {
-    delete factory_;
-    factory_ = NULL;
     delete tool_;
     tool_ = NULL;
     delete compilations_;
@@ -44,5 +36,50 @@ int WebCLTool::run()
 {
     if (!compilations_ || !tool_)
         return EXIT_FAILURE;
-    return tool_->run(factory_);
+    return tool_->run(this);
+}
+
+WebCLPreprocessorTool::WebCLPreprocessorTool(int argc, char const **argv,
+                                             char const *input, char const *output)
+    : WebCLTool(argc, argv, input, output)
+{
+}
+
+WebCLPreprocessorTool::~WebCLPreprocessorTool()
+{
+}
+
+clang::FrontendAction *WebCLPreprocessorTool::create()
+{
+    return new WebCLPreprocessorAction(output_);
+}
+
+WebCLMatcherTool::WebCLMatcherTool(int argc, char const **argv,
+                                   char const *input, char const *output)
+    : WebCLTool(argc, argv, input, output)
+{
+}
+
+WebCLMatcherTool::~WebCLMatcherTool()
+{
+}
+
+clang::FrontendAction *WebCLMatcherTool::create()
+{
+    return new WebCLMatcherAction(output_);
+}
+
+WebCLValidatorTool::WebCLValidatorTool(int argc, char const **argv,
+                                       char const *input)
+    : WebCLTool(argc, argv, input)
+{
+}
+
+WebCLValidatorTool::~WebCLValidatorTool()
+{
+}
+
+clang::FrontendAction *WebCLValidatorTool::create()
+{
+    return new WebCLValidatorAction;
 }

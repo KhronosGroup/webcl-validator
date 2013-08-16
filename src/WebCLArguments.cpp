@@ -13,10 +13,8 @@ WebCLArguments::WebCLArguments(int argc, char const *argv[])
     , preprocessorArgv_(NULL)
     , validatorArgc_(0)
     , validatorArgv_(NULL)
-    , sourceDescriptor_(-1)
-    , sourceFilename_(NULL)
-    , headerDescriptor_(-1)
-    , headerFilename_(NULL)
+    , files_()
+    , outputs_()
 {
     char const *commandName = argv[0];
     char const *inputFilename = argv[1];
@@ -24,10 +22,13 @@ WebCLArguments::WebCLArguments(int argc, char const *argv[])
     const int numUserOptions = argc - userOptionOffset;
     assert(argc >= userOptionOffset);
 
-    sourceFilename_ = createEmptyTemporaryFile(sourceDescriptor_);
     char const *buffer = reinterpret_cast<char const*>(kernel_cl);
     size_t length = kernel_cl_len;
-    headerFilename_ = createFullTemporaryFile(headerDescriptor_, buffer, length);
+    int headerDescriptor = -1;
+    char const *headerFilename = createFullTemporaryFile(headerDescriptor, buffer, length);
+    if (!headerFilename)
+        return;
+    files_.push_back(TemporaryFile(headerDescriptor, headerFilename));
 
     char const *preprocessorInvocation[] = {
         commandName, inputFilename, "--"
@@ -43,14 +44,14 @@ WebCLArguments::WebCLArguments(int argc, char const *argv[])
     // TODO: when we port to llvm-3.3 we can just say -target spir and it
     //       should have valid address space mapping
     char const *validatorInvocation[] = {
-        commandName, sourceFilename_, "--"
+        commandName, NULL, "--"
     };
     const int validatorInvocationSize =
         sizeof(validatorInvocation) / sizeof(validatorInvocation[0]);
     char const *validatorOptions[] = {
         "-x", "cl",
         "-ffake-address-space-map",
-        "-include", headerFilename_
+        "-include", headerFilename
     };
     const int numValidatorOptions =
         sizeof(validatorOptions) / sizeof(validatorOptions[0]);
@@ -98,67 +99,92 @@ WebCLArguments::~WebCLArguments()
     delete[] validatorArgv_;
     validatorArgv_ = NULL;
 
-    close(sourceDescriptor_);
-    remove(sourceFilename_);
-    close(headerDescriptor_);
-    remove(headerFilename_);
-
-    delete[] sourceFilename_;
-    sourceFilename_ = NULL;
-    delete[] headerFilename_;
-    headerFilename_ = NULL;
+    while (files_.size()) {
+        TemporaryFile &file = files_.back();
+        close(file.first);
+        remove(file.second);
+        delete[] file.second;
+        files_.pop_back();
+    }
 }
 
 int WebCLArguments::getPreprocessorArgc() const
 {
-    if (!arePreprocessorArgumentsOk())
+    if (!areArgumentsOk(preprocessorArgc_, preprocessorArgv_))
         return 0;
     return preprocessorArgc_;
 }
 
-char const **WebCLArguments::getPreprocessorArgv() const
+int WebCLArguments::getMatcherArgc() const
 {
-    if (!arePreprocessorArgumentsOk())
-        return NULL;
-    return preprocessorArgv_;
+    return getValidatorArgc();
 }
 
 int WebCLArguments::getValidatorArgc() const
 {
-    if (!areValidatorArgumentsOk())
+    if (!areArgumentsOk(validatorArgc_, validatorArgv_))
         return 0;
     return validatorArgc_;
 }
 
+char const **WebCLArguments::getPreprocessorArgv() const
+{
+    if (!areArgumentsOk(preprocessorArgc_, preprocessorArgv_))
+        return NULL;
+    // Input file has been already set.
+    return preprocessorArgv_;
+}
+
+char const **WebCLArguments::getMatcherArgv() const
+{
+    if (!areArgumentsOk(validatorArgc_, validatorArgv_))
+        return NULL;
+
+    char const **matcherArgv = new char const *[validatorArgc_];
+    if (!matcherArgv)
+        return NULL;
+    std::copy(validatorArgv_, validatorArgv_ + validatorArgc_, matcherArgv);
+
+    // Set input file.
+    char const *input = outputs_.back();
+    matcherArgv[1] = input;
+
+    return matcherArgv;
+}
+
 char const **WebCLArguments::getValidatorArgv() const
 {
-    if (!areValidatorArgumentsOk())
+    if (!areArgumentsOk(validatorArgc_, validatorArgv_))
         return NULL;
+
+    // Set input file.
+    char const *input = outputs_.back();
+    validatorArgv_[1] = input;
+
     return validatorArgv_;
 }
 
-char const *WebCLArguments::getPreprocessorInput() const
+char const *WebCLArguments::getInput(int argc, char const **argv, bool createOutput)
 {
-    if (!arePreprocessorArgumentsOk())
+    if (!areArgumentsOk(argc, argv))
         return NULL;
-    return preprocessorArgv_[1];
+
+    // Create output file for the next tool.
+    if (createOutput) {
+        int fd = -1;
+        char const *name = createEmptyTemporaryFile(fd);
+        if (!name)
+            return NULL;
+        files_.push_back(TemporaryFile(fd, name));
+        outputs_.push_back(name);
+    }
+
+    return argv[1];
 }
 
-char const *WebCLArguments::getValidatorInput() const
+bool WebCLArguments::areArgumentsOk(int argc, char const **argv) const
 {
-    if (!areValidatorArgumentsOk())
-        return NULL;
-    return validatorArgv_[1];
-}
-
-bool WebCLArguments::arePreprocessorArgumentsOk() const
-{
-    return sourceFilename_;
-}
-
-bool WebCLArguments::areValidatorArgumentsOk() const
-{
-    return arePreprocessorArgumentsOk() && validatorArgv_  && headerFilename_;
+    return (argc > 1) && argv;
 }
 
 char const *WebCLArguments::createEmptyTemporaryFile(int &fd) const

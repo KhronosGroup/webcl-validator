@@ -33,7 +33,7 @@ private:
     WebCLAnalyser analyser_;
     Visitors checkingVisitors_;
 
-    WebCLPrinter printer_;
+    WebCLValidatorPrinter printer_;
     TransformingVisitors transformingVisitors_;
 
     WebCLTransformer *transformer_;

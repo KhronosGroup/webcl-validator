@@ -3,8 +3,8 @@
 
 #include "WebCLConsumer.hpp"
 
+#include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Frontend/FrontendAction.h"
-#include "clang/Tooling/Tooling.h"
 
 namespace clang {
     class Sema;
@@ -18,7 +18,7 @@ class WebCLAction : public clang::FrontendAction
 {
 public:
 
-    WebCLAction();
+    explicit WebCLAction(const char *output = NULL);
     virtual ~WebCLAction();
 
 protected:
@@ -30,14 +30,35 @@ protected:
     // directives are handled during preprocessing and pragmas during
     // AST parsing.
     WebCLPreprocessor *preprocessor_;
+
+    const char *output_;
+    llvm::raw_ostream *out_;
 };
 
 class WebCLPreprocessorAction : public WebCLAction
 {
 public:
 
-    explicit WebCLPreprocessorAction(const char *outputFile);
+    explicit WebCLPreprocessorAction(const char *output);
     virtual ~WebCLPreprocessorAction();
+
+    /// \see clang::FrontendAction
+    virtual clang::ASTConsumer* CreateASTConsumer(clang::CompilerInstance &instance,
+                                                  llvm::StringRef);
+
+    /// \see clang::FrontendAction
+    virtual void ExecuteAction();
+
+    /// \see clang::FrontendAction
+    virtual bool usesPreprocessorOnly() const;
+};
+
+class WebCLMatcherAction : public WebCLAction
+{
+public:
+
+    explicit WebCLMatcherAction(const char *output);
+    virtual ~WebCLMatcherAction();
 
     /// \see clang::FrontendAction
     virtual clang::ASTConsumer* CreateASTConsumer(clang::CompilerInstance &instance,
@@ -51,7 +72,13 @@ public:
 
 private:
 
-    const char *outputFile_;
+    /// \see WebCLAction
+    virtual bool initialize(clang::CompilerInstance &instance);
+
+    clang::ast_matchers::MatchFinder matcher_;
+    clang::ASTConsumer *consumer_;
+    clang::Rewriter *rewriter_;
+    WebCLPrinter *printer_;
 };
 
 class WebCLValidatorAction : public WebCLAction
@@ -80,21 +107,6 @@ private:
     WebCLTransformer *transformer_;
     clang::Rewriter *rewriter_;
     clang::Sema *sema_;
-};
-
-class WebCLActionFactory : public clang::tooling::FrontendActionFactory
-{
-public:
-
-    WebCLActionFactory(const char *outputFile = NULL);
-    virtual ~WebCLActionFactory();
-
-    /// \brief see clang::tooling::FrontendActionFactory
-    virtual clang::FrontendAction *create();
-
-private:
-
-    const char *outputFile_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLACTION

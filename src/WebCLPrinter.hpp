@@ -3,14 +3,35 @@
 
 #include "WebCLVisitor.hpp"
 
-/// \brief Transforms and prints original WebCL C source file.
-class WebCLPrinter : public WebCLTransformingVisitor
+namespace llvm {
+    class raw_ostream;
+}
+
+/// Prints rewriter contents to a file or to standard output.
+class WebCLPrinter
 {
 public:
 
-    explicit WebCLPrinter(
+    WebCLPrinter(clang::Rewriter &rewriter);
+    virtual ~WebCLPrinter();
+
+    /// \brief Output rewritten results.
+    bool print(llvm::raw_ostream &out, const std::string &comment);
+
+protected:
+
+    clang::Rewriter &rewriter_;
+};
+
+/// \brief Transforms and prints original WebCL C source file.
+class WebCLValidatorPrinter : public WebCLPrinter
+                            , public WebCLTransformingVisitor
+{
+public:
+
+    WebCLValidatorPrinter(
         clang::CompilerInstance &instance, clang::Rewriter &rewriter);
-    ~WebCLPrinter();
+    ~WebCLValidatorPrinter();
 
     /// Apply transformations to original WebCL C source. If the
     /// transformations apply succesfully, print the transformed
@@ -18,13 +39,6 @@ public:
     ///
     /// \see WebCLVisitor::handleTranslationUnitDecl
     virtual bool handleTranslationUnitDecl(clang::TranslationUnitDecl *decl);
-
-private:
-
-    /// \brief Output transformed WebCL C source.
-    bool print();
-
-    clang::Rewriter &rewriter_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLPRINTER

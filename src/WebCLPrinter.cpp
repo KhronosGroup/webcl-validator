@@ -3,9 +3,8 @@
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
-WebCLPrinter::WebCLPrinter(
-    clang::CompilerInstance &instance, clang::Rewriter &rewriter)
-    : WebCLTransformingVisitor(instance), rewriter_(rewriter)
+WebCLPrinter::WebCLPrinter(clang::Rewriter &rewriter)
+    : rewriter_(rewriter)
 {
 }
 
@@ -13,7 +12,7 @@ WebCLPrinter::~WebCLPrinter()
 {
 }
 
-bool WebCLPrinter::handleTranslationUnitDecl(clang::TranslationUnitDecl *decl)
+bool WebCLPrinter::print(llvm::raw_ostream &out, const std::string &comment)
 {
     // Insert a comment at the top of the main source file. This is to
     // ensure that at least some modifications are made so that
@@ -21,30 +20,41 @@ bool WebCLPrinter::handleTranslationUnitDecl(clang::TranslationUnitDecl *decl)
     clang::SourceManager &manager = rewriter_.getSourceMgr();
     clang::FileID file = manager.getMainFileID();
     clang::SourceLocation start = manager.getLocForStartOfFile(file);
-    const std::string comment = "// Transformed by WebCL Validator.\n\n";
     rewriter_.InsertText(start, comment, true, true);
 
+    const clang::RewriteBuffer *buffer = rewriter_.getRewriteBufferFor(file);
+    if (!buffer) {
+        // You'll end up here if don't do any transformations.
+        return false;
+    }
+
+    out << std::string(buffer->begin(), buffer->end());
+    out.flush();
+    return true;
+}
+
+WebCLValidatorPrinter::WebCLValidatorPrinter(
+    clang::CompilerInstance &instance, clang::Rewriter &rewriter)
+    : WebCLPrinter(rewriter)
+    , WebCLTransformingVisitor(instance)
+{
+}
+
+WebCLValidatorPrinter::~WebCLValidatorPrinter()
+{
+}
+
+bool WebCLValidatorPrinter::handleTranslationUnitDecl(clang::TranslationUnitDecl *decl)
+{
     // Apply transformer modifications.
     WebCLTransformer &transformer = getTransformer();
     if (!transformer.rewrite())
         return false;
 
-    return print();
-}
-
-bool WebCLPrinter::print()
-{
-    clang::SourceManager &manager = rewriter_.getSourceMgr();
-    clang::FileID file = manager.getMainFileID();
-    const clang::RewriteBuffer *buffer = rewriter_.getRewriteBufferFor(file);
-    if (!buffer) {
-        // You'll end up here if don't do any transformations.
-        fatal("Can't get rewrite buffer.");
+    if (!print(llvm::outs(), "// WebCL Validator: validation stage.\n")) {
+        fatal("Can't print validator output.");
         return false;
     }
-
-    llvm::outs() << std::string(buffer->begin(), buffer->end());
-    llvm::outs().flush();
 
     return true;
 }

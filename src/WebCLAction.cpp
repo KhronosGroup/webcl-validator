@@ -12,9 +12,10 @@
 
 #include "llvm/ADT/OwningPtr.h"
 
-WebCLAction::WebCLAction()
+WebCLAction::WebCLAction(const char *output)
     : clang::FrontendAction()
     , reporter_(NULL), preprocessor_(NULL)
+    , output_(output), out_(NULL)
 {
 }
 
@@ -41,6 +42,16 @@ bool WebCLAction::initialize(clang::CompilerInstance &instance)
     clang::Preprocessor &preprocessor = instance.getPreprocessor();
     preprocessor.addPPCallbacks(preprocessor_);
 
+    if (output_) {
+        // see clang::PrintPreprocessedAction
+        instance.getFrontendOpts().OutputFile = output_;
+        out_ = instance.createDefaultOutputFile(true, getCurrentFile());
+        if (!out_) {
+            reporter_->fatal("Internal error. Can't create output stream.");
+            return false;
+        }
+    }
+
     const clang::FrontendInputFile &file = getCurrentInput();
     if (file.getKind() != clang::IK_OpenCL) {
         static const char *format =
@@ -53,9 +64,8 @@ bool WebCLAction::initialize(clang::CompilerInstance &instance)
     return true;
 }
 
-WebCLPreprocessorAction::WebCLPreprocessorAction(const char *outputFile)
-    : WebCLAction()
-    , outputFile_(outputFile)
+WebCLPreprocessorAction::WebCLPreprocessorAction(const char *output)
+    : WebCLAction(output)
 {
 }
 
@@ -75,22 +85,83 @@ void WebCLPreprocessorAction::ExecuteAction()
     if (!initialize(instance))
         return;
 
-    // see clang::PrintPreprocessedAction
-    instance.getFrontendOpts().OutputFile = outputFile_;
-    llvm::raw_ostream *out = instance.createDefaultOutputFile(true, getCurrentFile());
-    if (!out)
-        return;
-
     clang::PreprocessorOutputOptions& options = instance.getPreprocessorOutputOpts();
     options.ShowComments = 1;
     options.ShowLineMarkers = 0;
     clang::DoPrintPreprocessedInput(
-        instance.getPreprocessor(), out, options);
-    out->flush();
+        instance.getPreprocessor(), out_, options);
+    out_->flush();
 }
 
 bool WebCLPreprocessorAction::usesPreprocessorOnly() const
 {
+    return true;
+}
+
+WebCLMatcherAction::WebCLMatcherAction(const char *output)
+    : WebCLAction(output)
+    , matcher_(), consumer_(0), rewriter_(0), printer_(0)
+{
+}
+
+WebCLMatcherAction::~WebCLMatcherAction()
+{
+    // consumer_ not deleted intentionally
+    delete printer_;
+    printer_ = 0;
+    delete rewriter_;
+    rewriter_ = 0;
+}
+
+clang::ASTConsumer* WebCLMatcherAction::CreateASTConsumer(
+    clang::CompilerInstance &instance, llvm::StringRef)
+{
+    if (!initialize(instance))
+        return NULL;
+    return consumer_;
+}
+
+void WebCLMatcherAction::ExecuteAction()
+{
+    clang::CompilerInstance &instance = getCompilerInstance();
+
+    ParseAST(instance.getPreprocessor(), consumer_, instance.getASTContext());
+
+    if (!printer_->print(*out_, "// WebCL Validator: matching stage.\n")) {
+        reporter_->fatal("Can't print matcher output.\n");
+        return;
+    }
+}
+
+bool WebCLMatcherAction::usesPreprocessorOnly() const
+{
+    return false;
+}
+
+bool WebCLMatcherAction::initialize(clang::CompilerInstance &instance)
+{
+    if (!WebCLAction::initialize(instance))
+        return false;
+
+    rewriter_ = new clang::Rewriter(
+        instance.getSourceManager(), instance.getLangOpts());
+    if (!rewriter_) {
+        reporter_->fatal("Internal error. Can't create rewriter.\n");
+        return false;
+    }
+
+    printer_ = new WebCLPrinter(*rewriter_);
+    if (!printer_) {
+        reporter_->fatal("Internal error. Can't create printer.\n");
+        return false;
+    }
+
+    consumer_ = matcher_.newASTConsumer();
+    if (!consumer_) {
+        reporter_->fatal("Internal error. Can't create AST consumer.\n");
+        return false;
+    }
+
     return true;
 }
 
@@ -168,20 +239,4 @@ bool WebCLValidatorAction::initialize(clang::CompilerInstance &instance)
 
     consumer_->setTransformer(*transformer_);
     return true;
-}
-
-WebCLActionFactory::WebCLActionFactory(const char *outputFile)
-    : outputFile_(outputFile)
-{
-}
-
-WebCLActionFactory::~WebCLActionFactory()
-{
-}
-
-clang::FrontendAction *WebCLActionFactory::create()
-{
-    if (outputFile_)
-        return new WebCLPreprocessorAction(outputFile_);
-    return new WebCLValidatorAction;
 }

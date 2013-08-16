@@ -2,6 +2,8 @@
 #define WEBCLVALIDATOR_WEBCLARGUMENTS
 
 #include <cstring>
+#include <utility>
+#include <vector>
 
 class WebCLArguments
 {
@@ -13,16 +15,17 @@ public:
     int getPreprocessorArgc() const;
     char const **getPreprocessorArgv() const;
 
+    int getMatcherArgc() const;
+    char const **getMatcherArgv() const;
+
     int getValidatorArgc() const;
     char const **getValidatorArgv() const;
 
-    char const *getPreprocessorInput() const;
-    char const *getValidatorInput() const;
+    char const *getInput(int argc, char const **argv, bool createOutput = false);
 
 private:
 
-    bool arePreprocessorArgumentsOk() const;
-    bool areValidatorArgumentsOk() const;
+    bool areArgumentsOk(int argc, char const **argv) const;
 
     char const *createEmptyTemporaryFile(int &fd) const;
     char const *createFullTemporaryFile(int &fd, char const *buffer, size_t length) const;
@@ -32,10 +35,16 @@ private:
     int validatorArgc_;
     char const **validatorArgv_;
 
-    int sourceDescriptor_;
-    char const *sourceFilename_;
-    int headerDescriptor_;
-    char const *headerFilename_;
+    /// Save information about temporary files so that we can close
+    /// and remove them.
+    typedef std::pair<int, char const *> TemporaryFile;
+    typedef std::vector<TemporaryFile> TemporaryFiles;
+    TemporaryFiles files_;
+
+    /// Save information about output files so that we can chain
+    /// different tools properly.
+    typedef std::vector<char const *> OutputFiles;
+    OutputFiles outputs_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLARGUMENTS
