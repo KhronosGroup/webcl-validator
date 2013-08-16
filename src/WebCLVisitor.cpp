@@ -71,6 +71,11 @@ bool WebCLVisitor::VisitTypedefDecl(clang::TypedefDecl *decl)
   return handleTypedefDecl(decl);
 }
 
+bool WebCLVisitor::VisitRecordDecl(clang::RecordDecl *decl)
+{
+  return handleRecordDecl(decl);
+}
+
 bool WebCLVisitor::VisitDeclRefExpr(clang::DeclRefExpr *expr)
 {
   return handleDeclRefExpr(expr);
@@ -132,6 +137,11 @@ bool WebCLVisitor::handleCallExpr(clang::CallExpr *expr)
 }
 
 bool WebCLVisitor::handleTypedefDecl(clang::TypedefDecl *decl)
+{
+  return true;
+}
+
+bool WebCLVisitor::handleRecordDecl(clang::RecordDecl *decl)
 {
   return true;
 }
@@ -442,7 +452,39 @@ bool WebCLAnalyser::handleTypedefDecl(clang::TypedefDecl *decl)
 {
   if (!isFromMainFile(decl->getLocStart())) return true;
   info(decl->getLocStart(), "Found typedef, add to list to move to start of source.");
-  typedefList_.push_back(decl);
+
+  // check there was no struct decl inside this typdef added for moving.. (would be so much easier to do with matchers)
+  if (!typeDeclList_.empty()) {
+    // LAUNDRY: do not use getRaw...
+    clang::TypeDecl *lastType = typeDeclList_.back();
+    if (lastType->getLocStart().getRawEncoding() > decl->getLocStart().getRawEncoding() &&
+        lastType->getLocEnd().getRawEncoding()   < decl->getLocEnd().getRawEncoding()) {
+      clang::TypeDecl *popped = typeDeclList_.back();
+      typeDeclList_.pop_back();
+      info(popped->getLocStart(), "Struct decl was inside typedef. Removed struct declaration from list of structs to be moved up.");
+    }
+  }
+
+  typeDeclList_.push_back(decl);
+  
+  return true;
+}
+
+bool WebCLAnalyser::handleRecordDecl(clang::RecordDecl *decl)
+{
+  if (!isFromMainFile(decl->getLocStart())) return true;
+  info(decl->getLocStart(), "Found struct declaration! Added to list for moving to top.");
+  
+  // LAUNDRY: move these assertions to later on... difficult to do here
+  // assert if struct is anonymous
+  //if (decl->isAnonymousStructOrUnion()) {
+  //  error(decl->getLocStart(), "Anonymous structs should have beed treated by previous passes");
+  //}
+  // TODO: assert if struct declaration instantiate anything
+  
+  // add declaration to be moved to top of the module
+  typeDeclList_.push_back(decl);
+
   return true;
 }
 
@@ -450,7 +492,6 @@ bool WebCLAnalyser::handleDeclRefExpr(clang::DeclRefExpr *expr) {
   if (!isFromMainFile(expr->getLocStart())) return true;
   info(expr->getLocStart(), "Found variable use!");
   variableUses_.insert(expr);
-
   // we should be able to get parent map from here:
   // instance_.getASTContext();
   return true;

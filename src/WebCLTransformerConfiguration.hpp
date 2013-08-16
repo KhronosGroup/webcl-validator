@@ -34,7 +34,7 @@ public:
     const std::string getNameOfAddressSpace(clang::QualType type) const;
     const std::string getNameOfType(clang::QualType type) const;
     const std::string getNameOfSizeParameter(clang::ParmVarDecl *decl) const;
-    const std::string getNameOfRelocatedTypedef(const clang::TypedefDecl *decl);
+    const std::string getNameOfRelocatedTypeDecl(const clang::NamedDecl *decl);
     const std::string getNameOfRelocatedVariable(const clang::VarDecl *decl);
     const std::string getNameOfLimitField(const clang::VarDecl *decl, bool isMax) const;
     const std::string getReferenceToRelocatedVariable(const clang::VarDecl *decl);

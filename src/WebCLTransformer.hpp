@@ -102,7 +102,7 @@ public:
     void addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
                                                unsigned minWidthInBits);
   
-    void moveToModulePrologue(clang::TypedefDecl *decl);
+    void moveToModulePrologue(clang::NamedDecl *decl);
   
     // applies already added transformation to source
     void flushQueuedTransformations();

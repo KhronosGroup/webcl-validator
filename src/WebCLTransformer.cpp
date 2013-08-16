@@ -634,11 +634,11 @@ void WebCLTransformer::addRelocationInitializer(clang::VarDecl *decl) {
 
 }
 
-void WebCLTransformer::moveToModulePrologue(clang::TypedefDecl *decl)
+void WebCLTransformer::moveToModulePrologue(clang::NamedDecl *decl)
 {
-    const std::string name = cfg_.getNameOfRelocatedTypedef(decl);
+    const std::string name = cfg_.getNameOfRelocatedTypeDecl(decl);
     if (!name.size()) {
-        error(decl->getLocStart(), "Identically named typedefs aren't supported yet.");
+        error(decl->getLocStart(), "Identically named typedefs aren't supported.");
         return;
     }
 

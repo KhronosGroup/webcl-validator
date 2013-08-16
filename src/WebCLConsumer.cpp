@@ -38,9 +38,9 @@ public:
     // FUTURE: move declaration part from each for loop to be before for statement
     
     // go through all typedefs and structure definitions and move them to start of module
-    WebCLAnalyser::TypedefList &typedefs = analyser.getTypedefs();
-    for (WebCLAnalyser::TypedefList::iterator i = typedefs.begin();
-         i != typedefs.end(); ++i) {
+    WebCLAnalyser::TypeDeclList &typeDecls = analyser.getTypeDecls();
+    for (WebCLAnalyser::TypeDeclList::iterator i = typeDecls.begin();
+         i != typeDecls.end(); ++i) {
       transformer.moveToModulePrologue(*i);
     }
 
@@ -204,6 +204,7 @@ public:
          privDecl != privates_.end(); privDecl++) {
 
       if ((*privDecl)->hasInit()) {
+        // LAUNDRY: change assert to be nicer error message
         assert(analyser_.isInsideForStmt(*privDecl) == false && "Cannot currently relocate variables declared inside for statement. Make sure that you have not taken address of counter variable anywhere with & operator.");
         transformer_.addRelocationInitializer(*privDecl);
       }

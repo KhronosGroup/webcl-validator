@@ -151,7 +151,7 @@ const std::string WebCLTransformerConfiguration::getNameOfSizeParameter(clang::P
     return variablePrefix_ + "_" + name + "_size";
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfRelocatedTypedef(const clang::TypedefDecl *decl)
+const std::string WebCLTransformerConfiguration::getNameOfRelocatedTypeDecl(const clang::NamedDecl *decl)
 {
     std::ostringstream out;
 

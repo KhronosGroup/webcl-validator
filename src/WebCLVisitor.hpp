@@ -52,6 +52,8 @@ public:
     bool VisitCallExpr(clang::CallExpr *expr);
     /// \see clang::RecursiveASTVisitor::VisitTypedefDecl
     bool VisitTypedefDecl(clang::TypedefDecl *decl);
+    /// \see clang::RecursiveASTVisitor::VisitTypedefDecl
+    bool VisitRecordDecl(clang::RecordDecl *decl);
     /// \see clang::RecursiveASTVisitor::VisitDeclRefExpr
     bool VisitDeclRefExpr(clang::DeclRefExpr *decl);
     /// \see clang::RecursiveASTVisitor::VisitForStmt
@@ -70,6 +72,7 @@ protected:
     virtual bool handleExtVectorElementExpr(clang::ExtVectorElementExpr *expr);
     virtual bool handleCallExpr(clang::CallExpr *expr);
     virtual bool handleTypedefDecl(clang::TypedefDecl *decl);
+    virtual bool handleRecordDecl(clang::RecordDecl *decl);
     virtual bool handleDeclRefExpr(clang::DeclRefExpr *expr);
     virtual bool handleForStmt(clang::ForStmt *stmt);
 };
@@ -156,7 +159,15 @@ public:
   ///
   /// \see WebCLVisitor::handleTypedefDecl
   virtual bool handleTypedefDecl(clang::TypedefDecl *decl);
+
   
+  /// Collects all struct declarations to move them to start of source
+  ///
+  /// - Typedefs needs to be moved up to be able to use them in our
+  ///   address space structures.
+  ///
+  /// \see WebCLVisitor::handleRecordDecl
+  virtual bool handleRecordDecl(clang::RecordDecl *decl);
   
   /// Go through all decl references to see if they need to be fixed
   virtual bool handleDeclRefExpr(clang::DeclRefExpr *expr);
@@ -176,7 +187,7 @@ public:
   typedef std::set<clang::CallExpr*> CallExprSet;
   typedef std::set<clang::VarDecl*> VarDeclSet;
   typedef std::set<clang::DeclRefExpr*> DeclRefExprSet;
-  typedef std::vector<clang::TypedefDecl*> TypedefList;
+  typedef std::vector<clang::TypeDecl*> TypeDeclList;
 
   /// Memory accesses and corresponding declarations, this will change
   /// if separate dependence analysis is added to resolve which limits
@@ -192,7 +203,7 @@ public:
   VarDeclSet&      getPrivateVariables()  { return privateVariables_; };
   DeclRefExprSet&  getVariableUses()      { return variableUses_; };
   MemoryAccessMap& getPointerAceesses()   { return pointerAccesses_; };
-  TypedefList&     getTypedefs()          { return typedefList_; };
+  TypeDeclList&    getTypeDecls()         { return typeDeclList_; };
 
   bool hasAddressReferences(clang::VarDecl *decl) {
     return declarationsWithAddressOfAccess_.count(decl) > 0;
@@ -226,7 +237,7 @@ private:
   /// all uses of variable declarations
   DeclRefExprSet  variableUses_;
   MemoryAccessMap pointerAccesses_;
-  TypedefList     typedefList_;
+  TypeDeclList    typeDeclList_;
   // all unsupported and unsafe builtins
   WebCLBuiltins   builtins_;
 };
