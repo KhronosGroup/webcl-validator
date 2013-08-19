@@ -1,10 +1,13 @@
 #ifndef WEBCLVALIDATOR_WEBCLMATCHER
 #define WEBCLVALIDATOR_WEBCLMATCHER
 
+#include "WebCLRenamer.hpp"
 #include "WebCLReporter.hpp"
 
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Refactoring.h"
+
+class WebCLTransformerConfiguration;
 
 namespace clang {
     namespace ast_matchers {
@@ -54,6 +57,7 @@ public:
 
     WebCLAnonStructMatcher(
         clang::CompilerInstance &instance,
+        WebCLTransformerConfiguration &cfg,
         clang::tooling::Replacements &replacements,
         clang::ast_matchers::MatchFinder &finder);
     virtual ~WebCLAnonStructMatcher();
@@ -73,11 +77,18 @@ public:
 
     WebCLAnonStructHandler(
         clang::CompilerInstance &instance,
+        WebCLTransformerConfiguration &cfg,
         WebCLAnonStructMatcher &matcher);
     virtual ~WebCLAnonStructHandler();
 
     /// \see clang::ast_matchers::MatchFinder::MatchCallback
     virtual void run(const clang::ast_matchers::MatchFinder::MatchResult &result);
+
+private:
+
+    clang::SourceLocation getNameLoc(const clang::RecordDecl *decl) const;
+
+    WebCLTransformerConfiguration &cfg_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLMATCHER

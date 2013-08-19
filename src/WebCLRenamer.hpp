@@ -16,11 +16,14 @@ class WebCLRenamer
 {
 public:
 
-    explicit WebCLRenamer(const std::string &prefix);
+    explicit WebCLRenamer(const std::string &prefix, const std::string &separator);
     ~WebCLRenamer();
 
     /// Write unique version of given name to the output stream.
     void rename(std::ostream &out, const clang::NamedDecl *decl);
+
+    /// Generate unique version of given name to the output stream.
+    void generate(std::ostream &out, const clang::NamedDecl *decl, const std::string &name);
 
 private:
 
@@ -39,6 +42,8 @@ private:
 
     // Freely chosen prefix for renamed variables.
     const std::string prefix_;
+    // Separates generated prefix from user defined name.
+    const std::string separator_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLRENAMER

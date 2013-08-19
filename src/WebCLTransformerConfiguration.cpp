@@ -53,9 +53,10 @@ WebCLTransformerConfiguration::WebCLTransformerConfiguration()
 
     , localRangeZeroingMacro_(macroPrefix_ + "_LOCAL_RANGE_INIT")
 
-    , localVariableRenamer_(variablePrefix_ + "_")
-    , privateVariableRenamer_(variablePrefix_ + "_")
-    , typedefRenamer_("")
+    , localVariableRenamer_(variablePrefix_ + "_", "_")
+    , privateVariableRenamer_(variablePrefix_ + "_", "_")
+    , typedefRenamer_("", "")
+    , anonymousStructureRenamer_(typePrefix_, "")
 {
 }
 
@@ -149,6 +150,15 @@ const std::string WebCLTransformerConfiguration::getNameOfSizeParameter(clang::P
 {
     const std::string name = decl->getName();
     return variablePrefix_ + "_" + name + "_size";
+}
+
+const std::string WebCLTransformerConfiguration::getNameOfAnonymousStructure(const clang::RecordDecl *decl)
+{
+    static const std::string name = "Struct";
+
+    std::ostringstream out;
+    anonymousStructureRenamer_.generate(out, decl, name);
+    return out.str();
 }
 
 const std::string WebCLTransformerConfiguration::getNameOfRelocatedTypeDecl(const clang::NamedDecl *decl)

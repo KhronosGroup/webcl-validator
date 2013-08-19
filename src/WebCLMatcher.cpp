@@ -1,6 +1,9 @@
 #include "WebCLMatcher.hpp"
+#include "WebCLTransformerConfiguration.hpp"
 
 #include "clang/Frontend/CompilerInstance.h"
+
+#include <cstring>
 
 using namespace clang::ast_matchers;
 
@@ -39,14 +42,17 @@ WebCLMatchHandler<Matcher>::~WebCLMatchHandler()
 
 WebCLAnonStructMatcher::WebCLAnonStructMatcher(
         clang::CompilerInstance &instance,
+        WebCLTransformerConfiguration &cfg,
         clang::tooling::Replacements &replacements,
         clang::ast_matchers::MatchFinder &finder)
     : WebCLMatcher(instance, replacements, finder)
     , anonDeclBinding_("anon-decl")
     , anonDeclMatcher_(
         namedDecl(
-            hasName("<anonymous>")).bind(anonDeclBinding_))
-    , anonDeclHandler_(new WebCLAnonStructHandler(instance, *this))
+            anyOf(
+                hasName("<anonymous>"),
+                matchesName("^::$"))).bind(anonDeclBinding_))
+    , anonDeclHandler_(new WebCLAnonStructHandler(instance, cfg, *this))
 {
     if (anonDeclHandler_)
         finder.addMatcher(anonDeclMatcher_, anonDeclHandler_);
@@ -65,8 +71,10 @@ const char *WebCLAnonStructMatcher::getAnonDeclBinding() const
 
 WebCLAnonStructHandler::WebCLAnonStructHandler(
     clang::CompilerInstance &instance,
+    WebCLTransformerConfiguration &cfg,
     WebCLAnonStructMatcher &matcher)
     : WebCLMatchHandler<WebCLAnonStructMatcher>(instance, matcher)
+    , cfg_(cfg)
 {
 }
 
@@ -83,13 +91,22 @@ void WebCLAnonStructHandler::run(
     if (!decl)
         return;
 
-    clang::SourceLocation loc = decl->getLocStart();
+    clang::SourceLocation loc = getNameLoc(decl);
     if (!isFromMainFile(loc))
         return;
+
+    const std::string name = cfg_.getNameOfAnonymousStructure(decl);
 
     clang::tooling::Replacements &replacements = matcher_.getReplacements();
     clang::SourceManager &manager = instance_.getSourceManager();
     clang::tooling::Replacement replacement(
-        manager, loc, 0, " /* anonymous struct */ ");
+        manager, loc, 0, " " + name);
     replacements.insert(replacement);
+}
+
+clang::SourceLocation WebCLAnonStructHandler::getNameLoc(const clang::RecordDecl *decl) const
+{
+    clang::SourceLocation loc = decl->getLocStart();
+    const char *kind = decl->getKindName();
+    return loc.getLocWithOffset(strlen(kind));
 }

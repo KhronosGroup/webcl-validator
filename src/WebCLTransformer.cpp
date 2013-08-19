@@ -25,9 +25,6 @@ WebCLTransformer::~WebCLTransformer()
 
 bool WebCLTransformer::rewrite()
 {
-    if (!checkIdentifiers())
-        return false;
-
     bool status = true;
 
     // do all replacements stored in refactoring first ()
@@ -958,47 +955,6 @@ std::string WebCLTransformer::getTransformedText(clang::SourceRange range) {
   std::cerr << "Get SourceLoc " << rawStart << ":" << rawEnd << " : " << retVal << "\n";
 
   return retVal;
-}
-
-bool WebCLTransformer::checkIdentifiers()
-{
-    clang::ASTContext &context = instance_.getASTContext();
-    clang::IdentifierTable &table = context.Idents;
-    const int numPrefixes = 3;
-    const char *prefixes[numPrefixes] = {
-        cfg_.typePrefix_.c_str(),
-        cfg_.variablePrefix_.c_str(),
-        cfg_.macroPrefix_.c_str()
-    };
-    const int lengths[numPrefixes] = {
-        cfg_.typePrefix_.size(),
-        cfg_.variablePrefix_.size(),
-        cfg_.macroPrefix_.size()
-    };
-
-    bool status = true;
-
-    for (clang::IdentifierTable::iterator i = table.begin(); i != table.end(); ++i) {
-        clang::IdentifierInfo *identifier = i->getValue();
-        const char *name = identifier->getNameStart();
-
-        static const unsigned int maxLength = 255;
-        if (identifier->getLength() > maxLength) {
-            error("Identifier '%0' exceeds maximum length of %1 characters.") << name << maxLength;
-            status = false;
-        }
-
-        for (int p = 0; p < numPrefixes ; ++p) {
-            const char *prefix = prefixes[p];
-
-            if (!strncmp(prefix, name, lengths[p])) {
-                error("Identifier '%0' uses reserved prefix '%1'.") << name << prefix;
-                status = false;
-            }
-        }
-    }
-
-    return status;
 }
 
 bool WebCLTransformer::rewritePrologue()

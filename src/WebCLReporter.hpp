@@ -27,7 +27,7 @@ public:
     clang::DiagnosticBuilder error(const char *format);
     clang::DiagnosticBuilder fatal(const char *format);
 
-    bool isFromMainFile(clang::SourceLocation location);
+    bool isFromMainFile(clang::SourceLocation location) const;
 
 protected:
 

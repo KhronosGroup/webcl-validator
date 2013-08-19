@@ -3,6 +3,7 @@
 #include "WebCLPreprocessor.hpp"
 #include "WebCLTransformer.hpp"
 
+#include "clang/AST/ASTContext.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -104,7 +105,7 @@ WebCLMatcherAction::WebCLMatcherAction(const char *output)
     : WebCLAction(output)
     , finder_(), replacements_()
     , consumer_(0), rewriter_(0)
-    , printer_(0)
+    , cfg_(), printer_(0)
 {
 }
 
@@ -129,9 +130,12 @@ void WebCLMatcherAction::ExecuteAction()
 {
     clang::CompilerInstance &instance = getCompilerInstance();
 
-    WebCLAnonStructMatcher anonStructMatcher_(instance, replacements_, finder_);
+    WebCLAnonStructMatcher anonStructMatcher_(instance, cfg_, replacements_, finder_);
 
     ParseAST(instance.getPreprocessor(), consumer_, instance.getASTContext());
+
+    if (!checkIdentifiers())
+        return;
 
     if (!clang::tooling::applyAllReplacements(replacements_, *rewriter_)) {
         reporter_->fatal("Can't apply replacements");
@@ -174,6 +178,49 @@ bool WebCLMatcherAction::initialize(clang::CompilerInstance &instance)
     }
 
     return true;
+}
+
+bool WebCLMatcherAction::checkIdentifiers()
+{
+    clang::CompilerInstance &instance = getCompilerInstance();
+    clang::ASTContext &context = instance.getASTContext();
+    clang::IdentifierTable &table = context.Idents;
+
+    const int numPrefixes = 3;
+    const char *prefixes[numPrefixes] = {
+        cfg_.typePrefix_.c_str(),
+        cfg_.variablePrefix_.c_str(),
+        cfg_.macroPrefix_.c_str()
+    };
+    const int lengths[numPrefixes] = {
+        cfg_.typePrefix_.size(),
+        cfg_.variablePrefix_.size(),
+        cfg_.macroPrefix_.size()
+    };
+
+    bool status = true;
+
+    for (clang::IdentifierTable::iterator i = table.begin(); i != table.end(); ++i) {
+        clang::IdentifierInfo *identifier = i->getValue();
+        const char *name = identifier->getNameStart();
+
+        static const unsigned int maxLength = 255;
+        if (identifier->getLength() > maxLength) {
+            reporter_->error("Identifier '%0' exceeds maximum length of %1 characters.") << name << maxLength;
+            status = false;
+        }
+
+        for (int p = 0; p < numPrefixes ; ++p) {
+            const char *prefix = prefixes[p];
+
+            if (!strncmp(prefix, name, lengths[p])) {
+                reporter_->error("Identifier '%0' uses reserved prefix '%1'.") << name << prefix;
+                status = false;
+            }
+        }
+    }
+
+    return status;
 }
 
 WebCLValidatorAction::WebCLValidatorAction()

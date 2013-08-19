@@ -2,6 +2,7 @@
 #define WEBCLVALIDATOR_WEBCLACTION
 
 #include "WebCLConsumer.hpp"
+#include "WebCLTransformerConfiguration.hpp"
 
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Frontend/FrontendAction.h"
@@ -75,11 +76,14 @@ private:
     /// \see WebCLAction
     virtual bool initialize(clang::CompilerInstance &instance);
 
+    bool checkIdentifiers();
+
     clang::ast_matchers::MatchFinder finder_;
     clang::tooling::Replacements replacements_;
     clang::ASTConsumer *consumer_;
     clang::Rewriter *rewriter_;
 
+    WebCLTransformerConfiguration cfg_;
     WebCLPrinter *printer_;
 };
 

@@ -231,7 +231,6 @@ private:
     //       TODO: print source locations and find out...
     std::string getTransformedText(clang::SourceRange range);
 
-    bool checkIdentifiers();
     bool rewritePrologue();
     bool rewriteKernelPrologue(const clang::FunctionDecl *kernel);
     bool rewriteTransformations();

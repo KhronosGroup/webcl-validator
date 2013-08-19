@@ -2,8 +2,8 @@
 
 #include "clang/AST/Decl.h"
 
-WebCLRenamer::WebCLRenamer(const std::string &prefix)
-    : serials_(), counts_(), prefix_(prefix)
+WebCLRenamer::WebCLRenamer(const std::string &prefix, const std::string &separator)
+    : serials_(), counts_(), prefix_(prefix), separator_(separator)
 {
 }
 
@@ -11,7 +11,14 @@ WebCLRenamer::~WebCLRenamer()
 {
 }
 
-void WebCLRenamer::rename(std::ostream &out, const clang::NamedDecl *decl)
+void WebCLRenamer::rename(
+    std::ostream &out, const clang::NamedDecl *decl)
+{
+    generate(out, decl, decl->getName().str());
+}
+
+void WebCLRenamer::generate(
+    std::ostream &out, const clang::NamedDecl *decl, const std::string &name)
 {
     Serials::iterator i = serials_.find(decl);
     unsigned int serial = (i == serials_.end()) ? assign(decl) : i->second;
@@ -22,11 +29,10 @@ void WebCLRenamer::rename(std::ostream &out, const clang::NamedDecl *decl)
     if (serial >= 2) {
         // Here we rely on the fact that user variables can't start
         // with a number.
-        out << serial << "_";
+        out << serial << separator_;
     }
 
-    out << decl->getName().str();
-
+    out << name;
 }
 
 unsigned int WebCLRenamer::assign(const clang::NamedDecl *decl)

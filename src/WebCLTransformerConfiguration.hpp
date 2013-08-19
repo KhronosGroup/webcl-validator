@@ -9,6 +9,7 @@
 
 namespace clang {
     class ParmVarDecl;
+    class RecordDecl;
     class TypedefDecl;
     class VarDecl;
 }
@@ -34,6 +35,7 @@ public:
     const std::string getNameOfAddressSpace(clang::QualType type) const;
     const std::string getNameOfType(clang::QualType type) const;
     const std::string getNameOfSizeParameter(clang::ParmVarDecl *decl) const;
+    const std::string getNameOfAnonymousStructure(const clang::RecordDecl *decl);
     const std::string getNameOfRelocatedTypeDecl(const clang::NamedDecl *decl);
     const std::string getNameOfRelocatedVariable(const clang::VarDecl *decl);
     const std::string getNameOfLimitField(const clang::VarDecl *decl, bool isMax) const;
@@ -96,6 +98,7 @@ private:
     WebCLRenamer localVariableRenamer_;
     WebCLRenamer privateVariableRenamer_;
     WebCLRenamer typedefRenamer_;
+    WebCLRenamer anonymousStructureRenamer_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLTRANSFORMERCONFIGURATION
