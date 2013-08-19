@@ -732,12 +732,10 @@ void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
             transformations_, decl));
 }
 
-// FUTURE: this text editing should be encapsulated to separate class, since it is really providing the
-//         low level support for modifying the sources. Also implemenatation can be made whole lot
-//         smarter afterwards
-
+/// \brief Finds source location of next token which starts with given char
 clang::SourceLocation WebCLTransformer::findLocForNext(clang::SourceLocation startLoc, char charToFind) {
-
+  
+  // if we could use matchers to find these locations would be better
   const clang::SourceManager &SM = instance_.getSourceManager();
   std::pair<clang::FileID, unsigned> locInfo = SM.getDecomposedLoc(startLoc);
   bool invalidTemp = false;
@@ -750,11 +748,25 @@ clang::SourceLocation WebCLTransformer::findLocForNext(clang::SourceLocation sta
   
   // just raw find for next semicolon and get SourceLocation
   const char* endOfFile = SM.getCharacterData(SM.getLocForEndOfFile(locInfo.first));
-  const char* semiColonPos = SM.getCharacterData(startLoc);
-  while (*semiColonPos != charToFind && semiColonPos != endOfFile) { semiColonPos++; };
+  const char* charPos = SM.getCharacterData(startLoc);
   
-  return lexer.getSourceLocation(semiColonPos);
+  while (*charPos != charToFind && charPos < endOfFile) {
+    clang::SourceLocation currLoc = lexer.getSourceLocation(charPos);
+    int currLength = clang::Lexer::MeasureTokenLength(currLoc, SM, instance_.getLangOpts());
+    // at least advance one char
+    if (currLength == 0) {
+      currLength = 1;
+    }
+    charPos += currLength;
+    // std::cerr << "Curr token:" << transformations_.getRewriter().getRewrittenText(clang::SourceRange(currLoc, currLoc)) << "\n";
+  };
+  
+  return lexer.getSourceLocation(charPos);
 }
+
+// FUTURE: this text editing should be encapsulated to separate class, since it is really providing the
+//         low level support for modifying the sources. Also implemenatation can be made whole lot
+//         smarter afterwards
 
 void WebCLTransformer::removeText(clang::SourceRange range) {
   isFilteredRangesDirty_ = true;

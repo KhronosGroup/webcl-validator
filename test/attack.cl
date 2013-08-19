@@ -4,6 +4,8 @@
 
 // CHECK
 
+// TODO: explain what this test is exactly testing? preprocessing is 
+//       done and undefined ifdef is removed?
 __kernel void attack(__global int *array)
 {
     const int i = get_global_id(0);
