@@ -75,9 +75,11 @@ private:
     /// \see WebCLAction
     virtual bool initialize(clang::CompilerInstance &instance);
 
-    clang::ast_matchers::MatchFinder matcher_;
+    clang::ast_matchers::MatchFinder finder_;
+    clang::tooling::Replacements replacements_;
     clang::ASTConsumer *consumer_;
     clang::Rewriter *rewriter_;
+
     WebCLPrinter *printer_;
 };
 

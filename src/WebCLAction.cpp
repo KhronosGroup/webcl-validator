@@ -1,7 +1,9 @@
 #include "WebCLAction.hpp"
+#include "WebCLMatcher.hpp"
 #include "WebCLPreprocessor.hpp"
 #include "WebCLTransformer.hpp"
 
+#include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendOptions.h"
@@ -100,7 +102,9 @@ bool WebCLPreprocessorAction::usesPreprocessorOnly() const
 
 WebCLMatcherAction::WebCLMatcherAction(const char *output)
     : WebCLAction(output)
-    , matcher_(), consumer_(0), rewriter_(0), printer_(0)
+    , finder_(), replacements_()
+    , consumer_(0), rewriter_(0)
+    , printer_(0)
 {
 }
 
@@ -125,7 +129,14 @@ void WebCLMatcherAction::ExecuteAction()
 {
     clang::CompilerInstance &instance = getCompilerInstance();
 
+    WebCLAnonStructMatcher anonStructMatcher_(instance, replacements_, finder_);
+
     ParseAST(instance.getPreprocessor(), consumer_, instance.getASTContext());
+
+    if (!clang::tooling::applyAllReplacements(replacements_, *rewriter_)) {
+        reporter_->fatal("Can't apply replacements");
+        return;
+    }
 
     if (!printer_->print(*out_, "// WebCL Validator: matching stage.\n")) {
         reporter_->fatal("Can't print matcher output.\n");
@@ -156,7 +167,7 @@ bool WebCLMatcherAction::initialize(clang::CompilerInstance &instance)
         return false;
     }
 
-    consumer_ = matcher_.newASTConsumer();
+    consumer_ = finder_.newASTConsumer();
     if (!consumer_) {
         reporter_->fatal("Internal error. Can't create AST consumer.\n");
         return false;
