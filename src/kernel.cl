@@ -25,13 +25,21 @@
    THE SOFTWARE.
 */
 
-#define cles_khr_int64
-
 /* Language feature detection */
 #if (__clang_major__ == 3) && (__clang_minor__ >= 3)
 #  define _CL_HAS_EVENT_T
 #  define _CL_HAS_IMAGE_ACCESS
 #endif
+
+typedef unsigned char uchar;
+typedef unsigned short ushort;
+typedef unsigned int uint;
+typedef unsigned long ulong;
+
+typedef ulong size_t;
+typedef long ptrdiff_t;
+typedef long intptr_t;
+typedef ulong uintptr_t;
 
 /* Enable double precision. This should really only be done when
    building the run-time library; when building application code, we
@@ -117,7 +125,8 @@ typedef enum {
   CLK_GLOBAL_MEM_FENCE = 0x2
 } cl_mem_fence_flags;
 
-
+
+
 /* Data types */
 
 /* Disable undefined datatypes */
@@ -138,13 +147,6 @@ typedef struct error_undefined_type_double error_undefined_type_double;
 
 // We align the 3-vectors, so that their sizeof is correct. Is there a
 // better way? Should we also align the other vectors?
-#include <stdint.h>
-typedef uint8_t  uchar;
-typedef uint16_t ushort;
-typedef uint32_t uint;
-typedef uint64_t ulong;
-typedef uint64_t size_t;
-typedef uint64_t ptrdiff_t;
 
 typedef char char2  __attribute__((__ext_vector_type__(2)));
 typedef char char3  __attribute__((__ext_vector_type__(3)));
@@ -279,7 +281,11 @@ _CL_STATIC_ASSERT(ulong16, sizeof(ulong16) == 16*sizeof(ulong));
 
 #ifdef cl_khr_fp16
 _CL_STATIC_ASSERT(half, sizeof(half) == 2);
-/* There are no vectors of type half */
+_CL_STATIC_ASSERT(half2 , sizeof(half2 ) == 2 *sizeof(half));
+_CL_STATIC_ASSERT(half3 , sizeof(half3 ) == 4 *sizeof(half));
+_CL_STATIC_ASSERT(half4 , sizeof(half4 ) == 4 *sizeof(half));
+_CL_STATIC_ASSERT(half8 , sizeof(half8 ) == 8 *sizeof(half));
+_CL_STATIC_ASSERT(half16, sizeof(half16) == 16*sizeof(half));
 #endif
 
 _CL_STATIC_ASSERT(float , sizeof(float ) == 4);
@@ -303,7 +309,8 @@ _CL_STATIC_ASSERT(ptrdiff_t, sizeof(ptrdiff_t) == sizeof(void*));
 _CL_STATIC_ASSERT(intptr_t, sizeof(intptr_t) == sizeof(void*));
 _CL_STATIC_ASSERT(uintptr_t, sizeof(uintptr_t) == sizeof(void*));
 
-
+
+
 /* Conversion functions */
 
 #define _CL_DECLARE_AS_TYPE(SRC, DST)           \
@@ -522,7 +529,8 @@ _CL_DECLARE_CONVERT_TYPE_SRC_DST_SIZE(_rte)
 _CL_DECLARE_CONVERT_TYPE_SRC_DST_SIZE(_rtp)
 _CL_DECLARE_CONVERT_TYPE_SRC_DST_SIZE(_rtn)
 
-
+
+
 /* Work-Item Functions */
 
 uint get_work_dim();
@@ -536,7 +544,8 @@ size_t get_global_offset(uint);
 
 void barrier (cl_mem_fence_flags flags);
 
-
+
+
 /* Math Constants */
 
 #define MAXFLOAT  FLT_MAX
@@ -600,7 +609,8 @@ void barrier (cl_mem_fence_flags flags);
 #define M_SQRT1_2  0.707106781186547524400844362105
 #endif
 
-
+
+
 /* Math Functions */
 
 /* Naming scheme:
@@ -1074,7 +1084,8 @@ _CL_DECLARE_FUNC_F_F(native_sin)
 _CL_DECLARE_FUNC_F_F(native_sqrt)
 _CL_DECLARE_FUNC_F_F(native_tan)
 
-
+
+
 /* Integer Constants */
 
 #define CHAR_BIT  8
@@ -1097,7 +1108,8 @@ _CL_DECLARE_FUNC_F_F(native_tan)
 #define ULONG_MAX 0xffffffffffffffffUL
 #endif
 
-
+
+
 /* Integer Functions */
 #define _CL_DECLARE_FUNC_G_G(NAME)              \
   char     _CL_OVERLOADABLE NAME(char    );     \
@@ -1605,7 +1617,8 @@ _CL_DECLARE_FUNC_G_G(popcount)
 _CL_DECLARE_FUNC_J_JJJ(mad24)
 _CL_DECLARE_FUNC_J_JJ(mul24)
 
-
+
+
 /* Common Functions */
 
 _CL_DECLARE_FUNC_V_VVV(clamp)
@@ -1624,7 +1637,8 @@ _CL_DECLARE_FUNC_V_VVV(smoothstep)
 _CL_DECLARE_FUNC_V_SSV(smoothstep)
 _CL_DECLARE_FUNC_V_V(sign)
 
-
+
+
 /* Geometric Functions */
 
 float4 _CL_OVERLOADABLE cross(float4, float4);
@@ -1642,7 +1656,8 @@ _CL_DECLARE_FUNC_S_VV(fast_distance)
 _CL_DECLARE_FUNC_S_V(fast_length)
 _CL_DECLARE_FUNC_V_V(fast_normalize)
 
-
+
+
 /* Relational Functions */
 
 _CL_DECLARE_FUNC_J_VV(isequal)
@@ -1668,7 +1683,8 @@ _CL_DECLARE_FUNC_G_GGUG(select)
 _CL_DECLARE_FUNC_V_VVJ(select)
 _CL_DECLARE_FUNC_V_VVU(select)
 
-
+
+
 /* Vector Functions */
 
 #define _CL_DECLARE_VLOAD(TYPE, MOD)                                    \
@@ -1842,7 +1858,8 @@ _CL_DECLARE_VSTORE_HALF(__private , _rtn)
 
 #endif
 
-
+
+
 /* Atomic operations */
 
 #define _CL_DECLARE_ATOMICS(MOD, TYPE)                                  \
@@ -1877,7 +1894,8 @@ _CL_OVERLOADABLE float atomic_xchg(volatile __local  float *p, float val);
 #define atom_or      atomic_or
 #define atom_xor     atomic_xor
 
-
+
+
 /* Miscellaneous Vector Functions */
 
 // This code leads to an ICE in Clang
@@ -1995,11 +2013,13 @@ _CL_OVERLOADABLE float atomic_xchg(volatile __local  float *p, float val);
 
 // shuffle2
 
-
+
+
 int printf(const /*constant*/ char * restrict format, ...)
   __attribute__((format(printf, 1, 2)));
 
-
+
+
 /* Async Copies from Global to Local Memory, Local to
    Global Memory, and Prefetch */
 
@@ -2019,6 +2039,18 @@ typedef uint event_t;
                                  const __local GENTYPE *src,    \
                                  size_t num_gentypes,           \
                                  event_t event);                \
+  _CL_OVERLOADABLE                                              \
+  event_t async_work_group_strided_copy (__local GENTYPE *dst,        \
+                                         const __global GENTYPE *src, \
+                                         size_t num_gentypes,         \
+                                         size_t src_stride,           \
+                                         event_t event);              \
+  _CL_OVERLOADABLE                                                    \
+  event_t async_work_group_strided_copy (__global GENTYPE *dst,       \
+                                         const __local GENTYPE *src,  \
+                                         size_t num_gentypes,         \
+                                         size_t dst_stride,           \
+                                         event_t event);              \
                                                                 
 void wait_group_events (int num_events,                      
                         event_t *event_list);                 
@@ -2046,42 +2078,140 @@ __IF_FP64(_CL_DECLARE_ASYNC_COPY_FUNCS(double));
 
 // Image support
 
-#ifndef _CL_HAS_IMAGE_ACCESS
+// Starting from Clang 3.3 the image and sampler are detected
+// as opaque types by the frontend. In order to define
+// the default builtins we use C functions which require 
+// the typedefs to the actual underlying types. Clang 3.2
+// the typedefs throughout as the types are not detected
+// by the frontend.
+#if !defined(_CL_HAS_IMAGE_ACCESS) || defined(POCL_C_BUILTIN)
 typedef int sampler_t;
-typedef struct image2d_t_* image2d_t;
-typedef struct image3d_t_* image3d_t;
+typedef struct dev_image_t* image2d_t;
+typedef struct dev_image_t* image3d_t;
+typedef struct dev_image_t* image1d_t;
+typedef struct dev_image_t* image1d_buffer_t;
+typedef struct dev_image_t* image2d_array_t;
+typedef struct dev_image_t* image1d_array_t;
 #endif
 
-#define CLK_ADDRESS_NONE                0x00
-#define CLK_ADDRESS_MIRRORED_REPEAT     0x01
-#define CLK_ADDRESS_REPEAT              0x02
-#define CLK_ADDRESS_CLAMP_TO_EDGE       0x03
-#define CLK_ADDRESS_CLAMP               0x04
 
-#define CLK_NORMALIZED_COORDS_FALSE     0x00
-#define CLK_NORMALIZED_COORDS_TRUE      0x08
+/* cl_channel_order */
+#define CL_R                                        0x10B0
+#define CL_A                                        0x10B1
+#define CL_RG                                       0x10B2
+#define CL_RA                                       0x10B3
+#define CL_RGB                                      0x10B4
+#define CL_RGBA                                     0x10B5
+#define CL_BGRA                                     0x10B6
+#define CL_ARGB                                     0x10B7
+#define CL_INTENSITY                                0x10B8
+#define CL_LUMINANCE                                0x10B9
+#define CL_Rx                                       0x10BA
+#define CL_RGx                                      0x10BB
+#define CL_RGBx                                     0x10BC
+#define CL_DEPTH                                    0x10BD
+#define CL_DEPTH_STENCIL                            0x10BE
 
-#define CLK_FILTER_NEAREST              0x00
-#define CLK_FILTER_LINEAR               0x10
+/* cl_channel_type */
+#define CL_SNORM_INT8                               0x10D0
+#define CL_SNORM_INT16                              0x10D1
+#define CL_UNORM_INT8                               0x10D2
+#define CL_UNORM_INT16                              0x10D3
+#define CL_UNORM_SHORT_565                          0x10D4
+#define CL_UNORM_SHORT_555                          0x10D5
+#define CL_UNORM_INT_101010                         0x10D6
+#define CL_SIGNED_INT8                              0x10D7
+#define CL_SIGNED_INT16                             0x10D8
+#define CL_SIGNED_INT32                             0x10D9
+#define CL_UNSIGNED_INT8                            0x10DA
+#define CL_UNSIGNED_INT16                           0x10DB
+#define CL_UNSIGNED_INT32                           0x10DC
+#define CL_HALF_FLOAT                               0x10DD
+#define CL_FLOAT                                    0x10DE
+#define CL_UNORM_INT24                              0x10DF
 
-float4 _CL_OVERLOADABLE read_imagef( image2d_t image,
-        sampler_t sampler,
-        int2 coord);
+/* cl_addressing _mode */
+#define CLK_ADDRESS_NONE                            0x00
+#define CLK_ADDRESS_MIRRORED_REPEAT                 0x01
+#define CLK_ADDRESS_REPEAT                          0x02
+#define CLK_ADDRESS_CLAMP_TO_EDGE                   0x03
+#define CLK_ADDRESS_CLAMP                           0x04
 
-float4 _CL_OVERLOADABLE read_imagef( image2d_t image,
-        sampler_t sampler,
-        float2 coord);
+/* cl_sampler_info */
+#define CLK_NORMALIZED_COORDS_FALSE                 0x00
+#define CLK_NORMALIZED_COORDS_TRUE                  0x08
 
-void _CL_OVERLOADABLE write_imagef( image2d_t image,
-        int2 coord,
-        float4 color);
+/* filter_mode */
+#define CLK_FILTER_NEAREST                          0x00
+#define CLK_FILTER_LINEAR                           0x10
 
-void _CL_OVERLOADABLE write_imagei( image2d_t image,
-        int2 coord,
-        int4 color);
+float4 _CL_OVERLOADABLE read_imagef (image2d_t image, sampler_t sampler,
+                                     int2 coord);
 
-int _CL_OVERLOADABLE get_image_width (image2d_t image);
-int _CL_OVERLOADABLE get_image_height (image2d_t image);
+float4 _CL_OVERLOADABLE read_imagef (image2d_t image, sampler_t sampler,
+                                     float2 coord);
 
-int _CL_OVERLOADABLE get_image_width (image3d_t image);
-int _CL_OVERLOADABLE get_image_height (image3d_t image);
+uint4 _CL_OVERLOADABLE read_imageui (image2d_t image, sampler_t sampler, 
+                                     int2 coord);
+
+uint4 _CL_OVERLOADABLE read_imageui (image2d_t image, sampler_t sampler, 
+                                     int4 coord);
+
+uint4 _CL_OVERLOADABLE read_imageui (image3d_t image, sampler_t sampler, 
+                                     int4 coord);
+
+int4 _CL_OVERLOADABLE read_imagei (image2d_t image, sampler_t sampler, 
+                                   int2 coord);
+
+
+void _CL_OVERLOADABLE write_imagei (image2d_t image, int2 coord, int4 color);
+
+void _CL_OVERLOADABLE write_imageui (image2d_t image, int2 coord, uint4 color);
+
+
+/* not implemented 
+void _CL_OVERLOADABLE write_imagef (image2d_t image, int2 coord,
+                                    float4 color);
+
+void _CL_OVERLOADABLE write_imagef (image2d_array_t image, int4 coord,
+                                    float4 color);
+
+void _CL_OVERLOADABLE write_imagei (image2d_array_t image, int4 coord,
+                                    int4 color);
+
+void _CL_OVERLOADABLE write_imageui (image2d_array_t image, int4 coord,
+                                     uint4 color);
+
+void _CL_OVERLOADABLE write_imagef (image1d_t image, int coord,
+                                    float4 color);
+
+void _CL_OVERLOADABLE write_imagei (image1d_t image, int coord,
+                                    int4 color);
+
+void _CL_OVERLOADABLE write_imageui (image1d_t image, int coord, 
+                                     uint4 color);
+
+void _CL_OVERLOADABLE write_imagef (image1d_buffer_t image, int coord, 
+                                    float4 color);
+
+void _CL_OVERLOADABLE write_imagei (image1d_buffer_t image, int coord,
+                                     int4 color);
+
+void _CL_OVERLOADABLE write_imageui (image1d_buffer_t image, int coord,
+                                     uint4 color);
+
+void _CL_OVERLOADABLE write_imagef (image1d_array_t image, int2 coord,
+                                    float4 color);
+
+void _CL_OVERLOADABLE write_imagei (image1d_array_t image, int2 coord,
+                                    int4 color);
+
+void _CL_OVERLOADABLE write_imageui (image1d_array_t image, int2 coord,
+                                     uint4 color);
+
+void _CL_OVERLOADABLE write_imageui (image3d_t image, int4 coord,
+                                     uint4 color);
+*/
+int get_image_width (image2d_t image);
+int get_image_height (image2d_t image);
+
