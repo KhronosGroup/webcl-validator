@@ -72,7 +72,11 @@ __kernel void awesomize(
     barrier(CLK_LOCAL_MEM_FENCE);
 
     if (gid == 0) {
+#ifdef __PLATFORM_AMD__
+        output[0] = lottery_winner + (*input).x + private_struct.table[2];
+#else
         output[0] = lottery_winner + input->x + private_struct.table[2];
+#endif
     } else {
         output[gid] = (*flip_to_awesomeness(wgid, wgsize, scratch))*base_factor;
     }
