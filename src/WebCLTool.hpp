@@ -46,12 +46,23 @@ public:
     virtual clang::FrontendAction *create();
 };
 
-class WebCLMatcherTool : public WebCLTool
+class WebCLMatcher1Tool : public WebCLTool
 {
 public:
-    WebCLMatcherTool(int argc, char const **argv,
-                     char const *input, char const *output);
-    virtual ~WebCLMatcherTool();
+    WebCLMatcher1Tool(int argc, char const **argv,
+                      char const *input, char const *output);
+    virtual ~WebCLMatcher1Tool();
+
+    /// \brief see clang::tooling::FrontendActionFactory
+    virtual clang::FrontendAction *create();
+};
+
+class WebCLMatcher2Tool : public WebCLTool
+{
+public:
+    WebCLMatcher2Tool(int argc, char const **argv,
+                      char const *input, char const *output);
+    virtual ~WebCLMatcher2Tool();
 
     /// \brief see clang::tooling::FrontendActionFactory
     virtual clang::FrontendAction *create();

@@ -66,25 +66,45 @@ public:
                                                   llvm::StringRef);
 
     /// \see clang::FrontendAction
-    virtual void ExecuteAction();
-
-    /// \see clang::FrontendAction
     virtual bool usesPreprocessorOnly() const;
 
-private:
+protected:
 
     /// \see WebCLAction
     virtual bool initialize(clang::CompilerInstance &instance);
 
-    bool checkIdentifiers();
-
     clang::ast_matchers::MatchFinder finder_;
-    clang::tooling::Replacements replacements_;
     clang::ASTConsumer *consumer_;
     clang::Rewriter *rewriter_;
 
     WebCLTransformerConfiguration cfg_;
     WebCLPrinter *printer_;
+};
+
+class WebCLMatcher1Action : public WebCLMatcherAction
+{
+public:
+
+    explicit WebCLMatcher1Action(const char *output);
+    virtual ~WebCLMatcher1Action();
+
+    /// \see clang::FrontendAction
+    virtual void ExecuteAction();
+
+private:
+
+    bool checkIdentifiers();
+};
+
+class WebCLMatcher2Action : public WebCLMatcherAction
+{
+public:
+
+    explicit WebCLMatcher2Action(const char *output);
+    virtual ~WebCLMatcher2Action();
+
+    /// \see clang::FrontendAction
+    virtual void ExecuteAction();
 };
 
 class WebCLValidatorAction : public WebCLAction

@@ -28,10 +28,15 @@ int main(int argc, char const* argv[])
         return EXIT_FAILURE;
 
     // Create as many matchers as you like.
-    int matcherArgc = arguments.getMatcherArgc();
-    char const **matcherArgv = arguments.getMatcherArgv();
-    char const *matcherInput = arguments.getInput(matcherArgc, matcherArgv, true);
-    if (!matcherArgc || !matcherArgv || !matcherInput)
+    int matcher1Argc = arguments.getMatcherArgc();
+    char const **matcher1Argv = arguments.getMatcherArgv();
+    char const *matcher1Input = arguments.getInput(matcher1Argc, matcher1Argv, true);
+    if (!matcher1Argc || !matcher1Argv || !matcher1Input)
+        return EXIT_FAILURE;
+    int matcher2Argc = arguments.getMatcherArgc();
+    char const **matcher2Argv = arguments.getMatcherArgv();
+    char const *matcher2Input = arguments.getInput(matcher2Argc, matcher2Argv, true);
+    if (!matcher2Argc || !matcher2Argv || !matcher2Input)
         return EXIT_FAILURE;
 
     // Create only one validator.
@@ -42,16 +47,21 @@ int main(int argc, char const* argv[])
         return EXIT_FAILURE;
 
     WebCLPreprocessorTool preprocessorTool(preprocessorArgc, preprocessorArgv,
-                                           preprocessorInput, matcherInput);
+                                           preprocessorInput, matcher1Input);
     const int preprocessorStatus = preprocessorTool.run();
     if (preprocessorStatus)
         return preprocessorStatus;
 
-    WebCLMatcherTool matcherTool(matcherArgc, matcherArgv,
-                                 matcherInput, validatorInput);
-    const int matcherStatus = matcherTool.run();
-    if (matcherStatus)
-        return matcherStatus;
+    WebCLMatcher1Tool matcher1Tool(matcher1Argc, matcher1Argv,
+                                   matcher1Input, matcher2Input);
+    const int matcher1Status = matcher1Tool.run();
+    if (matcher1Status)
+        return matcher1Status;
+    WebCLMatcher2Tool matcher2Tool(matcher2Argc, matcher2Argv,
+                                   matcher2Input, validatorInput);
+    const int matcher2Status = matcher2Tool.run();
+    if (matcher2Status)
+        return matcher2Status;
 
     WebCLValidatorTool validatorTool(validatorArgc, validatorArgv,
                                      validatorInput);

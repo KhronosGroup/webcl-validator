@@ -54,19 +54,34 @@ clang::FrontendAction *WebCLPreprocessorTool::create()
     return new WebCLPreprocessorAction(output_);
 }
 
-WebCLMatcherTool::WebCLMatcherTool(int argc, char const **argv,
-                                   char const *input, char const *output)
+WebCLMatcher1Tool::WebCLMatcher1Tool(int argc, char const **argv,
+                                     char const *input, char const *output)
     : WebCLTool(argc, argv, input, output)
 {
 }
 
-WebCLMatcherTool::~WebCLMatcherTool()
+WebCLMatcher1Tool::~WebCLMatcher1Tool()
 {
 }
 
-clang::FrontendAction *WebCLMatcherTool::create()
+clang::FrontendAction *WebCLMatcher1Tool::create()
 {
-    return new WebCLMatcherAction(output_);
+    return new WebCLMatcher1Action(output_);
+}
+
+WebCLMatcher2Tool::WebCLMatcher2Tool(int argc, char const **argv,
+                                     char const *input, char const *output)
+    : WebCLTool(argc, argv, input, output)
+{
+}
+
+WebCLMatcher2Tool::~WebCLMatcher2Tool()
+{
+}
+
+clang::FrontendAction *WebCLMatcher2Tool::create()
+{
+    return new WebCLMatcher2Action(output_);
 }
 
 WebCLValidatorTool::WebCLValidatorTool(int argc, char const **argv,

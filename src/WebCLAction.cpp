@@ -103,7 +103,7 @@ bool WebCLPreprocessorAction::usesPreprocessorOnly() const
 
 WebCLMatcherAction::WebCLMatcherAction(const char *output)
     : WebCLAction(output)
-    , finder_(), replacements_()
+    , finder_()
     , consumer_(0), rewriter_(0)
     , cfg_(), printer_(0)
 {
@@ -124,28 +124,6 @@ clang::ASTConsumer* WebCLMatcherAction::CreateASTConsumer(
     if (!initialize(instance))
         return NULL;
     return consumer_;
-}
-
-void WebCLMatcherAction::ExecuteAction()
-{
-    clang::CompilerInstance &instance = getCompilerInstance();
-
-    WebCLAnonStructMatcher anonStructMatcher_(instance, cfg_, replacements_, finder_);
-
-    ParseAST(instance.getPreprocessor(), consumer_, instance.getASTContext());
-
-    if (!checkIdentifiers())
-        return;
-
-    if (!clang::tooling::applyAllReplacements(replacements_, *rewriter_)) {
-        reporter_->fatal("Can't apply replacements");
-        return;
-    }
-
-    if (!printer_->print(*out_, "// WebCL Validator: matching stage.\n")) {
-        reporter_->fatal("Can't print matcher output.\n");
-        return;
-    }
 }
 
 bool WebCLMatcherAction::usesPreprocessorOnly() const
@@ -180,7 +158,41 @@ bool WebCLMatcherAction::initialize(clang::CompilerInstance &instance)
     return true;
 }
 
-bool WebCLMatcherAction::checkIdentifiers()
+WebCLMatcher1Action::WebCLMatcher1Action(const char *output)
+    : WebCLMatcherAction(output)
+{
+}
+
+WebCLMatcher1Action::~WebCLMatcher1Action()
+{
+}
+
+void WebCLMatcher1Action::ExecuteAction()
+{
+    clang::CompilerInstance &instance = getCompilerInstance();
+
+    WebCLNamelessStructRenamer namelessStructRenamer(instance, cfg_);
+
+    namelessStructRenamer.prepare(finder_);
+    ParseAST(instance.getPreprocessor(), consumer_, instance.getASTContext());
+    clang::tooling::Replacements &namelessStructRenamings =
+        namelessStructRenamer.complete();
+
+    if (!checkIdentifiers())
+        return;
+
+    if (!clang::tooling::applyAllReplacements(namelessStructRenamings, *rewriter_)) {
+        reporter_->fatal("Can't apply rename nameless structures.");
+        return;
+    }
+
+    if (!printer_->print(*out_, "// WebCL Validator: matching stage 1.\n")) {
+        reporter_->fatal("Can't print first matcher stage output.");
+        return;
+    }
+}
+
+bool WebCLMatcher1Action::checkIdentifiers()
 {
     clang::CompilerInstance &instance = getCompilerInstance();
     clang::ASTContext &context = instance.getASTContext();
@@ -221,6 +233,37 @@ bool WebCLMatcherAction::checkIdentifiers()
     }
 
     return status;
+}
+
+WebCLMatcher2Action::WebCLMatcher2Action(const char *output)
+    : WebCLMatcherAction(output)
+{
+}
+
+WebCLMatcher2Action::~WebCLMatcher2Action()
+{
+}
+
+void WebCLMatcher2Action::ExecuteAction()
+{
+    clang::CompilerInstance &instance = getCompilerInstance();
+
+    WebCLRenamedStructRelocator renamedStructRelocator(instance, *rewriter_, cfg_);
+
+    renamedStructRelocator.prepare(finder_);
+    ParseAST(instance.getPreprocessor(), consumer_, instance.getASTContext());
+    clang::tooling::Replacements &renamedStructRelocations =
+        renamedStructRelocator.complete();
+
+    if (!clang::tooling::applyAllReplacements(renamedStructRelocations, *rewriter_)) {
+        reporter_->fatal("Can't relocate renamed structures.");
+        return;
+    }
+
+    if (!printer_->print(*out_, "// WebCL Validator: matching stage 2.\n")) {
+        reporter_->fatal("Can't print second matcher stage output.");
+        return;
+    }
 }
 
 WebCLValidatorAction::WebCLValidatorAction()
