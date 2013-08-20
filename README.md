@@ -16,24 +16,26 @@ Checkout the required repositories into following locations:
         Clang:           /path/llvm/tools/clang
         WebCL Validator: /path/llvm/tools/clang/tools/webcl-validator
 
-The repositories can be found from:
+This can be done as follows:
 
 **LLVM:**
 
-        git clone http://llvm.org/git/llvm.git
-        git checkout -b release_32 origin/release_32
+        git clone http://llvm.org/git/llvm.git /path/llvm
+        cd /path/llvm && git checkout -b release_32 origin/release_32
 
 **Clang:**
 
-        git clone https://github.com/KhronosGroup/webcl-clang-dev.git
-        or
-        git clone ssh://git@github.com/KhronosGroup/webcl-clang-dev.git
-
+        git clone https://github.com/KhronosGroup/webcl-clang-dev.git /path/llvm/tools/clang
+        
 **WebCL Validator:**
 
-        git clone https://github.com/KhronosGroup/webcl-validator.git
-        or
-        git clone ssh://git@github.com/KhronosGroup/webcl-validator.git
+        git clone https://github.com/KhronosGroup/webcl-validator.git /path/llvm/tools/clang/tools/webcl-validator
+
+Depending on your OS/configuration, you may need to install some additional tools:
+
+        sudo yum install git-svn
+        sudo yum install cmake28
+        alias cmake=cmake28
 
 You can now create a build directory and build all three components:
 
