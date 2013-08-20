@@ -30,6 +30,7 @@ endif (LINK_DIRECTLY_WITH_POCL)
 
 # note that add subdirectory must be after variable declarations 
 # to make sure that options are passed to subdirectories
+add_subdirectory( kernel-runner )
 add_subdirectory( opencl-validator )
 add_subdirectory( radix-sort )
 add_subdirectory( check-empty-memory )
@@ -44,7 +45,7 @@ configure_lit_site_cfg(
 add_lit_testsuite(
   check-webcl-validator  "Running WebCL Validator regression tests"
   ${CMAKE_CURRENT_BINARY_DIR}
-  DEPENDS webcl-validator opencl-validator radix-sort check-empty-memory FileCheck
+  DEPENDS webcl-validator kernel-runner opencl-validator radix-sort check-empty-memory FileCheck
 )
 set_target_properties(
   check-webcl-validator
