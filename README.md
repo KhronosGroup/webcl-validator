@@ -18,18 +18,21 @@ Checkout the required repositories into following locations:
 
 This can be done as follows:
 
-**LLVM:**
+        # Get LLVM 3.2 source
 
-        git clone http://llvm.org/git/llvm.git /path/llvm
-        cd /path/llvm && git checkout -b release_32 origin/release_32
+        cd /path/llvm
+        git clone http://llvm.org/git/llvm.git
+        git checkout -b release_32 origin/release_32
 
-**Clang:**
-
-        git clone https://github.com/KhronosGroup/webcl-clang-dev.git /path/llvm/tools/clang
+        # Get Clang source (with minor changes required by the WebCL Validator)
         
-**WebCL Validator:**
+        cd /path/llvm/tools
+        git clone https://github.com/KhronosGroup/webcl-clang-dev.git clang
+        
+        # Get WebCL Validator source
 
-        git clone https://github.com/KhronosGroup/webcl-validator.git /path/llvm/tools/clang/tools/webcl-validator
+        cd /path/llvm/tools/clang/tools
+        git clone https://github.com/KhronosGroup/webcl-validator.git
 
 Depending on your OS/configuration, you may need to install some additional tools:
 
@@ -60,6 +63,11 @@ Linking tests directly with pocl opencl driver (please fix to work without need 
 Running
 -------
 
+You can find the WebCL Validator and example WebCL kernels from:
+
+        /path/build/bin
+        /path/llvm/tools/clang/tools/webcl-validator/test
+        
 Run the following command to let WebCL Validator transform your WebCL
 kernels:
 
@@ -70,7 +78,3 @@ forces sources to be interpreted as OpenCL code even if they wouldn't
 use the *.cl* suffix. Option *-include FILE* automatically includes
 helper code, such as OpenCL type and builtin definitions.
 
-You can find the WebCL Validator and example WebCL kernels from:
-
-        /path/build/bin
-        /path/llvm/tools/clang/tools/webcl-validator/test
