@@ -73,7 +73,7 @@ __constant WclConstants wcl_constant_allocations = { (float4)(1.0f,2.0f,3.0f,4.0
     WCL_CLAMP( ((type)min_ptr), (ptr), (((type)max_ptr)-1) )
 
 void init_scratch(WclProgramAllocations *wcl_allocs, size_t gid, size_t wgid, TempStruct *additional_shuffle, __global float4* input, __constant float4* factors, __local float4* scratch);
-__local float4* flip_to_awesomeness(WclProgramAllocations *wcl_allocs, size_t wgid, size_t wgsize, __local float4* scratch);
+//__local float4* flip_to_awesomeness(WclProgramAllocations *wcl_allocs, size_t wgid, size_t wgsize, __local float4* scratch);
 
 void init_scratch(
     WclProgramAllocations *wcl_allocs,
