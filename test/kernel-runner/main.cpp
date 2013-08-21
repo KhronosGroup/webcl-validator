@@ -75,9 +75,9 @@ typedef struct {
     int size; 
     int length; } BufferArg;
 
-bool testSource(cl_device_id device, std::string const& source, 
+bool testSource(int id, cl_device_id device, std::string const& source, 
     std::string &kernelName, int globalWorkSize, std::vector<BufferArg> &buffers, bool isTransformed, 
-    std::string &programOutput, bool debug)
+    char* programOutput, bool debug)
 {
     cl_int ret = CL_SUCCESS;
 
@@ -155,12 +155,12 @@ bool testSource(cl_device_id device, std::string const& source,
         if (debug) std::cerr << "Reading retval.\n";
         ret = clEnqueueReadBuffer(command_queue, retBuf, CL_TRUE, 0, 1024, retVal, 0, NULL, NULL);
         ret = clFinish(command_queue);
-        std::string retStr(retVal);
-        if (programOutput.empty()) {
-            programOutput = retStr;
+
+        if (id == 0) {
+            memcpy(programOutput, retVal, 1024);
         } else {
             // if ran with multiple implementations verify that all results are equal
-            testPass = (programOutput.compare(retStr) == 0);
+            testPass = memcmp(programOutput, retVal, 1024) == 0;
         }
     }
 
@@ -312,8 +312,9 @@ int main(int argc, char const* argv[])
         }
     }
 
-    std::string retVal;
+    char retVal[1024] = {0};
     platform_vector const& platforms = getPlatformsIDs();
+    int id = 0;
     for (platform_vector::const_iterator platform = platforms.begin();
          platform != platforms.end(); ++platform)
     {
@@ -326,14 +327,19 @@ int main(int argc, char const* argv[])
              device != devices.end(); ++device)
         {        
             printDevInfo(*device);
-            if (!testSource(*device, source, kernel, globalWorkItemCount, buffers, useWebCL, retVal, printDebug))
+            if (!testSource(id, *device, source, kernel, globalWorkItemCount, buffers, useWebCL, retVal, printDebug))
             {
                 return EXIT_FAILURE;
             }
+            id++;
         }
     }
 
-    std::cout << retVal << std::endl;
+    // print out results
+    for (unsigned i = 0; i < 1024; i++) {
+        std::cout << (int)(retVal[i]) << ",";
+    }
+    std::cout << std::endl;
 
     return EXIT_SUCCESS;
 }
