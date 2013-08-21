@@ -1,6 +1,8 @@
 config.substitutions.append(
     ('%webcl-validator', "@LLVM_BINARY_DIR@/bin/webcl-validator"))
 config.substitutions.append(
+    ('%kernel-runner', "@LLVM_BINARY_DIR@/bin/kernel-runner"))
+config.substitutions.append(
     ('%opencl-validator', "@LLVM_BINARY_DIR@/bin/opencl-validator"))
 config.substitutions.append(
     ('%radix-sort', "@LLVM_BINARY_DIR@/bin/radix-sort"))

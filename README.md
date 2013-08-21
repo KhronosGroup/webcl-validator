@@ -16,24 +16,29 @@ Checkout the required repositories into following locations:
         Clang:           /path/llvm/tools/clang
         WebCL Validator: /path/llvm/tools/clang/tools/webcl-validator
 
-The repositories can be found from:
+This can be done as follows:
 
-**LLVM:**
+        # Get LLVM 3.2 source
 
+        cd /path/llvm
         git clone http://llvm.org/git/llvm.git
         git checkout -b release_32 origin/release_32
 
-**Clang:**
+        # Get Clang source (with minor changes required by the WebCL Validator)
+        
+        cd /path/llvm/tools
+        git clone https://github.com/KhronosGroup/webcl-clang-dev.git clang
+        
+        # Get WebCL Validator source
 
-        git clone https://github.com/KhronosGroup/webcl-clang-dev.git
-        or
-        git clone ssh://git@github.com/KhronosGroup/webcl-clang-dev.git
-
-**WebCL Validator:**
-
+        cd /path/llvm/tools/clang/tools
         git clone https://github.com/KhronosGroup/webcl-validator.git
-        or
-        git clone ssh://git@github.com/KhronosGroup/webcl-validator.git
+
+Depending on your OS/configuration, you may need to install some additional tools:
+
+        sudo yum install git-svn
+        sudo yum install cmake28
+        alias cmake=cmake28
 
 You can now create a build directory and build all three components:
 
@@ -58,6 +63,11 @@ Linking tests directly with pocl opencl driver (please fix to work without need 
 Running
 -------
 
+You can find the WebCL Validator and example WebCL kernels from:
+
+        /path/build/bin
+        /path/llvm/tools/clang/tools/webcl-validator/test
+        
 Run the following command to let WebCL Validator transform your WebCL
 kernels:
 
@@ -68,7 +78,3 @@ forces sources to be interpreted as OpenCL code even if they wouldn't
 use the *.cl* suffix. Option *-include FILE* automatically includes
 helper code, such as OpenCL type and builtin definitions.
 
-You can find the WebCL Validator and example WebCL kernels from:
-
-        /path/build/bin
-        /path/llvm/tools/clang/tools/webcl-validator/test
