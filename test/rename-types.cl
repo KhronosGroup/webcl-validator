@@ -14,7 +14,7 @@ int rename_privates()
     struct { int private_field_1; } anonymous_private_1 = { 0 };
     struct CommonStruct { int private_field_1; } first_private_struct_1 = { 0 };
     struct CommonStruct second_private_struct_1 = { 0 };
-    // CHECK: error: Identically named typedefs aren't supported.
+    // CHECK: error: Identically named types aren't supported.
     typedef struct { int private_field_1; } CommonTypedef;
     CommonTypedef private_typedef_1 = { 0 };
 
@@ -22,7 +22,7 @@ int rename_privates()
         struct { int private_field_2; } anonymous_private_2 = { 0 };
         struct CommonStruct { int private_field_2; } first_private_struct_2 = { 0 };
         struct CommonStruct second_private_struct_2 = { 0 };
-        // CHECK: error: Identically named typedefs aren't supported.
+        // CHECK: error: Identically named types aren't supported.
         typedef struct { int private_field_2; } CommonTypedef;
         CommonTypedef private_typedef_2 = { 0 };
 
@@ -47,7 +47,7 @@ __kernel void rename_types(
     first_local_struct.local_field = 0;
     __local struct CommonStruct second_local_struct;
     second_local_struct.local_field = 0;
-    // CHECK: error: Identically named typedefs aren't supported.
+    // CHECK: error: Identically named types aren't supported.
     typedef struct { int local_field; } CommonTypedef;
     __local CommonTypedef local_typedef;
     local_typedef.local_field = 0;
