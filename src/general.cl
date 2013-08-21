@@ -10,7 +10,7 @@
 typedef uint _WclInitType;
 
 // NOTE: this expects that null pointer is type of uint*
-#define _WCL_SET_NULL(type, req_bytes, min, max) ( ((((type)max)-((type)min))*sizeof(uint) >= req_bytes) ? ((type)min) : ((type)0) )
+#define _WCL_SET_NULL(type, req_bytes, min, max, null) ( ((((type)max)-((type)min))*sizeof(uint) >= req_bytes) ? ((type)min) : (null) )
 
 #ifdef cl_khr_initialize_memory
 #pragma OPENCL EXTENSION cl_khr_initialize_memory : enable

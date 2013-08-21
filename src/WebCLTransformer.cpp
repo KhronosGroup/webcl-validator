@@ -225,7 +225,14 @@ std::string WebCLTransformer::addressSpaceLimitsInitializer(
 void WebCLTransformer::createAddressSpaceLimitsNullInitializer(
     std::ostream &out, unsigned addressSpace)
 {
-    out << "0";
+  switch (addressSpace) {
+    case clang::LangAS::opencl_constant:
+    case clang::LangAS::opencl_local:
+      out << cfg_.getNameOfAddressSpaceNull(addressSpace);
+      break;
+    default:
+      out << "0";
+  }
 }
 
 void WebCLTransformer::createAddressSpaceTypedef(
@@ -388,7 +395,8 @@ void WebCLTransformer::createProgramAllocationsAllocation(
       // we pretty much cannot initialize this in the start since if e.g. variables
       // are used to initialize private variables, we cannot move initialization to start of function
       // since value might be different in that phase.
-      out << cfg_.indentation_ << "{ }\n";
+      out << cfg_.getIndentation(2) << "{ },\n";
+      out << cfg_.getIndentation(2) << "0\n";
     }
 
     out << "\n" << cfg_.indentation_ << "};\n";
@@ -435,26 +443,32 @@ void WebCLTransformer::initializeAddressSpaceNull(clang::FunctionDecl *kernel,
   std::string nullType =  "__" + cfg_.getNameOfAddressSpace(limits.getAddressSpace()) + " " + cfg_.nullType_ + "*";
 
   out << cfg_.indentation_
-      << cfg_.getNameOfAddressSpaceNullPtrRef(limits.getAddressSpace()) << " = (" << nullType << ")(";
+      << cfg_.getNameOfAddressSpaceNullPtrRef(limits.getAddressSpace()) << " = ";
   
-  std::string orIfNeed = "";
-
+  int endParenthesis = 0;
+  
   if (limits.hasStaticallyAllocatedLimits()) {
-      out << "_WCL_SET_NULL(" << nullType << ", " << cfg_.getNameOfSizeMacro(limits.getAddressSpace()) << ", " << cfg_.getStaticLimitRef(limits.getAddressSpace()) << ") ";
-      orIfNeed = " || ";
+      out << "_WCL_SET_NULL(" << nullType << ", " << cfg_.getNameOfSizeMacro(limits.getAddressSpace()) << ", " << cfg_.getStaticLimitRef(limits.getAddressSpace()) << ", ";
+      endParenthesis++;
   }
   
   for(AddressSpaceLimits::LimitList::iterator i = limits.getDynamicLimits().begin();
       i != limits.getDynamicLimits().end(); i++) {
-      out << orIfNeed << "_WCL_SET_NULL(" << nullType << ", " << cfg_.getNameOfSizeMacro(limits.getAddressSpace()) << "," << cfg_.getDynamicLimitRef(*i) << ")";
-      orIfNeed = " || ";
+      out << "_WCL_SET_NULL(" << nullType << ", " << cfg_.getNameOfSizeMacro(limits.getAddressSpace()) << "," << cfg_.getDynamicLimitRef(*i) << ", ";
+    endParenthesis++;
   }
   
-  out << ");\n";
+  out << "(" << nullType << ")0";
+  
+  for (int i = 0; i < endParenthesis; i++) {
+    out << ")";
+  }
+  out << ";\n";
   
   out << cfg_.indentation_
       << "if (" << cfg_.getNameOfAddressSpaceNullPtrRef(limits.getAddressSpace()) << " == (" << nullType << ")0) return; // not enough space to meet the minimum access. Would be great if we could give info about the problem for the user. \n";
 }
+
 
 void WebCLTransformer::createLocalRangeZeroing(
     std::ostream &out, const std::string &arguments)

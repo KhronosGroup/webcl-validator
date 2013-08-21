@@ -41,6 +41,8 @@ typedef long ptrdiff_t;
 typedef long intptr_t;
 typedef ulong uintptr_t;
 
+#define cles_khr_int64 1
+
 /* Enable double precision. This should really only be done when
    building the run-time library; when building application code, we
    should instead check a macro to see whether the application has
