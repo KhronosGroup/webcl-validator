@@ -171,6 +171,8 @@ private:
   
     std::string getClampMacroCall(std::string addr, std::string type, AddressSpaceLimits &limits);
     std::string getWclAddrCheckMacroDefinition(unsigned addrSpaceNum, unsigned limitCount);
+
+    std::set<std::string> usedTypeNames_;
   
     // address space, name
     typedef std::pair<const std::string, const std::string> CheckedType;

@@ -45,20 +45,38 @@ __constant struct CFPStruct { int field; struct CFRStruct *frstruct; struct CFPS
 
 int relocate_privates(void);
 
+typedef struct { int field; } RTypedef;
+typedef struct { int field; } PTypedef;
+struct RStruct { int field; }; 
+struct PStruct { int field; }; 
+struct RRStruct { struct RStruct rstruct; };
+struct RPStruct { struct PStruct pstruct; };
+struct PRStruct { RTypedef rstruct; };
+struct PPStruct { PTypedef pstruct; };
+typedef struct { struct RStruct rstruct; } RRTypedef;
+typedef struct { struct PStruct pstruct; } RPTypedef;
+typedef struct { RTypedef rstruct; } PRTypedef;
+typedef struct { PTypedef pstruct; } PPTypedef;
+struct FPStruct;
+struct FRStruct { int field; struct FRStruct *frstruct; struct FPStruct *fpstruct; };
+struct FPStruct { int field; struct FRStruct *frstruct; struct FPStruct *fpstruct; };
+
 int relocate_privates()
 {
     struct { int field; } relocated_1 = { 1 };
     struct { int field; } preserved_1 = { 1 };
 
-    struct RStruct { int field; } relocated_2 = { 2 };
-    struct PStruct { int field; } preserved_2 = { 2 };
+    // struct RStruct { int field; } relocated_2 = { 2 };
+    struct RStruct relocated_2 = { 2 };
+    // struct PStruct { int field; } preserved_2 = { 2 };
+    struct PStruct preserved_2 = { 2 };
 
     struct RStruct relocated_3 = { 3 };
     struct PStruct preserved_3 = { 3 };
 
-    typedef struct { int field; } RTypedef;
+    // typedef struct { int field; } RTypedef;
     RTypedef relocated_4 = { 4 };
-    typedef struct { int field; } PTypedef;
+    // typedef struct { int field; } PTypedef;
     PTypedef preserved_4 = { 4 };
 
     struct { struct RStruct rstruct; } relocated_r1 = { { 1 } };
@@ -66,28 +84,34 @@ int relocate_privates()
     struct { RTypedef rstruct; } preserved_r1 = { { 1 } };
     struct { PTypedef pstruct; } preserved_p1 = { { 1 } };
 
-    struct RRStruct { struct RStruct rstruct; } relocated_r2 = { { 2 } };
-    struct RPStruct { struct PStruct pstruct; } relocated_p2 = { { 2 } };
-    struct PRStruct { RTypedef rstruct; } preserved_r2 = { { 2 } };
-    struct PPStruct { PTypedef pstruct; } preserved_p2 = { { 2 } };
+    // struct RRStruct { struct RStruct rstruct; } relocated_r2 = { { 2 } };
+    struct RRStruct relocated_r2 = { { 2 } };
+    // struct RPStruct { struct PStruct pstruct; } relocated_p2 = { { 2 } };
+    struct RPStruct relocated_p2 = { { 2 } };
+    // struct PRStruct { RTypedef rstruct; } preserved_r2 = { { 2 } };
+    struct PRStruct preserved_r2 = { { 2 } };
+    // struct PPStruct { PTypedef pstruct; } preserved_p2 = { { 2 } };
+    struct PPStruct preserved_p2 = { { 2 } };
 
     struct RRStruct relocated_r3 = { { 3 } };
     struct RPStruct relocated_p3 = { { 3 } };
     struct PRStruct preserved_r3 = { { 3 } };
     struct PPStruct preserved_p3 = { { 3 } };
 
-    typedef struct { struct RStruct rstruct; } RRTypedef;
+    // typedef struct { struct RStruct rstruct; } RRTypedef;
     RRTypedef relocated_r4 = { { 4 } };
-    typedef struct { struct PStruct pstruct; } RPTypedef;
+    // typedef struct { struct PStruct pstruct; } RPTypedef;
     RPTypedef relocated_p4 = { { 4 } };
-    typedef struct { RTypedef rstruct; } PRTypedef;
+    // typedef struct { RTypedef rstruct; } PRTypedef;
     PRTypedef preserved_r4 = { { 4 } };
-    typedef struct { PTypedef pstruct; } PPTypedef;
+    // typedef struct { PTypedef pstruct; } PPTypedef;
     PPTypedef preserved_p4 = { { 4 } };
 
-    struct FPStruct;
-    struct FRStruct { int field; struct FRStruct *frstruct; struct FPStruct *fpstruct; } relocated_f1 = { 0, 0, 0 };
-    struct FPStruct { int field; struct FRStruct *frstruct; struct FPStruct *fpstruct; } preserved_f1 = { 0, 0, 0 };
+    // struct FPStruct;
+    // struct FRStruct { int field; struct FRStruct *frstruct; struct FPStruct *fpstruct; } relocated_f1 = { 0, 0, 0 };
+    struct FRStruct relocated_f1 = { 0, 0, 0 };
+    // struct FPStruct { int field; struct FRStruct *frstruct; struct FPStruct *fpstruct; } preserved_f1 = { 0, 0, 0 };
+    struct FPStruct preserved_f1 = { 0, 0, 0 };
 
     int relocated =
         (&relocated_1)->field + (&relocated_2)->field +
@@ -118,9 +142,12 @@ __kernel void relocate_types(
     __local struct { int field; } preserved_1;
     preserved_1.field = 1;
 
-    __local struct RStruct { int field; } relocated_2;
+    // redeclarations are currently not supported
+    // __local struct RStruct { int field; } relocated_2;
+    __local struct RStruct relocated_2;
     relocated_2.field = 2;
-    __local struct PStruct { int field; } preserved_2;
+    // __local struct PStruct { int field; } preserved_2;
+    __local struct PStruct preserved_2;
     preserved_2.field = 2;
 
     __local struct RStruct relocated_3;
@@ -128,10 +155,10 @@ __kernel void relocate_types(
     __local struct PStruct preserved_3;
     preserved_3.field = 3;
 
-    typedef struct { int field; } RTypedef;
+    // typedef struct { int field; } RTypedef;
     __local RTypedef relocated_4;
     relocated_4.field = 4;
-    typedef struct { int field; } PTypedef;
+    // typedef struct { int field; } PTypedef;
     __local PTypedef preserved_4;
     preserved_4.field = 4;
 
@@ -144,13 +171,17 @@ __kernel void relocate_types(
     __local struct { PTypedef pstruct; } preserved_p1;
     preserved_p1.pstruct.field = 1;
 
-    __local struct RRStruct { struct RStruct rstruct; } relocated_r2;
+    // __local struct RRStruct { struct RStruct rstruct; } relocated_r2;
+    __local struct RRStruct relocated_r2;
     relocated_r2.rstruct.field = 2;
-    __local struct RPStruct { struct PStruct pstruct; } relocated_p2;
+    // __local struct RPStruct { struct PStruct pstruct; } relocated_p2;
+    __local struct RPStruct relocated_p2;
     relocated_p2.pstruct.field = 2;
-    __local struct PRStruct { RTypedef rstruct; } preserved_r2;
+    // __local struct PRStruct { RTypedef rstruct; } preserved_r2;
+    __local struct PRStruct preserved_r2;
     preserved_r2.rstruct.field = 2;
-    __local struct PPStruct { PTypedef pstruct; } preserved_p2;
+    // __local struct PPStruct { PTypedef pstruct; } preserved_p2;
+    __local struct PPStruct preserved_p2;
     preserved_p2.pstruct.field = 2;
 
     __local struct RRStruct relocated_r3;
@@ -162,25 +193,27 @@ __kernel void relocate_types(
     __local struct PPStruct preserved_p3;
     preserved_p3.pstruct.field = 3;
 
-    typedef struct { struct RStruct rstruct; } RRTypedef;
+    // typedef struct { struct RStruct rstruct; } RRTypedef;
     __local RRTypedef relocated_r4;
     relocated_r4.rstruct.field = 4;
-    typedef struct { struct PStruct pstruct; } RPTypedef;
+    // typedef struct { struct PStruct pstruct; } RPTypedef;
     __local RPTypedef relocated_p4;
     relocated_p4.pstruct.field = 4;
-    typedef struct { RTypedef rstruct; } PRTypedef;
+    // typedef struct { RTypedef rstruct; } PRTypedef;
     __local PRTypedef preserved_r4;
     preserved_r4.rstruct.field = 4;
-    typedef struct { PTypedef pstruct; } PPTypedef;
+    // typedef struct { PTypedef pstruct; } PPTypedef;
     __local PPTypedef preserved_p4;
     preserved_p4.pstruct.field = 4;
 
-    struct FPStruct;
-    __local struct FRStruct { int field; struct FRStruct *frstruct; struct FPStruct *fpstruct; } relocated_f1;
+    // struct FPStruct;
+    // __local struct FRStruct { int field; struct FRStruct *frstruct; struct FPStruct *fpstruct; } relocated_f1;
+    __local struct FRStruct relocated_f1;
     relocated_f1.field = 0;
     relocated_f1.frstruct = 0;
     relocated_f1.fpstruct = 0;
-    __local struct FPStruct { int field; struct FRStruct *frstruct; struct FPStruct *fpstruct; } preserved_f1;
+    // __local struct FPStruct { int field; struct FRStruct *frstruct; struct FPStruct *fpstruct; } preserved_f1;
+    __local struct FPStruct preserved_f1;
     preserved_f1.field = 0;
     preserved_f1.frstruct = 0;
     preserved_f1.fpstruct = 0;

@@ -645,19 +645,43 @@ void WebCLTransformer::addRelocationInitializer(clang::VarDecl *decl) {
 
 }
 
+/// Moves declarations to module prolog.
+///
+/// Expects that declarations are in one of following formats:
+/// typedef <type> <name>; // any typedef
+/// struct <name> { ... }; // struct declaration
+/// struct <name>;         // forward struct declaraition
+///
+/// Unsupported: struct { ... } var; // unnamed declaration or instantiation with declaration
 void WebCLTransformer::moveToModulePrologue(clang::NamedDecl *decl)
 {
-    const std::string name = cfg_.getNameOfRelocatedTypeDecl(decl);
+    // set typeName if we should make sure that this declaration name is not used multiple times
+    std::string typeName;
     if (clang::RecordDecl* structDecl = llvm::dyn_cast<clang::RecordDecl>(decl)) {
         if (structDecl->isAnonymousStructOrUnion() || structDecl->getNameAsString().empty()) {
           error(structDecl->getLocStart(), "Anonymous structs should have been eliminated in this phase.");
+          return;
         }
-    }
-    if (name.empty()) {
-        error(decl->getLocStart(), "Identically named types aren't supported.");
-        return;
+
+        // ignore forward declarations
+        if (structDecl->getDefinition() == structDecl) {
+          typeName = structDecl->getDefinition()->getNameAsString();
+        }
+    } else {
+      typeName = decl->getNameAsString();
     }
 
+    // make sure that identically named types are not collected from separate scopes...
+    if (!typeName.empty()) {
+      if (usedTypeNames_.count(typeName) > 0) {
+        error(decl->getLocStart(), std::string("Identically named types aren't supported: " + typeName).c_str());
+        return;
+      } else {
+        info(decl->getLocStart(), std::string("Adding type " + typeName + " to bookkeeping.").c_str());
+        usedTypeNames_.insert(typeName);
+      }
+    }
+  
     clang::Rewriter &rewriter = transformations_.getRewriter();
     const std::string typedefText = rewriter.getRewrittenText(decl->getSourceRange());
     removeText(decl->getSourceRange());
