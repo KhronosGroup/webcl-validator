@@ -75,7 +75,7 @@ std::string WebCLTransformer::addressSpaceInfoAsStruct(AddressSpaceInfo &as) {
   for (AddressSpaceInfo::iterator declIter = as.begin();
        declIter != as.end(); ++declIter) {
     retVal << cfg_.indentation_;
-    emitVariable(retVal, (*declIter));
+    emitVarDeclToStruct(retVal, (*declIter));
     retVal << ";\n";
   }
   retVal << "}";
@@ -156,11 +156,11 @@ std::string WebCLTransformer::addressSpaceLimitsAsStruct(AddressSpaceLimits &asL
         clang::ParmVarDecl *decl = *declIter;
 
         retVal << cfg_.indentation_;
-        emitVariable(retVal, decl, cfg_.getNameOfLimitField(decl, false));
+        emitVarDeclToStruct(retVal, decl, cfg_.getNameOfLimitField(decl, false));
         retVal << ";\n";
 
         retVal << cfg_.indentation_;
-        emitVariable(retVal, decl, cfg_.getNameOfLimitField(decl, true));
+        emitVarDeclToStruct(retVal, decl, cfg_.getNameOfLimitField(decl, true));
         retVal << ";\n";
     }
     retVal << "}";
@@ -679,8 +679,6 @@ void WebCLTransformer::moveToModulePrologue(clang::NamedDecl *decl)
       } else {
         info(decl->getLocStart(), std::string("Adding type " + typeName + " to bookkeeping.").c_str());
         usedTypeNames_.insert(typeName);
-        // looks like this call is required for some other parts to work.
-        cfg_.getNameOfRelocatedTypeDecl(decl);
       }
     }
   
@@ -1026,45 +1024,25 @@ bool WebCLTransformer::rewriteKernelPrologue(const clang::FunctionDecl *kernel)
 bool WebCLTransformer::rewriteTransformations()
 {
     bool status = true;
-  
-  
     status = status && transformations_.rewriteTransformations();
-
     return status;
 }
 
-clang::ParmVarDecl *WebCLTransformer::getDeclarationOfArray(clang::ArraySubscriptExpr *expr)
+/// Writes variable declaration to stream as it should be declared inside address space struct.
+///
+/// Drops address space qualifiers from declaration and gets relocated variable name.
+/// e.g. __constant int foo[2] = { 1 } => int _wcl_foo[2]
+void WebCLTransformer::emitVarDeclToStruct(std::ostream &out, const clang::VarDecl *decl)
 {
-    clang::Expr *base = expr->getBase();
-    if (!base)
-        return NULL;
-
-    clang::ValueDecl *pruned = pruneValue(base);
-    if (!pruned)
-        return NULL;
-
-    clang::ParmVarDecl *var = llvm::dyn_cast<clang::ParmVarDecl>(pruned);
-    if (!var)
-        return NULL;
-
-    if (!transformations_.contains(var))
-        return NULL;
-
-    return var;
+    emitVarDeclToStruct(out, decl, cfg_.getNameOfRelocatedVariable(decl));
 }
 
-void WebCLTransformer::addCheckedType(CheckedTypes &types, clang::QualType type)
-{
-    const CheckedType checked(cfg_.getNameOfAddressSpace(type), cfg_.getNameOfType(type));
-    types.insert(checked);
-}
-
-void WebCLTransformer::emitVariable(std::ostream &out, const clang::VarDecl *decl)
-{
-    emitVariable(out, decl, cfg_.getNameOfRelocatedVariable(decl));
-}
-
-void WebCLTransformer::emitVariable(std::ostream &out, const clang::VarDecl *decl,
+/// Writes variable declaration to stream as it should be written in address space struct.
+///
+/// @param out Stream to write
+/// @param decl Original variable declaration.
+/// @param name Name that should be used when writing declaration to stream.
+void WebCLTransformer::emitVarDeclToStruct(std::ostream &out, const clang::VarDecl *decl,
                                     const std::string &name)
 {
     clang::QualType type = decl->getType();
@@ -1091,37 +1069,6 @@ void WebCLTransformer::emitVariable(std::ostream &out, const clang::VarDecl *dec
     }
 }
 
-std::string WebCLTransformer::getWclAddrCheckMacroDefinition(unsigned aSpaceNum,
-                                                             unsigned limitCount)
-{
-  std::stringstream retVal;
-  std::stringstream retValPostfix;
-  retVal  << "#define " << cfg_.getNameOfLimitCheckMacro(aSpaceNum, limitCount)
-          << "(type, addr";
-  for (unsigned i = 0; i < limitCount; i++) {
-      retVal << ", min" << i << ", max" << i;
-  }
-  retVal << ", asnull) \\\n";
-  retVal << cfg_.indentation_ << "( \\\n";
-
-  for (unsigned i = 0; i < limitCount; i++) {
-    retVal << cfg_.getIndentation(i + 1) << "( "
-           << "( "
-           << "((addr) >= ((type)min" << i << "))"
-           << " && "
-           << "((addr) <= " << cfg_.getNameOfLimitMacro() << "(type, max" << i << "))"
-           << " )"
-           << " ? (addr) : \\\n";
-    retValPostfix << " )";
-  }
-  
-  retVal << cfg_.getIndentation(limitCount + 1)
-         << "((type)(asnull))"
-         << retValPostfix.str() << " )";
-  
-  return retVal.str();
-}
-
 void WebCLTransformer::emitGeneralCode(std::ostream &out)
 {
     const char *buffer = reinterpret_cast<const char*>(general_cl);
@@ -1141,6 +1088,37 @@ void WebCLTransformer::emitLimitMacros(std::ostream &out)
     out << "\n";
 }
 
+std::string WebCLTransformer::getWclAddrCheckMacroDefinition(unsigned aSpaceNum,
+                                                             unsigned limitCount)
+{
+  std::stringstream retVal;
+  std::stringstream retValPostfix;
+  retVal  << "#define " << cfg_.getNameOfLimitCheckMacro(aSpaceNum, limitCount)
+  << "(type, addr";
+  for (unsigned i = 0; i < limitCount; i++) {
+    retVal << ", min" << i << ", max" << i;
+  }
+  retVal << ", asnull) \\\n";
+  retVal << cfg_.indentation_ << "( \\\n";
+  
+  for (unsigned i = 0; i < limitCount; i++) {
+    retVal << cfg_.getIndentation(i + 1) << "( "
+    << "( "
+    << "((addr) >= ((type)min" << i << "))"
+    << " && "
+    << "((addr) <= " << cfg_.getNameOfLimitMacro() << "(type, max" << i << "))"
+    << " )"
+    << " ? (addr) : \\\n";
+    retValPostfix << " )";
+  }
+  
+  retVal << cfg_.getIndentation(limitCount + 1)
+  << "((type)(asnull))"
+  << retValPostfix.str() << " )";
+  
+  return retVal.str();
+}
+
 void WebCLTransformer::emitPrologue(std::ostream &out)
 {
     out << preModulePrologue_.str();
@@ -1150,13 +1128,13 @@ void WebCLTransformer::emitPrologue(std::ostream &out)
 }
 
 /// \brief Emits empty initializer for type.
-void WebCLTransformer::emitTypeInitialization(
+void WebCLTransformer::emitTypeNullInitialization(
     std::ostream &out, clang::QualType qualType)
 {
     const clang::Type *type = qualType.getTypePtrOrNull();
     if (type && type->isArrayType()) {
       out << "{ ";
-      emitTypeInitialization(out, type->getAsArrayTypeUnsafe()->getElementType());
+      emitTypeNullInitialization(out, type->getAsArrayTypeUnsafe()->getElementType());
       out << " }";
     } else if (type && type->isStructureType()) {
       out << "{ }";
@@ -1171,7 +1149,7 @@ void WebCLTransformer::emitVariableInitialization(
     const clang::Expr *init =  decl->getInit();
   
     if (!init || !init->isConstantInitializer(instance_.getASTContext(), false)) {
-        emitTypeInitialization(out, decl->getType());
+        emitTypeNullInitialization(out, decl->getType());
         return;
     }
 

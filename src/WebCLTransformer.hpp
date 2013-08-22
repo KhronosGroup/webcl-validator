@@ -52,29 +52,42 @@ public:
     bool rewrite();
 
     void createAddressSpaceTypedef(AddressSpaceInfo &as, const std::string &name, const std::string &alignment);
+
     void createPrivateAddressSpaceTypedef(AddressSpaceInfo &as);
+  
     void createLocalAddressSpaceTypedef(AddressSpaceInfo &as);
+  
     void createConstantAddressSpaceTypedef(AddressSpaceInfo &as);
 
     void replaceWithRelocated(clang::DeclRefExpr *use, clang::VarDecl *decl);
+  
     void removeRelocated(clang::VarDecl *decl);
 
     void createAddressSpaceLimitsTypedef(
         AddressSpaceLimits &limits, const std::string &name);
+  
     void createGlobalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);
+  
     void createConstantAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);
+  
     void createLocalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);
+  
     void createAddressSpaceLimitsField(const std::string &type, const std::string &name);
+  
     void createAddressSpaceNullField(
         const std::string &name, unsigned addressSpace);
+  
     void createProgramAllocationsTypedef(
         AddressSpaceLimits &globalLimits, AddressSpaceLimits &constantLimits,
         AddressSpaceLimits &localLimits, AddressSpaceInfo &privateAs);
   
     void createConstantAddressSpaceAllocation(AddressSpaceInfo &as);
+  
     void createLocalAddressSpaceAllocation(clang::FunctionDecl *kernelFunc);
+  
     void createAddressSpaceLimitsInitializer(
         std::ostream &out, clang::FunctionDecl *kernel, AddressSpaceLimits &limits);
+  
     void createAddressSpaceInitializer(std::ostream& out, AddressSpaceInfo &info);
 
     void createProgramAllocationsAllocation(
@@ -83,13 +96,16 @@ public:
         AddressSpaceInfo &privateAs);
   
     void createAddressSpaceNullAllocation(std::ostream &out, unsigned addressSpace);
+  
     void createConstantAddressSpaceNullAllocation();
+  
     void createLocalAddressSpaceNullAllocation(clang::FunctionDecl *kernel);
   
     void initializeAddressSpaceNull(clang::FunctionDecl *kernel, AddressSpaceLimits &limits);
 
     /// \brief Zero a single local memory range.
     void createLocalRangeZeroing(std::ostream &out, const std::string &arguments);
+  
     /// \brief Zero all local memory ranges.
     void createLocalAreaZeroing(clang::FunctionDecl *kernelFunc,
                                 AddressSpaceLimits &localLimits);
@@ -97,6 +113,7 @@ public:
     void addMemoryAccessCheck(clang::Expr *access, AddressSpaceLimits &limits);
 
     void addRelocationInitializerFromFunctionArg(clang::ParmVarDecl *parmDecl);
+  
     void addRelocationInitializer(clang::VarDecl *decl);
   
     void addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
@@ -110,9 +127,6 @@ public:
     // TODO: remove methods which requires storing any model state.
     //       only allowed state here is how to represent multiple changes.
   
-    // Inform about a kernels so that kernel prologues can be emitted.
-    void addKernel(clang::FunctionDecl *decl);
-
     /// Inform about a variable that is accessed indirectly with a
     /// pointer. The variable declaration will be moved to a
     /// corresponding address space record so that indirect accesses
@@ -169,9 +183,6 @@ private:
       return *functionPrologues_[func];
     }
   
-    std::string getClampMacroCall(std::string addr, std::string type, AddressSpaceLimits &limits);
-    std::string getWclAddrCheckMacroDefinition(unsigned addrSpaceNum, unsigned limitCount);
-
     std::set<std::string> usedTypeNames_;
   
     // address space, name
@@ -229,49 +240,42 @@ private:
     /// e.g. if location is [20, 50] we would find all transformations inside is
     //       [20,22], [25,30], [33,45] and before that all transformations inside those ranges
     //       [34,37] etc..
-    //       I have pretty much no good idea how to handle this good enough...
-    //       TODO: print source locations and find out...
     std::string getTransformedText(clang::SourceRange range);
 
+    /// \brief Inserts module prologue to start of module.
     bool rewritePrologue();
+    /// \brief Inserts kernel prologue to start of module.
     bool rewriteKernelPrologue(const clang::FunctionDecl *kernel);
+    /// \brief Applies WebCLTransformations to result... TODO: remove transformation classes..
     bool rewriteTransformations();
 
-    clang::ParmVarDecl *getDeclarationOfArray(clang::ArraySubscriptExpr *expr);
+    /// \brief Writes variable declaration as a struct field declaration to stream.
+    void emitVarDeclToStruct(std::ostream &out, const clang::VarDecl *decl);
+    /// \brief Writes variable declaration as a struct field declaration to stream.
+    void emitVarDeclToStruct(std::ostream &out, const clang::VarDecl *decl,
+                             const std::string &name);
 
-    void addCheckedType(CheckedTypes &types, clang::QualType type);
-
-    void addRelocatedVariable(clang::VarDecl *decl);
-
-    void emitVariable(std::ostream &out, const clang::VarDecl *decl);
-    void emitVariable(std::ostream &out, const clang::VarDecl *decl,
-                      const std::string &name);
-
-    void emitPrologueRecords(std::ostream &out);
-
+    /// \brief Returns macro call for given addr, type and limits to check.
+    /// e.g. _WCL_ADDR_global_1(__global int *, addr, _wcl_allocs->gl.array_min, _wcl_allocs->gl.array_max, _wcl_allocs->gn)
+    std::string getClampMacroCall(std::string addr, std::string type, AddressSpaceLimits &limits);
+  
+    /// \brief Writes bytestream generated from general.cl to stream.
     void emitGeneralCode(std::ostream &out);
+  
+    /// \brief Goes through set of all generated _WCL_ADDR_* calls and write corresponding #define's to stream
     void emitLimitMacros(std::ostream &out);
-    void emitPointerLimitMacros(std::ostream &out);
-    void emitIndexLimitMacros(std::ostream &out);
-    void emitPointerCheckerMacro(std::ostream &out);
-    void emitIndexCheckerMacro(std::ostream &out);
-    void emitPrologueMacros(std::ostream &out);
-
-    void emitConstantIndexChecker(std::ostream &out);
-    void emitChecker(std::ostream &out, const CheckedType &type, const std::string &kind);
-    void emitCheckers(std::ostream &out, const CheckedTypes &types, const std::string &kind);
-    void emitPrologueCheckers(std::ostream &out);
+  
+    /// \brief Returns macro define for clamping address to certain limits for each address space and limit count
+    /// e.g. #define _WCL_ADDR_local_2(type, addr, min1, max1, min2, max2, asnull) (<macro code>)
+    std::string getWclAddrCheckMacroDefinition(unsigned addrSpaceNum, unsigned limitCount);
 
     void emitPrologue(std::ostream &out);
 
-    void emitTypeInitialization(
-        std::ostream &out, clang::QualType qualType);
     void emitVariableInitialization(
         std::ostream &out, const clang::VarDecl *decl);
-    void emitRecordInitialization(
-        std::ostream &out, const std::string &type, const std::string &name,
-        VariableDeclarations &relocations);
-    void emitKernelPrologue(std::ostream &out);
+
+    void emitTypeNullInitialization(
+        std::ostream &out, clang::QualType qualType);
 
     WebCLTransformerConfiguration cfg_;
     WebCLTransformations transformations_;
