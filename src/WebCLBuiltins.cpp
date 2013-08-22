@@ -40,20 +40,34 @@ static const char *unsupportedBuiltins[] = {
 static const int numUnsupportedBuiltins =
     sizeof(unsupportedBuiltins) / sizeof(unsupportedBuiltins[0]);
 
+static const char *safeBuiltins[] = {
+  "get_image_width", "get_image_height"
+};
+static const int numSafeBuiltins =
+    sizeof(safeBuiltins) / sizeof(safeBuiltins[0]);
+
 WebCLBuiltins::WebCLBuiltins()
     : unsafeMathBuiltins_()
     , unsafeVectorBuiltins_()
     , unsafeAtomicBuiltins_()
     , unsupportedBuiltins_()
+    , safeBuiltins_()
 {
     initialize(unsafeMathBuiltins_, unsafeMathBuiltins, numUnsafeMathBuiltins);
     initialize(unsafeVectorBuiltins_, unsafeVectorBuiltins, numUnsafeVectorBuiltins);
     initialize(unsafeAtomicBuiltins_, unsafeAtomicBuiltins, numUnsafeAtomicBuiltins);
     initialize(unsupportedBuiltins_, unsupportedBuiltins, numUnsupportedBuiltins);
+    initialize(safeBuiltins_, safeBuiltins, numSafeBuiltins);
 }
 
 WebCLBuiltins::~WebCLBuiltins()
 {
+}
+
+
+bool WebCLBuiltins::isSafe(const std::string &builtin) const
+{
+    return safeBuiltins_.count(builtin);
 }
 
 bool WebCLBuiltins::isUnsafe(const std::string &builtin) const

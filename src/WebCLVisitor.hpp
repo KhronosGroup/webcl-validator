@@ -174,14 +174,6 @@ public:
 
   virtual bool handleForStmt(clang::ForStmt *stmt);
 
-  /// This was handled in earlier passes, but not sure if necessary
-  /// the VarDecl handler seeme to catch these too.
-  /// TODO: remove if not needed
-  virtual bool handleDeclStmt(clang::DeclStmt *expr) {
-    info(expr->getLocStart(), "DectStmt! what to do... why??");
-    return true;
-  };
-  
   /// Accessors for data collected by analyser
   typedef std::set<clang::FunctionDecl*> FunctionDeclSet;
   typedef std::set<clang::CallExpr*> CallExprSet;

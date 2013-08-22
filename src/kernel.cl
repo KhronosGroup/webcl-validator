@@ -43,6 +43,16 @@ typedef ulong uintptr_t;
 
 #define cles_khr_int64 1
 
+// we need to be able to find canonical type of image3d_t
+#define _CL_HAS_IMAGE_ACCESS 1
+typedef int sampler_t;
+typedef struct dev_image_t* image2d_t;
+typedef struct image3d_t_* image3d_t;
+typedef struct dev_image_t* image1d_t;
+typedef struct dev_image_t* image1d_buffer_t;
+typedef struct dev_image_t* image2d_array_t;
+typedef struct dev_image_t* image1d_array_t;
+
 /* Enable double precision. This should really only be done when
    building the run-time library; when building application code, we
    should instead check a macro to see whether the application has
@@ -2086,6 +2096,7 @@ __IF_FP64(_CL_DECLARE_ASYNC_COPY_FUNCS(double));
 // the typedefs to the actual underlying types. Clang 3.2
 // the typedefs throughout as the types are not detected
 // by the frontend.
+
 #if !defined(_CL_HAS_IMAGE_ACCESS) || defined(POCL_C_BUILTIN)
 typedef int sampler_t;
 typedef struct dev_image_t* image2d_t;
@@ -2170,7 +2181,6 @@ void _CL_OVERLOADABLE write_imagei (image2d_t image, int2 coord, int4 color);
 
 void _CL_OVERLOADABLE write_imageui (image2d_t image, int2 coord, uint4 color);
 
-
 /* not implemented 
 void _CL_OVERLOADABLE write_imagef (image2d_t image, int2 coord,
                                     float4 color);
@@ -2214,6 +2224,9 @@ void _CL_OVERLOADABLE write_imageui (image1d_array_t image, int2 coord,
 void _CL_OVERLOADABLE write_imageui (image3d_t image, int4 coord,
                                      uint4 color);
 */
-int get_image_width (image2d_t image);
-int get_image_height (image2d_t image);
 
+int _CL_OVERLOADABLE get_image_width (image2d_t image);
+int _CL_OVERLOADABLE get_image_height (image2d_t image);
+
+int _CL_OVERLOADABLE get_image_width (image3d_t image);
+int _CL_OVERLOADABLE get_image_height (image3d_t image);

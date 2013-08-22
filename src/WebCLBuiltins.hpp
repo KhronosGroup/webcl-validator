@@ -11,6 +11,7 @@ public:
     WebCLBuiltins();
     ~WebCLBuiltins();
 
+    bool isSafe(const std::string &builtin) const;
     bool isUnsafe(const std::string &builtin) const;
     bool isUnsupported(const std::string &builtin) const;
 
@@ -28,6 +29,8 @@ private:
     BuiltinNames unsafeAtomicBuiltins_;
     // Calling is never allowed.
     BuiltinNames unsupportedBuiltins_;
+    // Calling is always safe for these, even if they have pointer args.
+    BuiltinNames safeBuiltins_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLBUILTINS

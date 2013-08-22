@@ -272,30 +272,6 @@ bool WebCLAnalyser::handleVarDecl(clang::VarDecl *decl)
   }
   
   return true;
-
-#if 0
-  
-  if (decl->hasLocalStorage()) {
-    if (decl->isFunctionOrMethodVarDecl()) {
-      info(decl->getLocStart(), "Private variable declaration. Collect!");
-      privateVariables_.insert(decl);
-      if (decl->hasInit() && decl->getType().getTypePtr()->isStructureOrClassType() ) {
-          // TODO: move this restriction to restrictor...
-          info(decl->getInit()->getLocStart(), "Struct got initializer fail for now!");
-      }
-    } else {
-      info(decl->getLocStart(), "Function argument variable! Might be needed so collect these too, but to different bookkeeping than normal local variables.");
-    }
-  } else if (decl->hasGlobalStorage()) {
-    info(decl->getLocStart(), "Global/Local address space variable! Collect to corresponding address space.");
-    DEBUG( std::cerr << "######## Woot:" << decl->getType().getAddressSpace() << "\n"; );
-  } else {
-    info(decl->getLocStart(), "Filter these, so that only globals are left. And maybe some function arguments.");
-  }
-  
-  return true;
-
-#endif
 }
 
 bool WebCLAnalyser::handleMemberExpr(clang::MemberExpr *expr)
@@ -432,8 +408,11 @@ bool WebCLAnalyser::handleCallExpr(clang::CallExpr *expr)
   } else {
     DEBUG( std::cerr << "Looks like it is call to builtin!\n"; );
 
+    // LAUNDRY: better to move this logic to builtins class, this api to call it is really unclear
     const std::string name = callee->getNameInfo().getAsString();
-    if (builtins_.isUnsupported(name)) {
+    if (builtins_.isSafe(name)) {
+      info(expr->getLocStart(), "Builtin was found from safe list.");
+    } else if (builtins_.isUnsupported(name)) {
       error(expr->getLocStart(), "WebCL doesn't support %0.") << name;
       return true;
     } else if (builtins_.isUnsafe(name)) {
@@ -474,14 +453,6 @@ bool WebCLAnalyser::handleRecordDecl(clang::RecordDecl *decl)
 {
   if (!isFromMainFile(decl->getLocStart())) return true;
   info(decl->getLocStart(), "Found struct declaration! Added to list for moving to top.");
-  
-  // LAUNDRY: move these assertions to later on... difficult to do here
-  // assert if struct is anonymous
-  //if (decl->isAnonymousStructOrUnion()) {
-  //  error(decl->getLocStart(), "Anonymous structs should have beed treated by previous passes");
-  //}
-  // TODO: assert if struct declaration instantiate anything
-  
   // add declaration to be moved to top of the module
   typeDeclList_.push_back(decl);
 

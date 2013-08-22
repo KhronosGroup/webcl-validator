@@ -301,6 +301,7 @@ public:
            parmIter != func->param_end(); ++parmIter) {
         
         clang::ParmVarDecl *parm = *parmIter;
+        
         if (parm->getType().getTypePtr()->isPointerType()) {
         
           transformer.addSizeParameter(parm);
@@ -324,7 +325,7 @@ public:
               localLimits_.insert(parm);
               break;
             default:
-              assert(false && "Fail: Kernel arg to private address space!");
+              DEBUG( std::cerr << "Private address space kernel arg pointer! Vendor compiler should catch this if really invalid and not some typedef of valid opencl type.\n"; );
           }
         }
       }
