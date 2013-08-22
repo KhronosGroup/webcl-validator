@@ -679,6 +679,8 @@ void WebCLTransformer::moveToModulePrologue(clang::NamedDecl *decl)
       } else {
         info(decl->getLocStart(), std::string("Adding type " + typeName + " to bookkeeping.").c_str());
         usedTypeNames_.insert(typeName);
+        // looks like this call is required for some other parts to work.
+        cfg_.getNameOfRelocatedTypeDecl(decl);
       }
     }
   
