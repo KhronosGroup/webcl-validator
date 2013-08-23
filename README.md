@@ -23,7 +23,7 @@ This can be done as follows:
         cd /path/
         git clone http://llvm.org/git/llvm.git
         cd /path/llvm/
-        git checkout -b release_32 origin/release_32
+        git checkout release_32
 
         # Get Clang source (with minor changes required by the WebCL Validator)
         
