@@ -8,12 +8,11 @@
 #include "clang/AST/Expr.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Rewrite/Core/Rewriter.h"
-#include "clang/Lex/Lexer.h"
 
 WebCLTransformer::WebCLTransformer(
     clang::CompilerInstance &instance, clang::Rewriter &rewriter)
     : WebCLReporter(instance)
-    , isFilteredRangesDirty_(false)
+    , wclRewriter_(instance, rewriter)
     , cfg_()
     , transformations_(instance, rewriter, cfg_)
 {
@@ -509,12 +508,12 @@ void WebCLTransformer::replaceWithRelocated(clang::DeclRefExpr *use, clang::VarD
   std::string relocatedRef = cfg_.getReferenceToRelocatedVariable(decl);
   std::string original = rewriter.getRewrittenText(use->getSourceRange());
   DEBUG( std::cerr << "Replacing: " << original << " with: " << relocatedRef << "\n"; );
-  replaceText(use->getSourceRange(), relocatedRef);
+  wclRewriter_.replaceText(use->getSourceRange(), relocatedRef);
 }
 
 void WebCLTransformer::removeRelocated(clang::VarDecl *decl)
 {
-  removeText(decl->getSourceRange());
+  wclRewriter_.removeText(decl->getSourceRange());
 }
 
 std::string WebCLTransformer::getClampMacroCall(std::string addr, std::string type, AddressSpaceLimits &limits) {
@@ -573,13 +572,13 @@ void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLim
   std::stringstream memAddress;
   clang::SourceRange baseRange = clang::SourceRange(base->getLocStart(), base->getLocEnd());
   const std::string original = rewriter.getRewrittenText(access->getSourceRange());
-  const std::string baseStr = getTransformedText(baseRange);
+  const std::string baseStr = wclRewriter_.getTransformedText(baseRange);
 
   // TODO: get strings from our rewriter instead of rewriter to get also nested transformations / relocations to work
   memAddress << "(" << baseStr << ")";
   std::string indexStr;
   if (index) {
-    indexStr = getTransformedText(index->getSourceRange());
+    indexStr = wclRewriter_.getTransformedText(index->getSourceRange());
     memAddress << "+(" << indexStr << ")";
   }
   
@@ -601,7 +600,7 @@ void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLim
     access->dump();
     std::cerr << "============================\n\n"; );
   
-  replaceText(access->getSourceRange(), retVal.str());
+  wclRewriter_.replaceText(access->getSourceRange(), retVal.str());
   DEBUG( std::cerr << "============================\n\n"; );
 }
 
@@ -630,10 +629,10 @@ void WebCLTransformer::addRelocationInitializerFromFunctionArg(clang::ParmVarDec
 /// compiler should afterwards optimize these.
 void WebCLTransformer::addRelocationInitializer(clang::VarDecl *decl) {
 
-  clang::SourceLocation addLoc = findLocForNext(decl->getLocEnd(), ';');
+  clang::SourceLocation addLoc = wclRewriter_.findLocForNext(decl->getLocEnd(), ';');
   clang::SourceRange replaceRange(addLoc, addLoc);
   std::stringstream inits;
-  inits << getTransformedText(replaceRange) << ";";
+  inits << wclRewriter_.getTransformedText(replaceRange) << ";";
 
   // we have to assign arrays with memcpy
   if (decl->getType().getTypePtr()->isArrayType()) {
@@ -641,7 +640,7 @@ void WebCLTransformer::addRelocationInitializer(clang::VarDecl *decl) {
   } else {
     inits << cfg_.getReferenceToRelocatedVariable(decl) << " = " << decl->getNameAsString() << ";";
   }
-  replaceText(replaceRange, inits.str());
+  wclRewriter_.replaceText(replaceRange, inits.str());
 
 }
 
@@ -684,7 +683,7 @@ void WebCLTransformer::moveToModulePrologue(clang::NamedDecl *decl)
   
     clang::Rewriter &rewriter = transformations_.getRewriter();
     const std::string typedefText = rewriter.getRewrittenText(decl->getSourceRange());
-    removeText(decl->getSourceRange());
+    wclRewriter_.removeText(decl->getSourceRange());
     modulePrologue_ << typedefText << ";\n\n";
 }
 
@@ -694,16 +693,15 @@ void WebCLTransformer::flushQueuedTransformations() {
   
   clang::tooling::Replacements replacements;
   // go through modifications and replace them to source
-  for (RangeModificationsFilter::iterator i = filteredModifiedRanges().begin();
-       i != filteredModifiedRanges().end(); i++) {
+  WebCLRewriter::ModificationMap &replacementMap = wclRewriter_.modifiedRanges();
+  for (WebCLRewriter::ModificationMap::iterator i = replacementMap.begin(); i != replacementMap.end(); i++) {
     
-    clang::SourceLocation startLoc =
-        clang::SourceLocation::getFromRawEncoding(i->first);
-    clang::SourceLocation endLoc =
-        clang::SourceLocation::getFromRawEncoding(i->second);
+    clang::SourceLocation startLoc = i->first.first;
+    clang::SourceLocation endLoc = i->first.second;
+    std::string replacement = i->second;
     replacements.insert(clang::tooling::Replacement(rewriter.getSourceMgr(),
                                                     clang::CharSourceRange::getTokenRange(startLoc, endLoc),
-                                                    modifiedRanges_[*i]));
+                                                    replacement));
   }
 
   clang::tooling::applyAllReplacements(replacements, rewriter);
@@ -733,30 +731,30 @@ void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)
     std::string parameter = cfg_.addressSpaceRecordType_ + " *" + cfg_.addressSpaceRecordName_;
 
     if (decl->getNumParams() > 0) {
-      clang::SourceLocation addLoc = findLocForNext(decl->getLocStart(), '(');
+      clang::SourceLocation addLoc = wclRewriter_.findLocForNext(decl->getLocStart(), '(');
       clang::SourceRange addRange = clang::SourceRange(addLoc, addLoc);
       std::string replacement = transformations_.getRewriter().getRewrittenText(addRange) + parameter + ", ";
-      replaceText(addRange, replacement);
+      wclRewriter_.replaceText(addRange, replacement);
     } else {
       // in case of empty args, we need to replcace content inside parenthesis
       // empty params might be e.g. (void)
       clang::TypeLoc typeLoc = decl->getTypeSourceInfo()->getTypeLoc();
       clang::FunctionTypeLoc *funTypeLoc = llvm::dyn_cast<clang::FunctionTypeLoc>(&typeLoc);
       clang::SourceRange addRange(funTypeLoc->getLParenLoc(), funTypeLoc->getRParenLoc());
-      replaceText(addRange, "(" + parameter + ")");
+      wclRewriter_.replaceText(addRange, "(" + parameter + ")");
     }
 }
 
 void WebCLTransformer::addRecordArgument(clang::CallExpr *call)
 {
-  clang::SourceLocation addLoc = findLocForNext(call->getLocStart(), '(');
+  clang::SourceLocation addLoc = wclRewriter_.findLocForNext(call->getLocStart(), '(');
   std::string allocsArg = cfg_.addressSpaceRecordName_;
   if (call->getNumArgs() > 0) {
     allocsArg += ", ";
   }
   clang::SourceRange addRange = clang::SourceRange(addLoc, addLoc);
   allocsArg = transformations_.getRewriter().getRewrittenText(addRange) + allocsArg;
-  replaceText(addRange, allocsArg);
+  wclRewriter_.replaceText(addRange, allocsArg);
 }
 
 void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
@@ -765,234 +763,6 @@ void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
         decl,
         new WebCLSizeParameterInsertion(
             transformations_, decl));
-}
-
-/// \brief Finds source location of next token which starts with given char
-clang::SourceLocation WebCLTransformer::findLocForNext(clang::SourceLocation startLoc, char charToFind) {
-  
-  // if we could use matchers to find these locations would be better
-  const clang::SourceManager &SM = instance_.getSourceManager();
-  std::pair<clang::FileID, unsigned> locInfo = SM.getDecomposedLoc(startLoc);
-  bool invalidTemp = false;
-  clang::StringRef file = SM.getBufferData(locInfo.first, &invalidTemp);
-  assert(invalidTemp == false);
-  const char *tokenBegin = file.data() + locInfo.second;
-  
-  clang::Lexer lexer(SM.getLocForStartOfFile(locInfo.first), instance_.getLangOpts(),
-                     file.begin(), tokenBegin, file.end());
-  
-  // just raw find for next semicolon and get SourceLocation
-  const char* endOfFile = SM.getCharacterData(SM.getLocForEndOfFile(locInfo.first));
-  const char* charPos = SM.getCharacterData(startLoc);
-  
-  while (*charPos != charToFind && charPos < endOfFile) {
-    clang::SourceLocation currLoc = lexer.getSourceLocation(charPos);
-    int currLength = clang::Lexer::MeasureTokenLength(currLoc, SM, instance_.getLangOpts());
-    // at least advance one char
-    if (currLength == 0) {
-      currLength = 1;
-    }
-    charPos += currLength;
-    // std::cerr << "Curr token:" << transformations_.getRewriter().getRewrittenText(clang::SourceRange(currLoc, currLoc)) << "\n";
-  };
-  
-  return lexer.getSourceLocation(charPos);
-}
-
-// FUTURE: this text editing should be encapsulated to separate class, since it is really providing the
-//         low level support for modifying the sources. Also implemenatation can be made whole lot
-//         smarter afterwards
-
-void WebCLTransformer::removeText(clang::SourceRange range) {
-  isFilteredRangesDirty_ = true;
-  clang::Rewriter &rewriter = transformations_.getRewriter();
-  DEBUG( std::cerr << "Remove SourceLoc " << range.getBegin().getRawEncoding() << ":" << range.getEnd().getRawEncoding() << " " << rewriter.getRewrittenText(range) << "\n"; );
-  replaceText(range, "");
-}
-
-void WebCLTransformer::replaceText(clang::SourceRange range, std::string text) {
-  isFilteredRangesDirty_ = true;
-  clang::Rewriter &rewriter = transformations_.getRewriter();
-  int rawStart = range.getBegin().getRawEncoding();
-  int rawEnd = range.getEnd().getRawEncoding();
-  modifiedRanges_[ModifiedRange(rawStart, rawEnd)] = text;
-  DEBUG( std::cerr << "Replace SourceLoc " << rawStart << ":" << rawEnd << " " << rewriter.getRewrittenText(range) << " with: " << text << "\n"; );
-}
-
-WebCLTransformer::RangeModificationsFilter& WebCLTransformer::filteredModifiedRanges() {
-
-  // filter nested ranges out from added range modifications
-  if (isFilteredRangesDirty_) {
-    filteredModifiedRanges_.clear();
-
-    int currentStart = -1;
-    int biggestEnd = -1;
-    
-    // find out only toplevel ranges without nested areas
-    for (RangeModifications::iterator i = modifiedRanges_.begin(); i != modifiedRanges_.end(); i++) {
-      
-      // DEBUG( std::cerr << "Range " << i->first.first << ":" << i->first.second << " = " << i->second << "\n"; );
-      
-      if (i->first.first < biggestEnd) {
-        // DEBUG( std::cerr << "Skipping: " << "\n"; );
-        continue;
-      }
-      
-      if (currentStart != i->first.first) {
-        if (currentStart != -1) {
-          // This is a big vague because
-          // area size might be zero in location ids
-          // if current area cannot overlap earlier or if no earlier or it does not overlap => add area
-          if (currentStart != biggestEnd ||
-              filteredModifiedRanges_.empty() ||
-              currentStart != filteredModifiedRanges_.rbegin()->second) {
-            // DEBUG( std::cerr << "Added range: " << currentStart << ":" << biggestEnd << "\n"; );
-            filteredModifiedRanges_.insert(ModifiedRange(currentStart, biggestEnd));
-          }
-        }
-        currentStart = i->first.first;
-      }
-      
-      biggestEnd = i->first.second;
-    }
-    
-    // if last currentStart, biggestEnd is not nested... this is a bit nasty because source location start and end might be
-    // the same which is a big ambigious...
-    if (currentStart != biggestEnd ||
-        filteredModifiedRanges_.empty() ||
-        currentStart != filteredModifiedRanges_.rbegin()->second) {
-      // DEBUG( std::cerr << "Added range: " << currentStart << ":" << biggestEnd << "\n"; );
-      filteredModifiedRanges_.insert(ModifiedRange(currentStart, biggestEnd));
-    }    
-  }
-  isFilteredRangesDirty_ = false;
-  return filteredModifiedRanges_;
-}
-
-std::string WebCLTransformer::getTransformedText(clang::SourceRange range) {
-
-  // TODO: make sure that transformed text gets also insertions... !!!!!!!! but how in case if the same area has insertion
-  //       and replacements? (in that case do not replace insertion)
-  
-  clang::Rewriter &rewriter = transformations_.getRewriter();
-
-  int rawStart = range.getBegin().getRawEncoding();
-  int rawEnd = range.getEnd().getRawEncoding();
-
-  RangeModifications::iterator start =
-    modifiedRanges_.lower_bound(ModifiedRange(rawStart, rawStart));
-  
-  RangeModifications::iterator end =
-    modifiedRanges_.upper_bound(ModifiedRange(rawEnd, rawEnd));
-
-  std::string retVal;
-  
-  // if there is exact match, return it
-  if (modifiedRanges_.count(ModifiedRange(rawStart, rawEnd))) {
-    retVal = modifiedRanges_[ModifiedRange(rawStart, rawEnd)];
-  } else if (start == end) {
-    // if no matches and start == end get from rewriter
-    retVal = rewriter.getRewrittenText(range);
-  } else {
-
-    // splits source rawStart and rawEnd to pieces which are read from either modified areas table or from original source
-
-    // TODO: refactor to use filteredModifiedRanges() like flushing does
-    // ===== start of filtering nested modified ranges =====
-    int currentStart = -1;
-    int biggestEnd = -1;
-    std::vector<ModifiedRange> filteredRanges;
-    
-    // find out only toplevel ranges without nested areas
-    for (RangeModifications::iterator i = start; i != end; i++) {
-
-      DEBUG( std::cerr << "Range " << i->first.first << ":" << i->first.second << " = " << i->second << "\n"; );
-      
-      if (i->first.first < biggestEnd) {
-        DEBUG( std::cerr << "Skipping: " << "\n"; );
-        continue;
-      }
-      
-      if (currentStart != i->first.first) {
-        if (currentStart != -1) {
-          // This is a big vague because
-          // area size might be zero in location ids
-          // if current area cannot overlap earlier or if no earlier or it does not overlap => add area
-          if (currentStart != biggestEnd ||
-              filteredRanges.empty() ||
-              currentStart != filteredRanges.back().second) {
-            DEBUG( std::cerr << "Added range: " << currentStart << ":" << biggestEnd << "\n"; );
-            filteredRanges.push_back(ModifiedRange(currentStart, biggestEnd));
-          }
-        }
-        currentStart = i->first.first;
-      }
-      
-      biggestEnd = i->first.second;
-    }
-
-    // if last currentStart, biggestEnd is not nested... this is a bit nasty because source location start and end might be
-    // the same which is a big ambigious...
-    if (currentStart != biggestEnd ||
-        filteredRanges.empty() ||
-        currentStart != filteredRanges.back().second) {
-      DEBUG( std::cerr << "Added range: " << currentStart << ":" << biggestEnd << "\n"; );
-      filteredRanges.push_back(ModifiedRange(currentStart, biggestEnd));
-    }
-    
-    // ===== end of filtering =====
-    
-    // NOTE: easier way to do following could be to get first the whole range as string and then just replace
-    // filtered modified ranges, whose original length and start index is easy to find out
-    
-    std::stringstream result;
-    // concat pieces from original sources and replacements from rawStart to rawEnd
-    int current = rawStart;
-    bool offsetStartLoc = false;
-    
-    for (unsigned i = 0; i < filteredRanges.size(); i++) {
-      ModifiedRange range = filteredRanges[i];
-      if (range.first != current) {
-        // get range from rewriter current, range.first
-        clang::SourceLocation startLoc = clang::SourceLocation::getFromRawEncoding(current);
-        clang::SourceLocation endLoc = clang::SourceLocation::getFromRawEncoding(range.first);
-        int endLocSize = rewriter.getRangeSize(clang::SourceRange(endLoc, endLoc));
-        int startLocSize = 0;
-        if (offsetStartLoc) {
-          startLocSize = rewriter.getRangeSize(clang::SourceRange(startLoc, startLoc));
-        }
-        // get source and exclude start and end tokens in case if they were already included
-        // in modified range.
-        std::string source = rewriter.getRewrittenText(clang::SourceRange(startLoc, endLoc));
-        DEBUG( std::cerr << "Source (" << startLoc.getRawEncoding() << ":" << endLoc.getRawEncoding() << "): "
-                         << source.substr(startLocSize, source.length() - startLocSize - endLocSize) << "\n"; );
-        
-        result << source.substr(startLocSize, source.length() - startLocSize - endLocSize);
-      }
-      // get range.first, range.second from our bookkeeping
-      result << modifiedRanges_[ModifiedRange(range.first, range.second)];
-      current = range.second;
-      offsetStartLoc = true;
-      DEBUG( std::cerr << "Result (" << range.first << ":" << range.second << "): " << modifiedRanges_[ModifiedRange(range.first, range.second)] << "\n"; );
-    }
-    
-    // get rest from sources if we have not yet rendered until end
-    if (current != rawEnd) {
-      clang::SourceLocation startLoc = clang::SourceLocation::getFromRawEncoding(current);
-      clang::SourceLocation endLoc = clang::SourceLocation::getFromRawEncoding(rawEnd);
-      assert(offsetStartLoc);
-      int startLocSize = rewriter.getRangeSize(clang::SourceRange(startLoc, startLoc));
-      std::string source = rewriter.getRewrittenText(clang::SourceRange(startLoc, endLoc));
-      result << source.substr(startLocSize);
-      DEBUG( std::cerr << "Result (" << startLoc.getRawEncoding() << ":" << endLoc.getRawEncoding() << "): " << source.substr(startLocSize) << "\n"; );
-    }
-
-    retVal = result.str();
-  }
-  
-  std::cerr << "Get SourceLoc " << rawStart << ":" << rawEnd << " : " << retVal << "\n";
-
-  return retVal;
 }
 
 bool WebCLTransformer::rewritePrologue()
@@ -1153,7 +923,7 @@ void WebCLTransformer::emitVariableInitialization(
         return;
     }
 
-    const std::string original = getTransformedText(init->getSourceRange());
+    const std::string original = wclRewriter_.getTransformedText(init->getSourceRange());
     out << original;
 }
 

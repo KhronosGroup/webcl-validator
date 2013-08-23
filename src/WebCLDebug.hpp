@@ -1,3 +1,5 @@
+#ifndef WEBCLVALIDATOR_WEBCLDEBUG
+#define WEBCLVALIDATOR_WEBCLDEBUG
 
 #define DEBUG 1
 
@@ -8,4 +10,6 @@
 #else
 #undef DEBUG
 #define DEBUG(x) ;
+#endif
+
 #endif
