@@ -83,7 +83,17 @@ private:
 /// and still query modified rewritten text.
 ///
 /// Doesn't apply replacements directly, but collects them and leaves original
-/// SourceLocations untouched.
+/// SourceLocations untouched. Current implementation works in cases where
+/// all the replacements are done from deepest first and wider after that etc.
+/// overlapping replacements are not supported at all.
+///
+/// e.g. consider following are 5 replacements a,b,c,d and e
+///
+/// <start>----a1---b1--c1-c2--------b2---a2-----d1---e1---e2---d2---<eof>
+///
+/// To make them correclty replacements must be applied in order
+/// c,b,a,e,d and afterwads there cannot be any more replacements inside area
+/// a1-a2 or d1-d2, however those exact ranges can be still rewritten. 
 class WebCLRewriter {
 public:
   
@@ -108,11 +118,11 @@ public:
   /// \brief if for asked source range has been added transformations, return
   ///
   /// Returns ransformed result like rewriters getRewrittenText. Combines on the
-  /// fly original and modified ranges from requested range.
+  /// fly original data from source and modified ranges from requested range.
   ///
-  /// e.g. if location is [20, 50] we would find all transformations inside is
-  ///      [20,22], [25,30], [33,45] and before that all transformations inside
-  ///      those ranges [34,37] etc..
+  /// NOTE: If requested range is *inside* any replaced range this might
+  ///       return wrong results.
+  ///
   std::string getTransformedText(clang::SourceRange range);
 
   /// \brief Get modified source ranges and replacements.
@@ -134,12 +144,17 @@ private:
   typedef std::set<ModifiedRange> RangeModificationsFilter;
 
   /// \brief Returns toplevel modifications to allow applying them to source.
+  /// Updates list filteredModifiedRanges_ if there has been new replacements
+  /// after the last call.
   RangeModificationsFilter& filteredModifiedRanges();
   
+  /// \brief Map of all replacements.
   RangeModifications modifiedRanges_;
+
+  /// \brief Set of toplevel replacements which are not nested inside any other replacement.
   RangeModificationsFilter filteredModifiedRanges_;
 
-  /// State if we should regenerate the filtered ranges data
+  /// \brie State if we should regenerate the filtered ranges data
   bool isFilteredRangesDirty_;
   
   /// \brief Used to deliver modification list data outside of this class.
