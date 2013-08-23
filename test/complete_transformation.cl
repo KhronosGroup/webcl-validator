@@ -1,6 +1,10 @@
 // RUN: cat %s | %opencl-validator
 // RUN: %webcl-validator %s 2>/dev/null | grep -v "Processing\|CHECK" | %opencl-validator
 // RUN: %webcl-validator %s | grep -v CHECK | %FileCheck %s
+// RUN: cat %s | %kernel-runner  --kernel awesomize --global float4 50 --global float4 50 --constant float4 50 --local float4 1024 --gcount 50 | grep "2,16,-128,0,55,-59,0,-75,38,0,-63,53,0,91,41,0,76,2,0,-108,-119,0,106,44,0,-105,125,0,82,-77,0,100,5,0,4,5,0,-60,-77,0,73,125,0,37,44,0,88,-119,0,25,0"
+// RUN: %webcl-validator %s 2>/dev/null | grep -v "Processing\|CHECK" | %kernel-runner  --kernel awesomize --global float4 50 --global float4 50 --constant float4 50 --local float4 1024 --gcount 50 --webcl | grep "2,16,-128,0,55,-59,0,-75,38,0,-63,53,0,91,41,0,76,2,0,-108,-119,0,106,44,0,-105,125,0,82,-77,0,100,5,0,4,5,0,-60,-77,0,73,125,0,37,44,0,88,-119,0,25,0"
+
+// TODO: this fails badly with POCL. Is it POCL bug or test code?
 
 typedef struct {
     float table[3];
@@ -40,6 +44,7 @@ __local float4* flip_to_awesomeness(size_t wgid, size_t wgsize, __local float4* 
  * scratch size should be the same that work group size is.
  */
 __kernel void awesomize(
+    __global char* kernel_runner_output,
     __global float4* input,  
     __global float4* output,
     __constant float4* factors,
@@ -68,17 +73,21 @@ __kernel void awesomize(
     __local size_t lottery_winner;
 
     init_scratch(gid, wgid, &private_struct, input, factors, scratch);
-    lottery_winner = gid;
     barrier(CLK_LOCAL_MEM_FENCE);
 
     if (gid == 0) {
 #ifdef __PLATFORM_AMD__
-        output[0] = lottery_winner + (*input).x + private_struct.table[2];
+        output[0] = (*input).x + private_struct.table[2];
 #else
-        output[0] = lottery_winner + input->x + private_struct.table[2];
+        output[0] = input->x + private_struct.table[2];
 #endif
     } else {
         output[gid] = (*flip_to_awesomeness(wgid, wgsize, scratch))*base_factor;
     }
+
+    //float output_float = output[gid].x;
+    //unsigned expotent = (*((unsigned*)(&output_float))>>22)&0xff;
+    // kernel_runner_output[gid%1024] = expotent;
+    kernel_runner_output[gid%1024] = (unsigned)(output[gid].x)%201;
 }
 
