@@ -121,11 +121,8 @@ void WebCLNamelessStructHandler::run(
 
 WebCLRenamedStructRelocator::WebCLRenamedStructRelocator(
     clang::CompilerInstance &instance,
-    clang::Rewriter &rewriter,
-    WebCLTransformerConfiguration &cfg)
+    clang::Rewriter &rewriter)
     : WebCLMatcher(instance)
-    , rewriter_(rewriter)
-    , cfg_(cfg)
     , innerStructBinding_("inner")
     , outerStructBinding_("outer")
     , contextBinding_("context")
@@ -178,8 +175,6 @@ void WebCLRenamedStructRelocator::prepare(clang::ast_matchers::MatchFinder &find
 
 clang::tooling::Replacements &WebCLRenamedStructRelocator::complete()
 {
-    clang::SourceManager &manager = rewriter_.getSourceMgr();
-
     size_t i = innerStructs_.size();
     while (i) {
         RenamedStruct &innerStruct = innerStructs_.at(--i);
@@ -192,6 +187,7 @@ clang::tooling::Replacements &WebCLRenamedStructRelocator::complete()
         completeRenamedStruct(outerStruct.first, outerStruct.second, true);
     }
 
+    clang::SourceManager &manager = instance_.getSourceManager();
     for (Introductions::iterator it = introductions_.begin();
          it != introductions_.end(); ++it) {
         clang::tooling::Replacement replacement(

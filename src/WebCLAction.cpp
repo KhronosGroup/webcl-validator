@@ -248,7 +248,7 @@ void WebCLMatcher2Action::ExecuteAction()
 {
     clang::CompilerInstance &instance = getCompilerInstance();
 
-    WebCLRenamedStructRelocator renamedStructRelocator(instance, *rewriter_, cfg_);
+    WebCLRenamedStructRelocator renamedStructRelocator(instance, *rewriter_);
 
     renamedStructRelocator.prepare(finder_);
     ParseAST(instance.getPreprocessor(), consumer_, instance.getASTContext());
