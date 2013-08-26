@@ -6,6 +6,7 @@
 #include <iostream>
 #include <iterator>
 
+#include <cstring>
 
 namespace
 {
