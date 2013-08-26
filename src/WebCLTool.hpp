@@ -21,6 +21,9 @@ class WebCLActionFactory;
 ///
 /// Validating in multiple stages makes the transformations of each
 /// stage less complex.
+///
+/// \see WebCLAction
+/// \see WebCLArguments
 class WebCLTool : public clang::tooling::FrontendActionFactory
 {
 public:
@@ -50,6 +53,8 @@ protected:
 };
 
 /// Runs preprocessing stage. Takes the user source file as input.
+///
+/// \see WebCLPreprocessorAction
 class WebCLPreprocessorTool : public WebCLTool
 {
 public:
@@ -63,6 +68,8 @@ public:
 
 /// Runs first stage of AST matcher based transformations. Takes the
 /// output of preprocessing stage as input.
+///
+/// \see WebCLMatcher1Action
 class WebCLMatcher1Tool : public WebCLTool
 {
 public:
@@ -76,6 +83,8 @@ public:
 
 /// Runs second stage of AST matcher based transformations. Takes the
 /// output of previous AST matcher stage as input.
+///
+/// \see WebCLMatcher2Action
 class WebCLMatcher2Tool : public WebCLTool
 {
 public:
@@ -89,6 +98,8 @@ public:
 
 /// Runs memory access validation algorithm. Takes the output of last
 /// AST matcher stage as input.
+///
+/// \see WebCLValidatorAction
 class WebCLValidatorTool : public WebCLTool
 {
 public:
