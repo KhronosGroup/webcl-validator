@@ -11,18 +11,16 @@ class WebCLConsumer : public clang::ASTConsumer
 public:
 
     explicit WebCLConsumer(
-        clang::CompilerInstance &instance, clang::Rewriter &rewriter);
+        clang::CompilerInstance &instance, clang::Rewriter &rewriter,
+        WebCLTransformer &transformer);
     ~WebCLConsumer();
 
     /// \see ASTConsumer::HandleTranslationUnit
     virtual void HandleTranslationUnit(clang::ASTContext &context);
 
-    void setTransformer(WebCLTransformer &transformer);
-
 private:
 
     typedef std::list<WebCLVisitor*> Visitors;
-    typedef std::list<WebCLTransformingVisitor*> TransformingVisitors;
 
     template <typename VisitorSequence>
     void traverse(VisitorSequence &sequence, clang::ASTContext &context);
@@ -34,9 +32,9 @@ private:
     Visitors checkingVisitors_;
 
     WebCLValidatorPrinter printer_;
-    TransformingVisitors transformingVisitors_;
+    Visitors transformingVisitors_;
 
-    WebCLTransformer *transformer_;
+    WebCLTransformer &transformer_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLCONSUMER

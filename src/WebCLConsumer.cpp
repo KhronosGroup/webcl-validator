@@ -6,14 +6,15 @@
 #include "WebCLDebug.hpp"
 
 WebCLConsumer::WebCLConsumer(
-    clang::CompilerInstance &instance, clang::Rewriter &rewriter)
+    clang::CompilerInstance &instance, clang::Rewriter &rewriter,
+    WebCLTransformer &transformer)
     : clang::ASTConsumer()
     , restrictor_(instance)
     , analyser_(instance)
     , checkingVisitors_()
-    , printer_(instance, rewriter)
+    , printer_(instance, rewriter, transformer)
     , transformingVisitors_()
-    , transformer_(NULL)
+    , transformer_(transformer)
 {
     // Push in reverse order.
     checkingVisitors_.push_front(&analyser_);
@@ -498,8 +499,6 @@ private:
 
 void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
 {
-    assert(transformer_ != NULL);
-  
     traverse(checkingVisitors_, context);
 
     // Introduce changes in way that after every step we still have correclty
@@ -513,24 +512,24 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
 
     // Class that for now just moves all the  typedefs
     // and defines to start of program
-    InputNormaliser inputNormaliser(analyser_, *transformer_);
+    InputNormaliser inputNormaliser(analyser_, transformer_);
 
     // Collect and organize all the information from analyser_ to create
     // view to different address spaces and to provide replacements for
     // replaced variable references in first stage just create types and collect
     // information about the address spaces for kernel initialization
     // code generation
-    AddressSpaceHandler addressSpaceHandler(analyser_, *transformer_);
+    AddressSpaceHandler addressSpaceHandler(analyser_, transformer_);
   
     // Fixes kernel arguments and injects kernel initialization code writes limit
     // struct typedefs according to address spaces and kernel arguments
     // also writes initialization code for local and private memory
-    KernelHandler kernelHandler(analyser_, *transformer_, addressSpaceHandler);
+    KernelHandler kernelHandler(analyser_, transformer_, addressSpaceHandler);
   
     // Fixes all the function signatures and calls of internal helper functions
     // with additional wcl_allocs arg
     if (kernelHandler.hasProgramAllocations(addressSpaceHandler)) {
-      HelperFunctionHandler helperFunctionHandler(analyser_, *transformer_);
+      HelperFunctionHandler helperFunctionHandler(analyser_, transformer_);
     }
   
     // Now that limits and all new address spaces are created do the replacements
@@ -543,7 +542,7 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
     // Emits pointer checks for all memory accesses and injects
     // required check macro definitions to prolog.
     MemoryAccessHandler memoryAccessHandler(
-          analyser_, *transformer_, kernelHandler, context);
+          analyser_, transformer_, kernelHandler, context);
   
     // TODO: make sure that when we are calling kernel, that we have enough
     // memory allocated to do all the memory accesses
@@ -553,16 +552,6 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
     //         safe calls and adds safe implementations to source.
   
     traverse(transformingVisitors_, context);
-}
-
-void WebCLConsumer::setTransformer(WebCLTransformer &transformer)
-{
-    transformer_= &transformer;
-    for (TransformingVisitors::iterator i = transformingVisitors_.begin();
-         i != transformingVisitors_.end(); ++i) {
-        WebCLTransformingVisitor *visitor = (*i);
-        visitor->setTransformer(transformer);
-    }
 }
 
 template <typename VisitorSequence>

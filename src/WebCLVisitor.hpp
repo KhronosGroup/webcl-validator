@@ -234,15 +234,4 @@ private:
   WebCLBuiltins   builtins_;
 };
 
-
-/// \brief Common base for transforming visitors.
-class WebCLTransformingVisitor : public WebCLVisitor
-                               , public WebCLTransformerClient
-{
-public:
-
-    explicit WebCLTransformingVisitor(clang::CompilerInstance &instance);
-    virtual ~WebCLTransformingVisitor();
-};
-
 #endif // WEBCLVALIDATOR_WEBCLVISITOR

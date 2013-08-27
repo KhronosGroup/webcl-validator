@@ -154,18 +154,6 @@ bool WebCLVisitor::handleForStmt(clang::ForStmt *stmt) {
   return true;
 }
 
-// WebCLTransformingVisitor
-
-WebCLTransformingVisitor::WebCLTransformingVisitor(clang::CompilerInstance &instance)
-    : WebCLVisitor(instance)
-    , WebCLTransformerClient()
-{
-}
-
-WebCLTransformingVisitor::~WebCLTransformingVisitor()
-{
-}
-
 // WebCLRestrictor
 
 WebCLRestrictor::WebCLRestrictor(clang::CompilerInstance &instance)

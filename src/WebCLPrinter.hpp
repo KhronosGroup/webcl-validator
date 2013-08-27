@@ -27,12 +27,13 @@ protected:
 
 /// \brief Transforms and prints original WebCL C source file.
 class WebCLValidatorPrinter : public WebCLPrinter
-                            , public WebCLTransformingVisitor
+                            , public WebCLVisitor
 {
 public:
 
     WebCLValidatorPrinter(
-        clang::CompilerInstance &instance, clang::Rewriter &rewriter);
+        clang::CompilerInstance &instance, clang::Rewriter &rewriter,
+        WebCLTransformer &transformer);
     ~WebCLValidatorPrinter();
 
     /// Apply transformations to original WebCL C source. If the
@@ -41,6 +42,10 @@ public:
     ///
     /// \see WebCLVisitor::handleTranslationUnitDecl
     virtual bool handleTranslationUnitDecl(clang::TranslationUnitDecl *decl);
+
+private:
+
+    WebCLTransformer &transformer_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLPRINTER

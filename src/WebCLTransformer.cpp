@@ -903,25 +903,3 @@ void WebCLTransformer::emitVariableInitialization(
     const std::string original = wclRewriter_.getTransformedText(init->getSourceRange());
     out << original;
 }
-
-// WebCLTransformerClient
-
-WebCLTransformerClient::WebCLTransformerClient()
-    : transformer_(0)
-{
-}
-
-WebCLTransformerClient::~WebCLTransformerClient()
-{
-}
-
-WebCLTransformer& WebCLTransformerClient::getTransformer()
-{
-    assert(transformer_);
-    return *transformer_;
-}
-
-void WebCLTransformerClient::setTransformer(WebCLTransformer &transformer)
-{
-    transformer_ = &transformer;
-}

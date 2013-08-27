@@ -317,9 +317,15 @@ bool WebCLValidatorAction::initialize(clang::CompilerInstance &instance)
         return false;
     }
 
+    transformer_ = new WebCLTransformer(instance, *rewriter_);
+    if (!transformer_) {
+        reporter_->fatal("Internal error. Can't create AST transformer.\n");
+        return false;
+    }
+
     // Consumer must be allocated dynamically. The framework deletes
     // it.
-    consumer_ = new WebCLConsumer(instance, *rewriter_);
+    consumer_ = new WebCLConsumer(instance, *rewriter_, *transformer_);
     if (!consumer_) {
         reporter_->fatal("Internal error. Can't create AST consumer.\n");
         return false;
@@ -332,12 +338,5 @@ bool WebCLValidatorAction::initialize(clang::CompilerInstance &instance)
         return false;
     }
 
-    transformer_ = new WebCLTransformer(instance, *rewriter_);
-    if (!transformer_) {
-        reporter_->fatal("Internal error. Can't create AST transformer.\n");
-        return false;
-    }
-
-    consumer_->setTransformer(*transformer_);
     return true;
 }
