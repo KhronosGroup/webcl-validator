@@ -30,8 +30,9 @@ private:
     /// Indicate that a named object needs to be uniquely renamed.
     unsigned int assign(const clang::NamedDecl *decl);
 
-    /// Maps object to serial number '#'. The object is renamed as
-    /// 'prefix#_name'. Needed so that object can be renamed quickly.
+    /// Maps object to serial number '#'. The object could be renamed
+    /// as '_wcl#_name' or '_Wcl#Name' depending on the used prefix
+    /// and separator. Needed so that object can be renamed quickly.
     typedef std::map<const clang::NamedDecl*, unsigned int> Serials;
     Serials serials_;
     /// Maps object name to number of identically named objects. The
@@ -40,9 +41,11 @@ private:
     typedef std::map<const std::string, unsigned int> Counts;
     Counts counts_;
 
-    // Freely chosen prefix for renamed variables.
+    // Freely chosen prefix for renamed variables. Usually '_wcl' or
+    // '_Wcl'.
     const std::string prefix_;
-    // Separates generated prefix from user defined name.
+    // Separates generated prefix from user defined name. Usually '_'
+    // or ''.
     const std::string separator_;
 };
 
