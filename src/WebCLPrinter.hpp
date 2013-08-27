@@ -15,11 +15,13 @@ public:
     WebCLPrinter(clang::Rewriter &rewriter);
     virtual ~WebCLPrinter();
 
-    /// \brief Output rewritten results.
+    /// \brief Output rewritten results. Optionally insert text at the
+    /// beginning of output to describe validation stage for example.
     bool print(llvm::raw_ostream &out, const std::string &comment);
 
 protected:
 
+    /// Stores transformations.
     clang::Rewriter &rewriter_;
 };
 
