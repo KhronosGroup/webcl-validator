@@ -28,8 +28,6 @@ add_clang_executable(
   WebCLRenamer.cpp
   WebCLReporter.cpp
   WebCLTool.cpp
-  WebCLTransformation.cpp
-  WebCLTransformations.cpp
   WebCLTransformer.cpp
   WebCLTransformerConfiguration.cpp
   WebCLVisitor.cpp

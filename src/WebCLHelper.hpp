@@ -99,11 +99,6 @@ public:
   
   WebCLRewriter(clang::CompilerInstance &instance, clang::Rewriter &rewriter);
 
-  /// \brief Map of modified source ranges and corresponding replacements.
-  typedef std::pair< clang::SourceLocation, clang::SourceLocation > WclSourceRange;
-  
-  typedef std::map<WclSourceRange, std::string> ModificationMap;
-  
   /// \brief Looks char by char forward until the position where next
   /// requested character is found from original source.
   clang::SourceLocation findLocForNext(clang::SourceLocation startLoc,
@@ -111,9 +106,15 @@ public:
   
   /// \brief Removes given range.
   void removeText(clang::SourceRange range);
-  
+
+  /// \brief Inserts text at given location.
+  void insertText(clang::SourceLocation location, const std::string &text);
+
   /// \brief Replaces given range.
-  void replaceText(clang::SourceRange range, std::string text);
+  void replaceText(clang::SourceRange range, const std::string &text);
+
+  /// \return Original unmodified text from the given range.
+  std::string getOriginalText(clang::SourceRange range);
 
   /// \brief if for asked source range has been added transformations, return
   ///
@@ -125,23 +126,30 @@ public:
   ///
   std::string getTransformedText(clang::SourceRange range);
 
-  /// \brief Get modified source ranges and replacements.
-  ///
-  /// Returns only toplevel modifications to be easily delegated to rewriter.
-  /// each call might regenerate underlying map, so get map once for getting
-  /// e.g. begin and end iterators.
-  ModificationMap& modifiedRanges();
-  
+  /// Applies transformations.
+  void applyTransformations();
+
 private:
+
   clang::CompilerInstance &instance_;
   clang::Rewriter &rewriter_;
   
   typedef std::pair< int, int >                  ModifiedRange;
   typedef std::map< ModifiedRange, std::string > RangeModifications;
 
+  /// \brief Map of modified source ranges and corresponding replacements.
+  typedef std::pair< clang::SourceLocation, clang::SourceLocation > WclSourceRange;
+  typedef std::map<WclSourceRange, std::string> ModificationMap;
   // filtered ranges, which has only the top level modifications and does not
   // include nested ones (top level should already contain nested changes as string)
   typedef std::set<ModifiedRange> RangeModificationsFilter;
+
+  /// \brief Get modified source ranges and replacements.
+  ///
+  /// Returns only toplevel modifications to be easily delegated to rewriter.
+  /// each call might regenerate underlying map, so get map once for getting
+  /// e.g. begin and end iterators.
+  ModificationMap& modifiedRanges();
 
   /// \brief Returns toplevel modifications to allow applying them to source.
   /// Updates list filteredModifiedRanges_ if there has been new replacements
@@ -154,13 +162,11 @@ private:
   /// \brief Set of toplevel replacements which are not nested inside any other replacement.
   RangeModificationsFilter filteredModifiedRanges_;
 
-  /// \brie State if we should regenerate the filtered ranges data
+  /// \brief State if we should regenerate the filtered ranges data
   bool isFilteredRangesDirty_;
-  
+
   /// \brief Used to deliver modification list data outside of this class.
   ModificationMap externalMap_;
-
 };
-
 
 #endif // WEBCLVALIDATOR_WEBCLHELPER

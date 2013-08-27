@@ -3,11 +3,7 @@
 
 #include "WebCLHelper.hpp"
 #include "WebCLReporter.hpp"
-#include "WebCLTransformations.hpp"
 #include "WebCLTransformerConfiguration.hpp"
-
-// Replacement class and applyAllReplacements function
-#include "clang/Tooling/Refactoring.h"
 
 #include <map>
 #include <set>
@@ -220,8 +216,6 @@ private:
     bool rewritePrologue();
     /// \brief Inserts kernel prologue to start of module.
     bool rewriteKernelPrologue(const clang::FunctionDecl *kernel);
-    /// \brief Applies WebCLTransformations to result... TODO: remove transformation classes..
-    bool rewriteTransformations();
 
     /// \brief Writes variable declaration as a struct field declaration to stream.
     void emitVarDeclToStruct(std::ostream &out, const clang::VarDecl *decl);
@@ -252,7 +246,6 @@ private:
         std::ostream &out, clang::QualType qualType);
 
     WebCLTransformerConfiguration cfg_;
-    WebCLTransformations transformations_;
 };
 
 /// \brief Mixin class for making AST transformations available after

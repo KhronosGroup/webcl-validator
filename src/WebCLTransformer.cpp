@@ -1,4 +1,3 @@
-#include "WebCLTransformation.hpp"
 #include "WebCLTransformer.hpp"
 #include "general.h"
 
@@ -6,6 +5,7 @@
 
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
+#include "clang/AST/TypeLoc.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
@@ -14,7 +14,6 @@ WebCLTransformer::WebCLTransformer(
     : WebCLReporter(instance)
     , wclRewriter_(instance, rewriter)
     , cfg_()
-    , transformations_(instance, rewriter, cfg_)
 {
 }
 
@@ -42,7 +41,6 @@ bool WebCLTransformer::rewrite()
       kernelOrFunction.insert(iter->first);
     }
   
-    clang::Rewriter &rewriter = transformations_.getRewriter();
     for (std::set<const clang::FunctionDecl*>::iterator iter = kernelOrFunction.begin();
          iter != kernelOrFunction.end(); iter++) {
 
@@ -60,10 +58,10 @@ bool WebCLTransformer::rewrite()
       if (functionPrologues_.count(func) > 0) {
         prologue << functionPrologue(func).str();
       }
-      rewriter.InsertTextAfter(body->getLocStart().getLocWithOffset(1), prologue.str());
+      wclRewriter_.insertText(body->getLocStart().getLocWithOffset(1), prologue.str());
     }
 
-    status = status && rewriteTransformations();
+    flushQueuedTransformations();
 
     return status;
 }
@@ -503,10 +501,10 @@ void WebCLTransformer::createLocalAreaZeroing(
     out << cfg_.indentation_ << "// <= Local memory zeroing.\n";
 }
 
-void WebCLTransformer::replaceWithRelocated(clang::DeclRefExpr *use, clang::VarDecl *decl) {
-  clang::Rewriter &rewriter = transformations_.getRewriter();
+void WebCLTransformer::replaceWithRelocated(clang::DeclRefExpr *use, clang::VarDecl *decl)
+{
   std::string relocatedRef = cfg_.getReferenceToRelocatedVariable(decl);
-  std::string original = rewriter.getRewrittenText(use->getSourceRange());
+  std::string original = wclRewriter_.getOriginalText(use->getSourceRange());
   DEBUG( std::cerr << "Replacing: " << original << " with: " << relocatedRef << "\n"; );
   wclRewriter_.replaceText(use->getSourceRange(), relocatedRef);
 }
@@ -567,11 +565,9 @@ void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLim
     base = unary->getSubExpr();
   }
 
-  clang::Rewriter &rewriter = transformations_.getRewriter();
-
   std::stringstream memAddress;
   clang::SourceRange baseRange = clang::SourceRange(base->getLocStart(), base->getLocEnd());
-  const std::string original = rewriter.getRewrittenText(access->getSourceRange());
+  const std::string original = wclRewriter_.getOriginalText(access->getSourceRange());
   const std::string baseStr = wclRewriter_.getTransformedText(baseRange);
 
   // TODO: get strings from our rewriter instead of rewriter to get also nested transformations / relocations to work
@@ -681,30 +677,14 @@ void WebCLTransformer::moveToModulePrologue(clang::NamedDecl *decl)
       }
     }
   
-    clang::Rewriter &rewriter = transformations_.getRewriter();
-    const std::string typedefText = rewriter.getRewrittenText(decl->getSourceRange());
+    const std::string typedefText = wclRewriter_.getOriginalText(decl->getSourceRange());
     wclRewriter_.removeText(decl->getSourceRange());
     modulePrologue_ << typedefText << ";\n\n";
 }
 
-void WebCLTransformer::flushQueuedTransformations() {
-  
-  clang::Rewriter &rewriter = transformations_.getRewriter();
-  
-  clang::tooling::Replacements replacements;
-  // go through modifications and replace them to source
-  WebCLRewriter::ModificationMap &replacementMap = wclRewriter_.modifiedRanges();
-  for (WebCLRewriter::ModificationMap::iterator i = replacementMap.begin(); i != replacementMap.end(); i++) {
-    
-    clang::SourceLocation startLoc = i->first.first;
-    clang::SourceLocation endLoc = i->first.second;
-    std::string replacement = i->second;
-    replacements.insert(clang::tooling::Replacement(rewriter.getSourceMgr(),
-                                                    clang::CharSourceRange::getTokenRange(startLoc, endLoc),
-                                                    replacement));
-  }
-
-  clang::tooling::applyAllReplacements(replacements, rewriter);
+void WebCLTransformer::flushQueuedTransformations()
+{
+    wclRewriter_.applyTransformations();
 }
 
 void WebCLTransformer::addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
@@ -733,7 +713,7 @@ void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)
     if (decl->getNumParams() > 0) {
       clang::SourceLocation addLoc = wclRewriter_.findLocForNext(decl->getLocStart(), '(');
       clang::SourceRange addRange = clang::SourceRange(addLoc, addLoc);
-      std::string replacement = transformations_.getRewriter().getRewrittenText(addRange) + parameter + ", ";
+      std::string replacement = wclRewriter_.getOriginalText(addRange) + parameter + ", ";
       wclRewriter_.replaceText(addRange, replacement);
     } else {
       // in case of empty args, we need to replcace content inside parenthesis
@@ -753,28 +733,32 @@ void WebCLTransformer::addRecordArgument(clang::CallExpr *call)
     allocsArg += ", ";
   }
   clang::SourceRange addRange = clang::SourceRange(addLoc, addLoc);
-  allocsArg = transformations_.getRewriter().getRewrittenText(addRange) + allocsArg;
+  allocsArg = wclRewriter_.getOriginalText(addRange) + allocsArg;
   wclRewriter_.replaceText(addRange, allocsArg);
 }
 
 void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
 {
-    transformations_.addTransformation(
-        decl,
-        new WebCLSizeParameterInsertion(
-            transformations_, decl));
+    const std::string parameter =
+        cfg_.sizeParameterType_ + " " + cfg_.getNameOfSizeParameter(decl);
+    const std::string replacement =
+        wclRewriter_.getOriginalText(decl->getSourceRange()) + ", " + parameter;
+    wclRewriter_.replaceText(
+        decl->getSourceRange(),
+        replacement);
 }
 
 bool WebCLTransformer::rewritePrologue()
 {
-    clang::Rewriter &rewriter = transformations_.getRewriter();
-    clang::SourceManager &manager = rewriter.getSourceMgr();
-    clang::FileID file = manager.getMainFileID();
-    clang::SourceLocation start = manager.getLocForStartOfFile(file);
     std::ostringstream out;
     emitPrologue(out);
-    // Rewriter returns false on success.
-    return !rewriter.InsertTextAfter(start, out.str());
+
+    clang::SourceManager &manager = instance_.getSourceManager();
+    clang::FileID file = manager.getMainFileID();
+    clang::SourceLocation start = manager.getLocForStartOfFile(file);
+
+    wclRewriter_.insertText(start, out.str());
+    return true;
 }
 
 bool WebCLTransformer::rewriteKernelPrologue(const clang::FunctionDecl *kernel)
@@ -784,18 +768,11 @@ bool WebCLTransformer::rewriteKernelPrologue(const clang::FunctionDecl *kernel)
         error(kernel->getLocStart(), "Kernel has no body.");
         return false;
     }
-  
-    clang::Rewriter &rewriter = transformations_.getRewriter();
-    // Rewriter returns false on success.
-    return !rewriter.InsertTextAfter(
-        body->getLocStart().getLocWithOffset(1), kernelPrologue(kernel).str());
-}
 
-bool WebCLTransformer::rewriteTransformations()
-{
-    bool status = true;
-    status = status && transformations_.rewriteTransformations();
-    return status;
+    wclRewriter_.insertText(
+        body->getLocStart().getLocWithOffset(1),
+        kernelPrologue(kernel).str());
+    return true;
 }
 
 /// Writes variable declaration to stream as it should be declared inside address space struct.
