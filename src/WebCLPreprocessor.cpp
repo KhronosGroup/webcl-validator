@@ -10,7 +10,6 @@ namespace {
 WebCLPreprocessor::WebCLPreprocessor(clang::CompilerInstance &instance)
     : WebCLReporter(instance)
     , clang::PPCallbacks()
-    , instance_(instance)
     , extensions_()
 {
     extensions_.insert("cl_khr_fp64");

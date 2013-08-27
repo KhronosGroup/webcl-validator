@@ -19,6 +19,7 @@ public:
     ~WebCLPreprocessor();
 
     /// \brief Complain about include directives in main source files.
+    /// Called before AST has been parsed.
     /// \see PPCallbacks::InclusionDirective
     virtual void InclusionDirective(
         clang::SourceLocation HashLoc, const clang::Token &IncludeTok, 
@@ -27,7 +28,8 @@ public:
         llvm::StringRef SearchPath, llvm::StringRef RelativePath,
         const clang::Module *Imported);
 
-    /// \brief Complain about enabled OpenCL extensions.
+    /// \brief Complain about enabled or disabled OpenCL extensions.
+    /// Called when AST is being parsed.
     /// \see PPCallbacks::PragmaOpenCLExtension
     virtual void PragmaOpenCLExtension(
         clang::SourceLocation NameLoc, const clang::IdentifierInfo *Name,
@@ -35,7 +37,6 @@ public:
 
 private:
 
-    clang::CompilerInstance &instance_;
     /// OpenCL extensions that can be enabled.
     std::set<std::string> extensions_;
 };
