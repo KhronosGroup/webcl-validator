@@ -64,7 +64,8 @@ WebCLTransformerConfiguration::~WebCLTransformerConfiguration()
 {
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfAddressSpace(clang::QualType type) const {
+const std::string WebCLTransformerConfiguration::getNameOfAddressSpace(clang::QualType type) const
+{
     return getNameOfAddressSpace(type.getAddressSpace());
 }
 
