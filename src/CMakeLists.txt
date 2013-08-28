@@ -24,6 +24,7 @@ add_clang_executable(
   WebCLConsumer.cpp
   WebCLHelper.cpp
   WebCLMatcher.cpp
+  WebCLPass.cpp
   WebCLPreprocessor.cpp
   WebCLPrinter.cpp
   WebCLRenamer.cpp

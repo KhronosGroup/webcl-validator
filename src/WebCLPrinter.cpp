@@ -1,4 +1,5 @@
 #include "WebCLPrinter.hpp"
+#include "WebCLTransformer.hpp"
 
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Rewrite/Core/Rewriter.h"
@@ -35,10 +36,10 @@ bool WebCLPrinter::print(llvm::raw_ostream &out, const std::string &comment)
 
 WebCLValidatorPrinter::WebCLValidatorPrinter(
     clang::CompilerInstance &instance, clang::Rewriter &rewriter,
-    WebCLTransformer &transformer)
-    : WebCLPrinter(rewriter)
-    , WebCLVisitor(instance)
-    , transformer_(transformer)
+    WebCLAnalyser &analyser, WebCLTransformer &transformer)
+    : WebCLReporter(instance)
+    , WebCLPrinter(rewriter)
+    , WebCLPass(analyser, transformer)
 {
 }
 
@@ -46,16 +47,14 @@ WebCLValidatorPrinter::~WebCLValidatorPrinter()
 {
 }
 
-bool WebCLValidatorPrinter::handleTranslationUnitDecl(clang::TranslationUnitDecl *decl)
+void WebCLValidatorPrinter::run(clang::ASTContext &context)
 {
     // Apply transformer modifications.
     if (!transformer_.rewrite())
-        return false;
+        return;
 
     if (!print(llvm::outs(), "// WebCL Validator: validation stage.\n")) {
         fatal("Can't print validator output.");
-        return false;
+        return;
     }
-
-    return true;
 }

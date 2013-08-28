@@ -1,7 +1,8 @@
 #ifndef WEBCLVALIDATOR_WEBCLPRINTER
 #define WEBCLVALIDATOR_WEBCLPRINTER
 
-#include "WebCLVisitor.hpp"
+#include "WebCLReporter.hpp"
+#include "WebCLPass.hpp"
 
 namespace llvm {
     class raw_ostream;
@@ -26,26 +27,23 @@ protected:
 };
 
 /// \brief Transforms and prints original WebCL C source file.
-class WebCLValidatorPrinter : public WebCLPrinter
-                            , public WebCLVisitor
+class WebCLValidatorPrinter : public WebCLReporter
+                            , public WebCLPrinter
+                            , public WebCLPass
 {
 public:
 
     WebCLValidatorPrinter(
         clang::CompilerInstance &instance, clang::Rewriter &rewriter,
-        WebCLTransformer &transformer);
-    ~WebCLValidatorPrinter();
+        WebCLAnalyser &analyser, WebCLTransformer &transformer);
+    virtual ~WebCLValidatorPrinter();
 
     /// Apply transformations to original WebCL C source. If the
     /// transformations apply succesfully, print the transformed
     /// source to standard output.
     ///
-    /// \see WebCLVisitor::handleTranslationUnitDecl
-    virtual bool handleTranslationUnitDecl(clang::TranslationUnitDecl *decl);
-
-private:
-
-    WebCLTransformer &transformer_;
+    /// \see WebCLPass
+    virtual void run(clang::ASTContext &context);
 };
 
 #endif // WEBCLVALIDATOR_WEBCLPRINTER

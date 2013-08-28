@@ -47,8 +47,8 @@ typedef std::vector<clang::VarDecl*> AddressSpaceInfo;
 /// and initializers for it.
 class AddressSpaceLimits {
 public:
-  AddressSpaceLimits(bool hasStaticallyAllocatedLimits, unsigned addressSpace) :
-    hasStaticallyAllocatedLimits_(hasStaticallyAllocatedLimits)
+  AddressSpaceLimits(unsigned addressSpace) :
+    hasStaticallyAllocatedLimits_(false)
   , addressSpace_(addressSpace){};
   ~AddressSpaceLimits() {};
   
@@ -56,6 +56,9 @@ public:
     dynamicLimits_.push_back(parm);
   };
 
+  void setStaticLimits(bool hasStaticLimits) {
+      hasStaticallyAllocatedLimits_ = hasStaticLimits;
+  };
   bool hasStaticallyAllocatedLimits() { return hasStaticallyAllocatedLimits_; };
   unsigned getAddressSpace() { return addressSpace_; };
   

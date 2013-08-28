@@ -1,6 +1,7 @@
 #ifndef WEBCLVALIDATOR_WEBCLCONSUMER
 #define WEBCLVALIDATOR_WEBCLCONSUMER
 
+#include "WebCLPass.hpp"
 #include "WebCLPrinter.hpp"
 #include "WebCLVisitor.hpp"
 
@@ -21,20 +22,27 @@ public:
 private:
 
     typedef std::list<WebCLVisitor*> Visitors;
+    typedef std::list<WebCLPass*> Passes;
 
-    template <typename VisitorSequence>
-    void traverse(VisitorSequence &sequence, clang::ASTContext &context);
+    void traverse(Visitors &sequence, clang::ASTContext &context);
+    void traverse(Passes &sequence, clang::ASTContext &context);
 
     bool hasErrors(clang::ASTContext &context) const;
 
+    WebCLTransformer &transformer_;
+
+    /// Checking visitors.
     WebCLRestrictor restrictor_;
     WebCLAnalyser analyser_;
     Visitors checkingVisitors_;
 
+    /// Transforming passes.
+    WebCLInputNormaliser inputNormaliser_;
+    WebCLAddressSpaceHandler addressSpaceHandler_;
+    WebCLKernelHandler kernelHandler_;
+    WebCLMemoryAccessHandler memoryAccessHandler_;
     WebCLValidatorPrinter printer_;
-    Visitors transformingVisitors_;
-
-    WebCLTransformer &transformer_;
+    Passes transformingPasses_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLCONSUMER
