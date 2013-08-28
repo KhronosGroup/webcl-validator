@@ -8,7 +8,7 @@
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Refactoring.h"
 
-class WebCLTransformerConfiguration;
+class WebCLConfiguration;
 
 namespace clang {
     class Rewriter;
@@ -80,7 +80,7 @@ public:
 
     WebCLNamelessStructRenamer(
         clang::CompilerInstance &instance,
-        WebCLTransformerConfiguration &cfg);
+        WebCLConfiguration &cfg);
     virtual ~WebCLNamelessStructRenamer();
 
     /// \see WebCLMatcher
@@ -100,7 +100,7 @@ private:
     clang::SourceLocation getNameLoc(const clang::RecordDecl *decl) const;
 
     /// Interface for generating structure names.
-    WebCLTransformerConfiguration &cfg_;
+    WebCLConfiguration &cfg_;
     /// Key for finding a structure definition from a match.
     const char *namelessStructBinding_;
     /// Selects anonymous and nameless structure definitions.

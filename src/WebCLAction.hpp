@@ -2,7 +2,7 @@
 #define WEBCLVALIDATOR_WEBCLACTION
 
 #include "WebCLConsumer.hpp"
-#include "WebCLTransformerConfiguration.hpp"
+#include "WebCLConfiguration.hpp"
 
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Frontend/FrontendAction.h"
@@ -90,7 +90,7 @@ protected:
     /// Stores transformations.
     clang::Rewriter *rewriter_;
     /// Interface for naming conventions.
-    WebCLTransformerConfiguration cfg_;
+    WebCLConfiguration cfg_;
     /// Outputs stored transformations.
     WebCLPrinter *printer_;
 };

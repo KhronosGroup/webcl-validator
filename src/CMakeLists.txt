@@ -20,6 +20,7 @@ add_clang_executable(
   WebCLAction.cpp
   WebCLArguments.cpp
   WebCLBuiltins.cpp
+  WebCLConfiguration.cpp
   WebCLConsumer.cpp
   WebCLHelper.cpp
   WebCLMatcher.cpp
@@ -29,7 +30,6 @@ add_clang_executable(
   WebCLReporter.cpp
   WebCLTool.cpp
   WebCLTransformer.cpp
-  WebCLTransformerConfiguration.cpp
   WebCLVisitor.cpp
 )
 

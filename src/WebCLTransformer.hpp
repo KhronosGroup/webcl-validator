@@ -3,7 +3,7 @@
 
 #include "WebCLHelper.hpp"
 #include "WebCLReporter.hpp"
-#include "WebCLTransformerConfiguration.hpp"
+#include "WebCLConfiguration.hpp"
 
 #include <map>
 #include <set>
@@ -245,7 +245,7 @@ private:
     void emitTypeNullInitialization(
         std::ostream &out, clang::QualType qualType);
 
-    WebCLTransformerConfiguration cfg_;
+    WebCLConfiguration cfg_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLTRANSFORMER

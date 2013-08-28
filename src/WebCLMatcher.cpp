@@ -1,5 +1,5 @@
 #include "WebCLMatcher.hpp"
-#include "WebCLTransformerConfiguration.hpp"
+#include "WebCLConfiguration.hpp"
 
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Rewrite/Core/Rewriter.h"
@@ -48,7 +48,7 @@ WebCLMatchHandler<Matcher>::~WebCLMatchHandler()
 
 WebCLNamelessStructRenamer::WebCLNamelessStructRenamer(
     clang::CompilerInstance &instance,
-    WebCLTransformerConfiguration &cfg)
+    WebCLConfiguration &cfg)
     : WebCLMatcher(instance)
     , cfg_(cfg)
     , namelessStructBinding_("nameless-struct")

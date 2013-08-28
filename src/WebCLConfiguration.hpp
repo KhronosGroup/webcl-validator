@@ -1,5 +1,5 @@
-#ifndef WEBCLVALIDATOR_WEBCLTRANSFORMERCONFIGURATION
-#define WEBCLVALIDATOR_WEBCLTRANSFORMERCONFIGURATION
+#ifndef WEBCLVALIDATOR_WEBCLCONFIGURATION
+#define WEBCLVALIDATOR_WEBCLCONFIGURATION
 
 #include "WebCLRenamer.hpp"
 
@@ -16,12 +16,12 @@ namespace clang {
 
 /// A helper class for producing strings that occur repeatedly in
 /// generated code.
-class WebCLTransformerConfiguration
+class WebCLConfiguration
 {
 public:
 
-    WebCLTransformerConfiguration();
-    ~WebCLTransformerConfiguration();
+    WebCLConfiguration();
+    ~WebCLConfiguration();
 
     /// \return Address space name (with the leading "__" omitted).
     const std::string getNameOfAddressSpace(clang::QualType type) const;
@@ -177,4 +177,4 @@ private:
     WebCLRenamer anonymousStructureRenamer_;
 };
 
-#endif // WEBCLVALIDATOR_WEBCLTRANSFORMERCONFIGURATION
+#endif // WEBCLVALIDATOR_WEBCLCONFIGURATION

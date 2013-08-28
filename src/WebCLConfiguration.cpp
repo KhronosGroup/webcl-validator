@@ -1,11 +1,11 @@
-#include "WebCLTransformerConfiguration.hpp"
+#include "WebCLConfiguration.hpp"
 
 #include "clang/AST/Decl.h"
 #include "clang/Basic/AddressSpaces.h"
 
 #include <sstream>
 
-WebCLTransformerConfiguration::WebCLTransformerConfiguration()
+WebCLConfiguration::WebCLConfiguration()
     : typePrefix_("_Wcl")
     , variablePrefix_("_wcl")
     , macroPrefix_("_WCL")
@@ -60,16 +60,16 @@ WebCLTransformerConfiguration::WebCLTransformerConfiguration()
 {
 }
 
-WebCLTransformerConfiguration::~WebCLTransformerConfiguration()
+WebCLConfiguration::~WebCLConfiguration()
 {
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfAddressSpace(clang::QualType type) const
+const std::string WebCLConfiguration::getNameOfAddressSpace(clang::QualType type) const
 {
     return getNameOfAddressSpace(type.getAddressSpace());
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfAddressSpace(unsigned addressSpaceNumber) const
+const std::string WebCLConfiguration::getNameOfAddressSpace(unsigned addressSpaceNumber) const
 {
     switch (addressSpaceNumber) {
       case clang::LangAS::opencl_global:
@@ -83,12 +83,12 @@ const std::string WebCLTransformerConfiguration::getNameOfAddressSpace(unsigned 
       }
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfAddressSpaceNull (unsigned addressSpaceNum) const
+const std::string WebCLConfiguration::getNameOfAddressSpaceNull (unsigned addressSpaceNum) const
 {
       return variablePrefix_ + "_" + getNameOfAddressSpace(addressSpaceNum) + "_null";
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfAddressSpaceNullPtrRef(unsigned addressSpaceNum) const
+const std::string WebCLConfiguration::getNameOfAddressSpaceNullPtrRef(unsigned addressSpaceNum) const
 {
     const std::string prefix = addressSpaceRecordName_ + "->";
 
@@ -105,7 +105,7 @@ const std::string WebCLTransformerConfiguration::getNameOfAddressSpaceNullPtrRef
     return prefix + privateNullField_;
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfLimitCheckMacro(
+const std::string WebCLConfiguration::getNameOfLimitCheckMacro(
     unsigned addressSpaceNum, int limitCount) const
 {
     std::stringstream result;
@@ -113,47 +113,47 @@ const std::string WebCLTransformerConfiguration::getNameOfLimitCheckMacro(
     return result.str();
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfSizeMacro(const std::string &asName) const
+const std::string WebCLConfiguration::getNameOfSizeMacro(const std::string &asName) const
 {
   const std::string name =
   macroPrefix_ + "_ADDRESS_SPACE_" + asName + "_MIN";
   return name;
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfSizeMacro(unsigned addressSpaceNum) const
+const std::string WebCLConfiguration::getNameOfSizeMacro(unsigned addressSpaceNum) const
 {
   return getNameOfSizeMacro(getNameOfAddressSpace(addressSpaceNum));
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfAlignMacro(const std::string &asName) const
+const std::string WebCLConfiguration::getNameOfAlignMacro(const std::string &asName) const
 {
   const std::string name =
   macroPrefix_ + "_ADDRESS_SPACE_" + asName + "_ALIGNMENT";
   return name;
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfAlignMacro(unsigned addressSpaceNum) const
+const std::string WebCLConfiguration::getNameOfAlignMacro(unsigned addressSpaceNum) const
 {
   return getNameOfAlignMacro(getNameOfAddressSpace(addressSpaceNum));
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfLimitMacro() const
+const std::string WebCLConfiguration::getNameOfLimitMacro() const
 {
     return macroPrefix_ + "_LAST";
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfType(clang::QualType type) const
+const std::string WebCLConfiguration::getNameOfType(clang::QualType type) const
 {
     return type.getUnqualifiedType().getAsString();
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfSizeParameter(clang::ParmVarDecl *decl) const
+const std::string WebCLConfiguration::getNameOfSizeParameter(clang::ParmVarDecl *decl) const
 {
     const std::string name = decl->getName();
     return variablePrefix_ + "_" + name + "_size";
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfAnonymousStructure(const clang::RecordDecl *decl)
+const std::string WebCLConfiguration::getNameOfAnonymousStructure(const clang::RecordDecl *decl)
 {
     static const std::string name = "Struct";
 
@@ -162,7 +162,7 @@ const std::string WebCLTransformerConfiguration::getNameOfAnonymousStructure(con
     return out.str();
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfRelocatedTypeDecl(const clang::NamedDecl *decl)
+const std::string WebCLConfiguration::getNameOfRelocatedTypeDecl(const clang::NamedDecl *decl)
 {
     std::ostringstream out;
 
@@ -178,7 +178,7 @@ const std::string WebCLTransformerConfiguration::getNameOfRelocatedTypeDecl(cons
     return original;
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfRelocatedVariable(const clang::VarDecl *decl)
+const std::string WebCLConfiguration::getNameOfRelocatedVariable(const clang::VarDecl *decl)
 {
     std::ostringstream out;
 
@@ -197,7 +197,7 @@ const std::string WebCLTransformerConfiguration::getNameOfRelocatedVariable(cons
     return out.str();
 }
 
-const std::string WebCLTransformerConfiguration::getNameOfLimitField(
+const std::string WebCLConfiguration::getNameOfLimitField(
     const clang::VarDecl *decl, bool isMax) const
 {
     std::ostringstream out;
@@ -212,7 +212,7 @@ const std::string WebCLTransformerConfiguration::getNameOfLimitField(
     return out.str();
 }
 
-const std::string WebCLTransformerConfiguration::getReferenceToRelocatedVariable(const clang::VarDecl *decl)
+const std::string WebCLConfiguration::getReferenceToRelocatedVariable(const clang::VarDecl *decl)
 {
   std::string prefix;
 
@@ -232,7 +232,7 @@ const std::string WebCLTransformerConfiguration::getReferenceToRelocatedVariable
   return prefix + getNameOfRelocatedVariable(decl);
 }
 
-const std::string WebCLTransformerConfiguration::getIndentation(unsigned int levels) const
+const std::string WebCLConfiguration::getIndentation(unsigned int levels) const
 {
     std::string indentation;
     for (unsigned int i = 0; i < levels; ++i)
@@ -240,7 +240,7 @@ const std::string WebCLTransformerConfiguration::getIndentation(unsigned int lev
     return indentation;
 }
 
-const std::string WebCLTransformerConfiguration::getStaticLimitRef(unsigned addressSpaceNum) const
+const std::string WebCLConfiguration::getStaticLimitRef(unsigned addressSpaceNum) const
 {
     std::string prefix = addressSpaceRecordName_ + "->";
 
@@ -262,7 +262,7 @@ const std::string WebCLTransformerConfiguration::getStaticLimitRef(unsigned addr
     }
 }
 
-const std::string WebCLTransformerConfiguration::getDynamicLimitRef(const clang::VarDecl *decl) const
+const std::string WebCLConfiguration::getDynamicLimitRef(const clang::VarDecl *decl) const
 {
     std::string prefix = addressSpaceRecordName_ + "->";
 
@@ -288,7 +288,7 @@ const std::string WebCLTransformerConfiguration::getDynamicLimitRef(const clang:
     return retVal.str();
 }
 
-const std::string WebCLTransformerConfiguration::getNullLimitRef(unsigned addressSpaceNum) const
+const std::string WebCLConfiguration::getNullLimitRef(unsigned addressSpaceNum) const
 {
     assert(addressSpaceNum == clang::LangAS::opencl_local);
     const std::string localNull = getNameOfAddressSpaceNull(addressSpaceNum);
