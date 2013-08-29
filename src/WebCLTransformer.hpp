@@ -36,7 +36,6 @@ class WebCLTransformation;
 
 /// \brief Performs AST node transformations.
 class WebCLTransformer : public WebCLReporter
-                       , public WebCLHelper
 {
 public:
 
