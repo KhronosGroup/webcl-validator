@@ -1,3 +1,4 @@
+#include "WebCLDebug.hpp"
 #include "WebCLPass.hpp"
 #include "WebCLVisitor.hpp"
 

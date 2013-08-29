@@ -8,6 +8,10 @@ namespace llvm {
     class raw_ostream;
 }
 
+namespace clang {
+    class Rewriter;
+}
+
 /// Prints rewriter contents to a file or to standard output.
 class WebCLPrinter
 {

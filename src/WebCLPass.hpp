@@ -3,8 +3,13 @@
 
 #include "WebCLHelper.hpp"
 
+#include <map>
+#include <set>
+
 namespace clang {
     class ASTContext;
+    class Expr;
+    class VarDecl;
 }
 
 class WebCLAnalyser;

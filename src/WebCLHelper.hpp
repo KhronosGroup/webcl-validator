@@ -1,65 +1,64 @@
 #ifndef WEBCLVALIDATOR_WEBCLHELPER
 #define WEBCLVALIDATOR_WEBCLHELPER
 
-#include "WebCLDebug.hpp"
-
-#include "clang/AST/Type.h"
-
-#include <map>
-#include <set>
+#include <vector>
 
 namespace clang {
-    class Expr;
-    class ValueDecl;
-    class VarDecl;
     class ParmVarDecl;
-    class Rewriter;
-    class CompilerInstance;
+    class VarDecl;
 }
 
-/// vector is used after when address space variables are ordered and possible
-/// paddings are added
+/// Represents all relocated variables. The variables are ordered so
+/// that the corresponding address space structure can be padded.
 typedef std::vector<clang::VarDecl*> AddressSpaceInfo;
 
-/// Contains all information of allocated memory of an address space
+/// Represents all disjoint memory areas of an address space.
+/// - Static areas consist of relocated variables.
+/// - Dynamic areas consist of kernel memory object parameters.
 ///
-/// Used to pass information to transformer so that it can write typedefs
-/// and initializers for it.
-class AddressSpaceLimits {
+/// Used to write limit structures and initializers for the address
+/// space.
+class AddressSpaceLimits
+{
 public:
-  AddressSpaceLimits(unsigned addressSpace) :
-    hasStaticallyAllocatedLimits_(false)
-  , addressSpace_(addressSpace){};
-  ~AddressSpaceLimits() {};
-  
-  void insert(clang::ParmVarDecl *parm) {
-    dynamicLimits_.push_back(parm);
-  };
 
-  void setStaticLimits(bool hasStaticLimits) {
-      hasStaticallyAllocatedLimits_ = hasStaticLimits;
-  };
-  bool hasStaticallyAllocatedLimits() { return hasStaticallyAllocatedLimits_; };
-  unsigned getAddressSpace() { return addressSpace_; };
-  
-  bool empty() {
-    return !hasStaticallyAllocatedLimits_ && dynamicLimits_.empty();
-  };
+    AddressSpaceLimits(unsigned addressSpace);
+    ~AddressSpaceLimits();
 
-  unsigned count() {
-    return hasStaticallyAllocatedLimits() ?
-      (dynamicLimits_.size()+1) : dynamicLimits_.size();
-  };
-    
-  typedef std::vector<clang::ParmVarDecl*> LimitList;
-  
-  LimitList& getDynamicLimits() { return dynamicLimits_; };
+    /// Inform about a kernel memory object parameter that represents
+    /// a dynamic memory area.
+    void insert(clang::ParmVarDecl *parm);
+
+    /// Inform whether some address space variables are accessed
+    /// through the address space structure.
+    void setStaticLimits(bool hasStaticLimits);
+    /// \return Whether some address space variables are accessed
+    /// through the address space structure.
+    bool hasStaticallyAllocatedLimits();
+
+    /// \return Address space.
+    unsigned getAddressSpace();
+
+    /// \return Whether the address space has static or dynamic limits.
+    bool empty();
+    /// \return The number of disjoint memory areas in the address
+    /// space.
+    unsigned count();
+
+    /// Disjoint dynamic memory areas.
+    typedef std::vector<clang::ParmVarDecl*> LimitList;
+    // \return Memory object parameters that represent dynamic memory
+    // areas.
+    LimitList &getDynamicLimits();
 
 private:
-  bool hasStaticallyAllocatedLimits_;
-  unsigned addressSpace_;
-  LimitList dynamicLimits_;
-  
+
+    /// Whether variables have been relocated.
+    bool hasStaticLimits_;
+    /// Identifies the address space.
+    unsigned addressSpace_;
+    /// Disjoint memory areas passed as kernel parameters.
+    LimitList dynamicLimits_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLHELPER
