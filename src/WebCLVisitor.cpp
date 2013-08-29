@@ -361,9 +361,6 @@ bool WebCLAnalyser::handleFunctionDecl(clang::FunctionDecl *decl)
 {
   if (!isFromMainFile(decl->getLocStart())) return true;
   
-  // information for e.g. when running through function arguments to which function they belong
-  contextFunction_ = decl;
-
   if (decl->hasAttr<clang::OpenCLKernelAttr>()) {
     // TODO: go through arguments and collect pointers to bookkeeping
     //       create names for limit struct as:
@@ -467,6 +464,66 @@ bool WebCLAnalyser::handleForStmt(clang::ForStmt *stmt) {
     }
   }
   return true;
+}
+
+WebCLAnalyser::FunctionDeclSet &WebCLAnalyser::getKernelFunctions()
+{
+    return kernelFunctions_;
+}
+
+WebCLAnalyser::FunctionDeclSet &WebCLAnalyser::getHelperFunctions()
+{
+    return helperFunctions_;
+}
+
+WebCLAnalyser::CallExprSet &WebCLAnalyser::getInternalCalls()
+{
+    return internalCalls_;
+}
+
+WebCLAnalyser::CallExprSet &WebCLAnalyser::getBuiltinCalls()
+{
+    return builtinCalls_;
+}
+
+WebCLAnalyser::VarDeclSet &WebCLAnalyser::getConstantVariables()
+{
+    return constantVariables_;
+}
+
+WebCLAnalyser::VarDeclSet &WebCLAnalyser::getLocalVariables()
+{
+    return localVariables_;
+}
+
+WebCLAnalyser::VarDeclSet &WebCLAnalyser::getPrivateVariables()
+{
+    return privateVariables_;
+}
+
+WebCLAnalyser::DeclRefExprSet &WebCLAnalyser::getVariableUses()
+{
+    return variableUses_;
+}
+
+WebCLAnalyser::MemoryAccessMap &WebCLAnalyser::getPointerAceesses()
+{
+    return pointerAccesses_;
+}
+
+WebCLAnalyser::TypeDeclList &WebCLAnalyser::getTypeDecls()
+{
+    return typeDeclList_;
+}
+
+bool WebCLAnalyser::hasAddressReferences(clang::VarDecl *decl)
+{
+    return declarationsWithAddressOfAccess_.count(decl) > 0;
+}
+
+bool WebCLAnalyser::isInsideForStmt(clang::VarDecl *decl)
+{
+    return declarationsMadeInForStatements_.count(decl) > 0;
 }
 
 bool WebCLAnalyser::hasUnsafeParameters(clang::FunctionDecl *decl)

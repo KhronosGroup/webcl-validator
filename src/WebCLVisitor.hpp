@@ -14,14 +14,16 @@ namespace clang {
 /// \brief Common base for all AST visitors.
 ///
 /// There are two kinds of visitors:
-/// - Visitors that traverse the AST before transformations. They
-///   check whether a valid OpenCL AST is also a valid WebCL AST.
-/// - Visitors that find nodes to be transformed. When they are sure
-///   that some AST node needs to be transformed, they call
-///   WebCLTransformer services to do the actual transformations.
+/// - Visitors that traverse a valid OpenCL AST to check for errors. They check
+///   whether the OpenCL AST is also a valid WebCL AST.
+/// - Visitors that analyze a valid WebCL AST and collect information
+///   for transformation passes.
+///
+/// This class also replaces Visit-methods of RecursiveASTVisitor with
+/// corresponding polymorphic handle-methods so that it would be
+/// easier to build visitor hierarchies.
 class WebCLVisitor : public WebCLReporter
                    , public clang::RecursiveASTVisitor<WebCLVisitor>
-
 {
 public:
 
@@ -65,7 +67,9 @@ protected:
     virtual bool handleFunctionDecl(clang::FunctionDecl *decl);
     virtual bool handleParmVarDecl(clang::ParmVarDecl *decl);
     virtual bool handleVarDecl(clang::VarDecl *decl);
+
     virtual bool handleDeclStmt(clang::DeclStmt *stmt);
+
     virtual bool handleArraySubscriptExpr(clang::ArraySubscriptExpr *expr);
     virtual bool handleUnaryOperator(clang::UnaryOperator *expr);
     virtual bool handleMemberExpr(clang::MemberExpr *expr);
@@ -90,15 +94,17 @@ public:
 
 private:
 
+    /// Checks that structures aren't passed to kernels.
     void checkStructureParameter(
         clang::FunctionDecl *decl,
         clang::SourceLocation typeLocation, const clang::Type *type);
+    /// Checks that 3D images aren't used.
     void check3dImageParameter(
         clang::FunctionDecl *decl,
         clang::SourceLocation typeLocation, const clang::Type *type);
 };
 
-/// \brief Collects all the information about the source code required for transformations.
+/// \brief Collects all information needed by transformations.
 class WebCLAnalyser : public WebCLVisitor
 {
 public:
@@ -131,50 +137,54 @@ public:
   /// \see WebCLVisitor::handleUnaryOperator
   virtual bool handleUnaryOperator(clang::UnaryOperator *expr);
 
-  /// Collects lists of functions, whose signature must be changed
+  /// Collect functions whose signatures must be changed.
   ///
-  /// - Collects kernels and all pointer arguments
-  /// - Collects all other functions, which will requires wcl_alloc
-  ///   argument to be added
+  /// - Collects kernels and their pointer parameters so that
+  ///   corresponding size parameters can be generated.
+  /// - Collects all helper functions that need to perform memory
+  ///   access checks so that memory allocation parameter can be
+  ///   generated.
   ///
   /// \see WebCLVisitor::handleFunctionDecl
   virtual bool handleFunctionDecl(clang::FunctionDecl *decl);
 
-  /// Collect calls and later on this instance will know if call is made to
-  /// builtin or internal helper.
+  /// Collects builtin and internal helper function calls.
   ///
-  /// - If internal helper need to add wcl_alloc arg to first parameter
-  /// - If not internal helper do not touch
-  /// - FUTURE: if in unsafe builtin list, need to fix to call
-  ///           safe implementation with all possible limits in arguments
-  ///           and create corresponding safe implementation to start of code
+  /// - Internal helper calls may need an extra memory allocation
+  ///   argument.
+  /// - FUTURE: Unsafe builtins require checks for their pointer
+  ///           arguments.
   ///
   /// \see WebCLVisitor::handleCallExpr
   virtual bool handleCallExpr(clang::CallExpr *expr);
   
-  /// Collects all typedef declarations to move them to start of source
+  /// Collects all typedef declarations.
   ///
-  /// - Typedefs needs to be moved up to be able to use them in our
-  ///   address space structures.
+  /// - Typedefs need to be moved on top so that they can be used in
+  ///   our address space structures.
   ///
   /// \see WebCLVisitor::handleTypedefDecl
   virtual bool handleTypedefDecl(clang::TypedefDecl *decl);
-
   
-  /// Collects all struct declarations to move them to start of source
+  /// Collects all structure declarations.
   ///
-  /// - Typedefs needs to be moved up to be able to use them in our
-  ///   address space structures.
+  /// - Structure declarations need to be moved on top so that they
+  ///   can be used in our address space structures.
   ///
   /// \see WebCLVisitor::handleRecordDecl
   virtual bool handleRecordDecl(clang::RecordDecl *decl);
   
-  /// Go through all decl references to see if they need to be fixed
+  /// Collects variable references.
+  ///
+  /// - The reference may need to be modified to point to a relocated
+  ///   variable.
   virtual bool handleDeclRefExpr(clang::DeclRefExpr *expr);
 
+  /// FUTURE: Remove once variable declarations in first for clause
+  ///         have been normalized.
   virtual bool handleForStmt(clang::ForStmt *stmt);
 
-  /// Accessors for data collected by analyser
+  /// Collected nodes.
   typedef std::set<clang::FunctionDecl*> FunctionDeclSet;
   typedef std::set<clang::CallExpr*> CallExprSet;
   typedef std::set<clang::VarDecl*> VarDeclSet;
@@ -186,51 +196,60 @@ public:
   /// each memory access should respect.
   typedef std::map<clang::Expr*, clang::VarDecl*> MemoryAccessMap;
   
-  FunctionDeclSet& getKernelFunctions()  { return kernelFunctions_; };
-  FunctionDeclSet& getHelperFunctions()  { return helperFunctions_; };
-  CallExprSet&     getInternalCalls()     { return internalCalls_; };
-  CallExprSet&     getBuiltinCalls()      { return builtinCalls_; };
-  VarDeclSet&      getConstantVariables() { return constantVariables_; };
-  VarDeclSet&      getLocalVariables()    { return localVariables_; };
-  VarDeclSet&      getPrivateVariables()  { return privateVariables_; };
-  DeclRefExprSet&  getVariableUses()      { return variableUses_; };
-  MemoryAccessMap& getPointerAceesses()   { return pointerAccesses_; };
-  TypeDeclList&    getTypeDecls()         { return typeDeclList_; };
+  /// Accessors for collected data.
+  FunctionDeclSet &getKernelFunctions();
+  FunctionDeclSet &getHelperFunctions();
+  CallExprSet &getInternalCalls();
+  CallExprSet &getBuiltinCalls();
+  VarDeclSet &getConstantVariables();
+  VarDeclSet &getLocalVariables();
+  VarDeclSet &getPrivateVariables();
+  DeclRefExprSet &getVariableUses();
+  MemoryAccessMap &getPointerAceesses();
+  TypeDeclList &getTypeDecls();
 
-  bool hasAddressReferences(clang::VarDecl *decl) {
-    return declarationsWithAddressOfAccess_.count(decl) > 0;
-  };
+  /// \return Whether address of variable is taken.
+  bool hasAddressReferences(clang::VarDecl *decl);
 
-  bool isInsideForStmt(clang::VarDecl *decl) {
-    return declarationsMadeInForStatements_.count(decl) > 0;
-  };
-  
+  /// \return Whether variable has been declared in first for clause.
+  bool isInsideForStmt(clang::VarDecl *decl);
+
 private:
 
-  /// @return Whether a function takes a pointer parameter.
+  /// \return Whether a function takes a pointer parameter.
   bool hasUnsafeParameters(clang::FunctionDecl *decl);
 
+  /// \return Whether a variable is stored in private address space.
   bool isPrivate(clang::VarDecl *decl) const;
+
+  /// Save variable into address space specific variable collection.
   void collectVariable(clang::VarDecl *decl);
 
-  clang::FunctionDecl *contextFunction_;
-  
+  /// User defined kernels.
   FunctionDeclSet kernelFunctions_;
+  /// User defined functions.
   FunctionDeclSet helperFunctions_;
-  CallExprSet     internalCalls_;
-  CallExprSet     builtinCalls_;
-  VarDeclSet      constantVariables_;
-  VarDeclSet      localVariables_;
-  VarDeclSet      privateVariables_;
-  /// set of variables, which has been accessed with &-operator
-  VarDeclSet      declarationsWithAddressOfAccess_;
-  /// set of variables, which has been declared in for( <declaration> ; ; )
-  VarDeclSet      declarationsMadeInForStatements_;
-  /// all uses of variable declarations
-  DeclRefExprSet  variableUses_;
+  /// Calls to user defined functions.
+  CallExprSet internalCalls_;
+  /// Calls to builtin functions.
+  CallExprSet builtinCalls_;
+  /// Variables in constant address space.
+  VarDeclSet constantVariables_;
+  /// Variables in local address space.
+  VarDeclSet localVariables_;
+  /// Variables in private address space.
+  VarDeclSet privateVariables_;
+  /// Variables whose address has been taken with the & operator.
+  VarDeclSet declarationsWithAddressOfAccess_;
+  /// Variables declared in the first for clause.
+  VarDeclSet declarationsMadeInForStatements_;
+  /// All uses of variable declarations.
+  DeclRefExprSet variableUses_;
+  /// Field accesses with -> operator.
   MemoryAccessMap pointerAccesses_;
-  TypeDeclList    typeDeclList_;
-  // all unsupported and unsafe builtins
+  /// Typedefs and record declarations.
+  TypeDeclList typeDeclList_;
+  /// All unsupported and unsafe builtins.
   WebCLBuiltins   builtins_;
 };
 
