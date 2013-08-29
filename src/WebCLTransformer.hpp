@@ -1,19 +1,15 @@
 #ifndef WEBCLVALIDATOR_WEBCLTRANSFORMER
 #define WEBCLVALIDATOR_WEBCLTRANSFORMER
 
+#include "WebCLConfiguration.hpp"
 #include "WebCLHelper.hpp"
 #include "WebCLReporter.hpp"
-#include "WebCLConfiguration.hpp"
+#include "WebCLRewriter.hpp"
 
 #include <map>
 #include <set>
 #include <utility>
 #include <sstream>
-
-#ifdef DEBUG
-#include <iostream>
-
-#endif
 
 namespace clang {
     class ArraySubscriptExpr;

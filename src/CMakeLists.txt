@@ -29,6 +29,7 @@ add_clang_executable(
   WebCLPrinter.cpp
   WebCLRenamer.cpp
   WebCLReporter.cpp
+  WebCLRewriter.cpp
   WebCLTool.cpp
   WebCLTransformer.cpp
   WebCLVisitor.cpp

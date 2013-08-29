@@ -2,8 +2,8 @@
 #define WEBCLVALIDATOR_WEBCLMATCHER
 
 #include "WebCLRenamer.hpp"
-#include "WebCLHelper.hpp"
 #include "WebCLReporter.hpp"
+#include "WebCLRewriter.hpp"
 
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Refactoring.h"
