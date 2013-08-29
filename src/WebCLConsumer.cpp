@@ -20,15 +20,14 @@ WebCLConsumer::WebCLConsumer(
     , printer_(instance, rewriter, analyser_, transformer)
     , passes_()
 {
-    // Push in reverse order.
-    visitors_.push_front(&analyser_);
-    visitors_.push_front(&restrictor_);
-    // Push in reverse order.
-    passes_.push_front(&printer_);
-    passes_.push_front(&memoryAccessHandler_);
-    passes_.push_front(&kernelHandler_);
-    passes_.push_front(&addressSpaceHandler_);
-    passes_.push_front(&inputNormaliser_);
+    visitors_.push_back(&restrictor_);
+    visitors_.push_back(&analyser_);
+
+    passes_.push_back(&inputNormaliser_);
+    passes_.push_back(&addressSpaceHandler_);
+    passes_.push_back(&kernelHandler_);
+    passes_.push_back(&memoryAccessHandler_);
+    passes_.push_back(&printer_);
 }
 
 WebCLConsumer::~WebCLConsumer()

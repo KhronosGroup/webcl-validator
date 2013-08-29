@@ -80,7 +80,6 @@ public:
     WebCLAddressSpaceHandler(WebCLAnalyser &analyser, WebCLTransformer &transformer);
     virtual ~WebCLAddressSpaceHandler();
 
-
     /// Constructs initial information about what kind of address
     /// spaces the program has.
     ///

@@ -41,7 +41,7 @@ private:
     WebCLAnalyser analyser_;
     /// Visitors that check the AST for errors or perform analysis for
     /// transformation passes.
-    typedef std::list<WebCLVisitor*> Visitors;
+    typedef std::vector<WebCLVisitor*> Visitors;
     Visitors visitors_;
 
     /// Transformation passes.
@@ -51,7 +51,7 @@ private:
     WebCLMemoryAccessHandler memoryAccessHandler_;
     WebCLValidatorPrinter printer_;
     /// Passes that generate transformations based on analysis.
-    typedef std::list<WebCLPass*> Passes;
+    typedef std::vector<WebCLPass*> Passes;
     Passes passes_;
 };
 
