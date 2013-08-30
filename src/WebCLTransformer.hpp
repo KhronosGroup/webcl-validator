@@ -24,13 +24,13 @@ namespace clang {
     class DeclRefExpr;
 }
 
-namespace llvm {
-    class APInt;
-}
-
-class WebCLTransformation;
-
-/// \brief Performs AST node transformations.
+/// Performs transformations that need to be done by the memory access
+/// validation algorithm. Doesn't decide what transformations should
+/// be done, but only offers services to cache and emit basic
+/// modifications. It's up to the various transformation passes to
+/// call the services in correct order.
+///
+/// \see WebCLConsumer
 class WebCLTransformer : public WebCLReporter
 {
 public:
@@ -39,205 +39,311 @@ public:
         clang::CompilerInstance &instance, clang::Rewriter &rewriter);
     ~WebCLTransformer();
   
-    /// Applies all AST transformations.
+    /// Applies all AST transformations. All cached modifications are
+    /// flushed to the rewriter.
+    ///
+    /// \return Whether errors were detected. Transformed code
+    /// shouldn't be output if there were errors.
     bool rewrite();
 
-    void createAddressSpaceTypedef(AddressSpaceInfo &as, const std::string &name, const std::string &alignment);
-
+    /// Create address space structure. The structure contains all
+    /// relocated variables of the given address space as fields.
+    void createAddressSpaceTypedef(
+        AddressSpaceInfo &as, const std::string &name, const std::string &alignment);
+    /// Create private address space structure.
+    /// \see createAddressSpaceTypedef
     void createPrivateAddressSpaceTypedef(AddressSpaceInfo &as);
-  
+    /// Create local address space structure.
+    /// \see createAddressSpaceTypedef
     void createLocalAddressSpaceTypedef(AddressSpaceInfo &as);
-  
+    /// Create constant address space structure.
+    /// \see createAddressSpaceTypedef
     void createConstantAddressSpaceTypedef(AddressSpaceInfo &as);
 
+    /// Replace a reference to a relocated variable with a reference
+    /// to the corresponding address space structure field.
     void replaceWithRelocated(clang::DeclRefExpr *use, clang::VarDecl *decl);
-  
+    /// Remove a variable declaration if it's not needed anymore. For
+    /// example, the variable could have been relocated to an address
+    /// space structure and initializations don't depend on it.
     void removeRelocated(clang::VarDecl *decl);
 
+    /// Create a limits structure that contains the begin and end
+    /// addresses of each memory object (in the given address space)
+    /// that was passed to a kernel. The limits structure contains
+    /// also the begin and end addresses of corresponding static
+    /// address space structure.
     void createAddressSpaceLimitsTypedef(
         AddressSpaceLimits &limits, const std::string &name);
-  
+    /// Create limits structure for globals. It contains only dynamic
+    /// limits.
     void createGlobalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);
-  
+    /// Create limits structure for constants. It may contain both
+    /// dynamic and static limits.
     void createConstantAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);
-  
+    /// Create limits structure for locals. It may contain both
+    /// dynamic and static limits.
     void createLocalAddressSpaceLimitsTypedef(AddressSpaceLimits &asLimits);
-  
+
+    // Amends the main allocation structure with a field that contains
+    // limits of all disjoint memory areas. This is done for address
+    // spaces that may contain dynamic limits, i.e. the private
+    // address space is excluded.
     void createAddressSpaceLimitsField(const std::string &type, const std::string &name);
-  
+    /// Amends the main allocation structure with a field that
+    /// contains enough room for the largest pointer access in the
+    /// given address space.
     void createAddressSpaceNullField(
         const std::string &name, unsigned addressSpace);
-  
+    /// Creates the main allocation structure type that holds
+    /// information about all disjoint memory areas as well as
+    /// fallback areas (address space specific null pointers).
     void createProgramAllocationsTypedef(
         AddressSpaceLimits &globalLimits, AddressSpaceLimits &constantLimits,
         AddressSpaceLimits &localLimits, AddressSpaceInfo &privateAs);
-  
+
+    /// Creates the instance that holds all relocated constant
+    /// variables.
     void createConstantAddressSpaceAllocation(AddressSpaceInfo &as);
-  
+    /// Creates an instance that holds all relocated local variables.
+    ///
+    /// FUTURE: Each kernel could have a different kind of allocation
+    ///         structure.
     void createLocalAddressSpaceAllocation(clang::FunctionDecl *kernelFunc);
   
+    /// Creates an initializer for the address space specific limits
+    /// of the main allocation structure. Called for address spaces
+    /// that may contain dynamic limits, i.e. the private address
+    /// space is excluded.
     void createAddressSpaceLimitsInitializer(
         std::ostream &out, clang::FunctionDecl *kernel, AddressSpaceLimits &limits);
-  
-    void createAddressSpaceInitializer(std::ostream& out, AddressSpaceInfo &info);
-
+    /// Creates an allocation with initialization for the instance of
+    /// the main allocation structure.
     void createProgramAllocationsAllocation(
         clang::FunctionDecl *kernelFunc, AddressSpaceLimits &globalLimits,
         AddressSpaceLimits &constantLimits, AddressSpaceLimits &localLimits,
         AddressSpaceInfo &privateAs);
-  
+
+    /// Creates and initializes a variable declaration that holds
+    /// enough space for the largest memory access in the given
+    /// address space.
+    ///
+    /// Used for constants and locals, because those address spaces may
+    /// contain both static and dynamic limits.
     void createAddressSpaceNullAllocation(std::ostream &out, unsigned addressSpace);
-  
+    /// Creates and initializes a fallback area variable for constant
+    /// memory accesses.
     void createConstantAddressSpaceNullAllocation();
-  
+    /// Creates a fallback area variable for local memory accesses.
     void createLocalAddressSpaceNullAllocation(clang::FunctionDecl *kernel);
-  
+    /// Initializes a fallback area for the given address space. Emits
+    /// code to bail out from the kernel if existing memory areas
+    /// aren't big enough to hold the largest memory access in that
+    /// address space.
+    ///
+    /// Used for globals and privates:
+    /// - It's impossible to allocate a separate fallback area
+    ///   variable for globals (there are only dynamic limits).
+    /// - It's shouldn't be necessary to allocate a separate fallback
+    ///   area variable for privates (there are only static limits).
     void initializeAddressSpaceNull(clang::FunctionDecl *kernel, AddressSpaceLimits &limits);
 
     /// \brief Zero a single local memory range.
     void createLocalRangeZeroing(std::ostream &out, const std::string &arguments);
-  
     /// \brief Zero all local memory ranges.
     void createLocalAreaZeroing(clang::FunctionDecl *kernelFunc,
                                 AddressSpaceLimits &localLimits);
-  
+
+    /// Replaces memory access with a checked access. If the access
+    /// doesn't fall within limits of any given disjoint memory areas,
+    /// the fallback area (null pointer) is accessed instead.
     void addMemoryAccessCheck(clang::Expr *access, AddressSpaceLimits &limits);
 
+    /// Adds an initialization row to start of function if relocated
+    /// variable was a function argument.
+    ///
+    /// void foo(int arg)
+    /// {
+    ///     bar(&arg);
+    /// }
+    /// ->
+    /// void foo(_WclProgramAllocations *_wcl_allocs, int arg)
+    /// {
+    ///     _wcl_allocs->pa._wcl_arg = arg;
+    ///     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///     bar(&_wcl_allocs->pa._wcl_arg);
+    /// }
     void addRelocationInitializerFromFunctionArg(clang::ParmVarDecl *parmDecl);
-  
+
+    /// Adds initialization for relocated private variable after
+    /// original variable initialization.
+    ///
+    /// int foo = 1;
+    /// ->
+    /// int foo = 1;
+    /// _wcl_allocs->pa._wcl_foo = foo;
+    ///
+    /// The driver compiler should optimize unused variables (original
+    /// foo) away afterwards.
     void addRelocationInitializer(clang::VarDecl *decl);
-  
+
+    /// Defines a macro that tells what is the largest memory access
+    /// in the given address space. The macro defines this size as
+    /// bytes, not as bits.
     void addMinimumRequiredContinuousAreaLimit(unsigned addressSpace,
                                                unsigned minWidthInBits);
-  
+
+    /// Moves declarations to module prologue.
+    ///
+    /// Expects that declarations are in one of following formats:
+    /// typedef <type> <name>; // any typedef
+    /// struct <name> { ... }; // structure definition
+    /// struct <name>;         // forward declaration of a structure
+    ///
+    /// Normalization passes have already taken care that unsupported
+    /// forms aren't present:
+    /// struct { ... } var; // nameles declaration or instantiation with declaration
     void moveToModulePrologue(clang::NamedDecl *decl);
-  
-    // applies already added transformation to source
+
+    // Applies already added transformation to the source.
     void flushQueuedTransformations();
   
-    // TODO: remove methods which requires storing any model state.
-    //       only allowed state here is how to represent multiple changes.
+    // TODO: Remove methods which require storing any model state.
+    //       The only allowed state should be related to representing
+    //       multiple changes.
   
     /// Inform about a variable that is accessed indirectly with a
     /// pointer. The variable declaration will be moved to a
-    /// corresponding address space record so that indirect accesses
-    /// can be checked.
+    /// corresponding address space structure so that indirect
+    /// accesses can be checked.
     void addRelocatedVariable(clang::DeclStmt *stmt, clang::VarDecl *decl);
 
     /// Modify function parameter declarations:
-    /// function(a, b) -> function(record, a, b)
+    /// function(a, b) -> function(_wcl_allocs, a, b)
     void addRecordParameter(clang::FunctionDecl *decl);
 
     /// Modify arguments passed to a function:
-    /// call(a, b) -> call(wcl_allocs, a, b)
+    /// call(a, b) -> call(_wcl_allocs, a, b)
     void addRecordArgument(clang::CallExpr *expr);
 
     /// Modify kernel parameter declarations:
     /// kernel(a, array, b) -> kernel(a, array, array_size, b)
     void addSizeParameter(clang::ParmVarDecl *decl);
 
-
 private:
-  
+
+    /// Caches source code replacements.
     WebCLRewriter wclRewriter_;
   
-    // Set of all different type clamp macro calls in program.
-    // One pair for each address space and limit count <address space num, limit count>
+    /// Set of all different clamp macro call types in the program. One
+    /// pair for each address space and limit count:
+    /// <address space number, limit count>.
     typedef std::pair< unsigned, unsigned > ClampMacroKey;
-    typedef std::map< const clang::FunctionDecl*, std::stringstream* > FunctionPrologueMap;
     typedef std::set<ClampMacroKey> RequiredMacroSet;
     RequiredMacroSet usedClampMacros_;
+
+    /// Stream for inserting code at the beginning of each kernel or
+    /// helper function.
+    typedef std::map< const clang::FunctionDecl*, std::stringstream* > FunctionPrologueMap;
+    /// Contains only kernels.
     FunctionPrologueMap kernelPrologues_;
+    /// Contains kernels and helper functions.
     FunctionPrologueMap functionPrologues_;
+    /// \return Chosen prologue stream for the given function.
+    ///
+    /// A kernel might have both function and kernel prologue
+    /// streams. Kernel prologue comes before function prologue.
+    std::stringstream& functionPrologue(FunctionPrologueMap &prologues, const clang::FunctionDecl *func);
   
-    // this is stream for things that needs to be absolutely at first in program even before typedefs
+    /// Stream for code that needs to be located at the beginning of
+    /// the transformed program even before typedefs.
     std::stringstream preModulePrologue_;
-    // stream for other initializations at start of module like typedefs and address space structures
+    /// Stream for code at the start of the module like typedefs and
+    /// address space structures.
     std::stringstream modulePrologue_;
   
-    // set to keep track that we are not doing paramRelocationInitializations multiple times
+    /// Set to ensure that we aren't initializing relocated parameters
+    /// multiple times.
     std::set< clang::ParmVarDecl* > parameterRelocationInitializations_;
-    std::set< clang::VarDecl* > privateRelocationInitializations_;
-  
-    // \brief kernel prologue comes before function prologue... kernel might have also functionPrologue
-    std::stringstream& kernelPrologue(const clang::FunctionDecl *kernel) {
-      if (kernelPrologues_.count(kernel) == 0) {
-        kernelPrologues_[kernel] = new std::stringstream();
-      }
-      return *kernelPrologues_[kernel];
-    }
-
-    std::stringstream& functionPrologue(const clang::FunctionDecl *func) {
-      if (functionPrologues_.count(func) == 0) {
-        functionPrologues_[func] = new std::stringstream();
-      }
-      return *functionPrologues_[func];
-    }
-  
+    /// Set to ensure that we don't have multiple type declarations
+    /// with the same name.
     std::set<std::string> usedTypeNames_;
-  
-    // address space, name
-    typedef std::pair<const std::string, const std::string> CheckedType;
-    typedef std::set<CheckedType> CheckedTypes;
-    typedef std::set<const clang::VarDecl*> VariableDeclarations;
-    typedef std::set<const clang::FunctionDecl*> Kernels;
 
-    /// returns address space structure e.g. { float *a; uint b; }
-    /// also drops address space qualifiers from original declarations
+    /// \return Address space structure, e.g. { float *a; uint b; }.
+    ///
+    /// Also drops address space qualifiers from original variable
+    /// declarations.
     std::string addressSpaceInfoAsStruct(AddressSpaceInfo &as);
-  
-    /// returns initializer for as e.g. { NULL, 5 }
+    /// \return Initializer for address space structure, e.g. { NULL, 5 }.
     std::string addressSpaceInitializer(AddressSpaceInfo &as);
-    void createAddressSpaceNullInitializer(std::ostream &out, unsigned addressSpace);
 
-    // returns address space limits info as structure
+    /// \return Address space limits structure. Contains begin and end
+    /// pointer fields for each disjoint memory area in the address
+    /// space.
     std::string addressSpaceLimitsAsStruct(AddressSpaceLimits &asLimits);
-
-    /// returns initializer for limits e.g.
-    /// {
-    ///     &((&wcl_constan_allocs)[0]), &((&wcl_constan_allocs)[1]),
-    ///     NULL, NULL,
-    ///     &const_as_arg[0], &const_as_arg[wcl_const_as_arg_size]
-    /// }
+    /// \return Initializer for address space limits structure.
     std::string addressSpaceLimitsInitializer(
       clang::FunctionDecl *kernelFunc, AddressSpaceLimits &as);
+    /// \return Initializer for address space fallback area (null
+    /// pointer).
     void createAddressSpaceLimitsNullInitializer(
         std::ostream &out, unsigned addressSpace);
 
-
     /// \brief Inserts module prologue to start of module.
     bool rewritePrologue();
-    /// \brief Inserts kernel prologue to start of module.
+    /// \brief Inserts kernel prologue to start of kernel body.
     bool rewriteKernelPrologue(const clang::FunctionDecl *kernel);
 
-    /// \brief Writes variable declaration as a struct field declaration to stream.
+    /// Writes a variable declaration to a stream in the form it
+    /// should be declared inside an address space structure.
+    ///
+    /// Drops address space qualifiers from declaration and gets
+    /// relocated variable name:
+    /// __constant int foo[2] = { 1 }
+    /// ->
+    /// int _wcl_foo[2]
     void emitVarDeclToStruct(std::ostream &out, const clang::VarDecl *decl);
-    /// \brief Writes variable declaration as a struct field declaration to stream.
+
+    /// Writes a variable declaration to a stream in the form it
+    /// should be declared inside an address space structure. A unique
+    /// name, which doesn't conflict with other address space
+    /// structure field names, should be given for the variable.
     void emitVarDeclToStruct(std::ostream &out, const clang::VarDecl *decl,
                              const std::string &name);
 
-    /// \brief Returns macro call for given addr, type and limits to check.
+    /// \return A macro call that forces the given address to point to
+    /// a safe memory area.
+    ///
     /// e.g. _WCL_ADDR_global_1(__global int *, addr, _wcl_allocs->gl.array_min, _wcl_allocs->gl.array_max, _wcl_allocs->gn)
     std::string getClampMacroCall(std::string addr, std::string type, AddressSpaceLimits &limits);
-  
+
     /// \brief Writes bytestream generated from general.cl to stream.
     void emitGeneralCode(std::ostream &out);
   
-    /// \brief Goes through set of all generated _WCL_ADDR_* calls and write corresponding #define's to stream
+    /// \brief Goes through the set of all generated _WCL_ADDR_* calls
+    /// and writes corresponding _WCL_ADDR_* #defines to the stream.
     void emitLimitMacros(std::ostream &out);
   
-    /// \brief Returns macro define for clamping address to certain limits for each address space and limit count
+    /// \return A macro definition for clamping addresses in given
+    /// address space with given limit count.
+    ///
     /// e.g. #define _WCL_ADDR_local_2(type, addr, min1, max1, min2, max2, asnull) (<macro code>)
     std::string getWclAddrCheckMacroDefinition(unsigned addrSpaceNum, unsigned limitCount);
 
+    /// Write generated code at the beginning of module.
     void emitPrologue(std::ostream &out);
 
+    /// Writes initializer for a variable. Empty (zero) initializer is
+    /// written if there is no original initializer, or if the
+    /// original initializer isn't a compile time constant.
     void emitVariableInitialization(
         std::ostream &out, const clang::VarDecl *decl);
 
+    /// \brief Emits empty (zero) initializer for a type.
     void emitTypeNullInitialization(
         std::ostream &out, clang::QualType qualType);
 
+    /// Generates recurring names.
     WebCLConfiguration cfg_;
 };
 

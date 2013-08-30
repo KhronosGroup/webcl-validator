@@ -64,10 +64,10 @@ bool WebCLTransformer::rewrite()
 
       std::stringstream prologue;
       if (kernelPrologues_.count(func) > 0) {
-        prologue << kernelPrologue(func).str();
+          prologue << functionPrologue(kernelPrologues_, func).str();
       }
       if (functionPrologues_.count(func) > 0) {
-        prologue << functionPrologue(func).str();
+          prologue << functionPrologue(functionPrologues_, func).str();
       }
 
       clang::SourceLocation loc = body->getLocStart();
@@ -81,7 +81,22 @@ bool WebCLTransformer::rewrite()
     return status;
 }
 
-std::string WebCLTransformer::addressSpaceInfoAsStruct(AddressSpaceInfo &as) {
+std::stringstream& WebCLTransformer::functionPrologue(
+    FunctionPrologueMap &prologues, const clang::FunctionDecl *kernel)
+{
+    if (!prologues.count(kernel)) {
+        std::stringstream *out = new std::stringstream();
+        if (!out) {
+            fatal("Internal error. Can't create stream for function prologue.");
+            return modulePrologue_;
+        }
+        prologues[kernel] = out;
+    }
+    return *prologues[kernel];
+}
+
+std::string WebCLTransformer::addressSpaceInfoAsStruct(AddressSpaceInfo &as)
+{
   std::stringstream retVal;
   retVal << "{\n";
   for (AddressSpaceInfo::iterator declIter = as.begin();
@@ -113,20 +128,6 @@ std::string WebCLTransformer::addressSpaceInitializer(AddressSpaceInfo &as) {
 
   DEBUG( std::cerr << "Created address space initializer: " << retVal.str() << "\n"; );
   return retVal.str();
-}
-
-void WebCLTransformer::createAddressSpaceNullInitializer(
-    std::ostream &out, unsigned addressSpace)
-{
-  switch(addressSpace) {
-    case clang::LangAS::opencl_global:
-      out << "0";
-      break;
-    case clang::LangAS::opencl_local:
-    case clang::LangAS::opencl_constant:
-      out << cfg_.getNameOfAddressSpaceNull(addressSpace);
-      break;
-  }
 }
 
 std::string WebCLTransformer::addressSpaceLimitsAsStruct(AddressSpaceLimits &asLimits)
@@ -349,10 +350,10 @@ void WebCLTransformer::createConstantAddressSpaceAllocation(AddressSpaceInfo &as
 
 void WebCLTransformer::createLocalAddressSpaceAllocation(clang::FunctionDecl *kernelFunc)
 {
-    kernelPrologue(kernelFunc) << "\n" << cfg_.indentation_
-                               << "__" << cfg_.localAddressSpace_ << " "
-                               << cfg_.localRecordType_ << " "
-                               << cfg_.localRecordName_ << ";\n";
+    std::ostream &out = functionPrologue(kernelPrologues_, kernelFunc);
+
+    out << "\n" << cfg_.indentation_ << "__" << cfg_.localAddressSpace_ << " "
+        << cfg_.localRecordType_ << " " << cfg_.localRecordName_ << ";\n";
 }
 
 void WebCLTransformer::createAddressSpaceLimitsInitializer(
@@ -363,20 +364,12 @@ void WebCLTransformer::createAddressSpaceLimitsInitializer(
     createAddressSpaceLimitsNullInitializer(out, limits.getAddressSpace());
 }
 
-void WebCLTransformer::createAddressSpaceInitializer(
-    std::ostream& out, AddressSpaceInfo &info)
-{
-    out << cfg_.getIndentation(2) << addressSpaceInitializer(info);
-    out << ",\n" << cfg_.getIndentation(2);
-    createAddressSpaceNullInitializer(out, 0);
-}
-
 void WebCLTransformer::createProgramAllocationsAllocation(
     clang::FunctionDecl *kernelFunc, AddressSpaceLimits &globalLimits,
     AddressSpaceLimits &constantLimits, AddressSpaceLimits &localLimits,
     AddressSpaceInfo &privateAs)
 {
-    std::ostream &out = kernelPrologue(kernelFunc);
+    std::ostream &out = functionPrologue(kernelPrologues_, kernelFunc);
 
     out << "\n" << cfg_.indentation_
         << cfg_.addressSpaceRecordType_ << " " << cfg_.programRecordName_ << " = {\n";
@@ -445,7 +438,8 @@ void WebCLTransformer::createConstantAddressSpaceNullAllocation()
 
 void WebCLTransformer::createLocalAddressSpaceNullAllocation(clang::FunctionDecl *kernel)
 {
-    createAddressSpaceNullAllocation(kernelPrologue(kernel), clang::LangAS::opencl_local);
+    std::ostream &out = functionPrologue(kernelPrologues_, kernel);
+    createAddressSpaceNullAllocation(out, clang::LangAS::opencl_local);
 }
 
 void WebCLTransformer::initializeAddressSpaceNull(clang::FunctionDecl *kernel,
@@ -454,7 +448,7 @@ void WebCLTransformer::initializeAddressSpaceNull(clang::FunctionDecl *kernel,
   // init null only if there is limits.
   if (limits.empty()) return;
   
-  std::ostream &out = kernelPrologue(kernel);
+  std::ostream &out = functionPrologue(kernelPrologues_, kernel);
   
   std::string nullType =  "__" + cfg_.getNameOfAddressSpace(limits.getAddressSpace()) + " " + cfg_.nullType_ + "*";
 
@@ -485,7 +479,6 @@ void WebCLTransformer::initializeAddressSpaceNull(clang::FunctionDecl *kernel,
       << "if (" << cfg_.getNameOfAddressSpaceNullPtrRef(limits.getAddressSpace()) << " == (" << nullType << ")0) return; // not enough space to meet the minimum access. Would be great if we could give info about the problem for the user. \n";
 }
 
-
 void WebCLTransformer::createLocalRangeZeroing(
     std::ostream &out, const std::string &arguments)
 {
@@ -499,7 +492,7 @@ void WebCLTransformer::createLocalAreaZeroing(
     if (localLimits.empty())
         return;
 
-    std::ostream &out = kernelPrologue(kernelFunc);
+    std::ostream &out = functionPrologue(kernelPrologues_, kernelFunc);
 
     out << "\n" << cfg_.indentation_ << "// => Local memory zeroing.\n";
 
@@ -533,8 +526,8 @@ void WebCLTransformer::removeRelocated(clang::VarDecl *decl)
   wclRewriter_.removeText(decl->getSourceRange());
 }
 
-std::string WebCLTransformer::getClampMacroCall(std::string addr, std::string type, AddressSpaceLimits &limits) {
-  
+std::string WebCLTransformer::getClampMacroCall(std::string addr, std::string type, AddressSpaceLimits &limits)
+{
   std::stringstream retVal;
 
   const unsigned limitCount = limits.count();
@@ -560,8 +553,8 @@ std::string WebCLTransformer::getClampMacroCall(std::string addr, std::string ty
   return retVal.str();
 }
 
-void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLimits &limits) {
-  
+void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLimits &limits)
+{
   clang::Expr *base = access;
   clang::Expr *index = NULL;
   std::string field;
@@ -619,31 +612,20 @@ void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLim
   DEBUG( std::cerr << "============================\n\n"; );
 }
 
-/// Adds to function prologue assignment from function argument to relocated variable.
-///
-/// if reloacted variable was function argument, add initialization row
-/// to start of function
-/// i.e.
-/// void foo(int arg) { bar(&arg); } ->
-/// void foo(WclProgramAllocations *wcl_allocs, int arg) {
-///     wcl_allocs->pa.foo__arg = arg;
-///     bar(&wcl_acllocs->pa.foo__arg); }
-///
-void WebCLTransformer::addRelocationInitializerFromFunctionArg(clang::ParmVarDecl *parmDecl) {
+void WebCLTransformer::addRelocationInitializerFromFunctionArg(clang::ParmVarDecl *parmDecl)
+{
   const clang::FunctionDecl *parent = llvm::dyn_cast<const clang::FunctionDecl>(parmDecl->getParentFunctionOrMethod());
   // add only once
   if (parameterRelocationInitializations_.count(parmDecl) == 0) {
-    functionPrologue(parent) << "\n" << cfg_.getReferenceToRelocatedVariable(parmDecl) << " = " << parmDecl->getNameAsString() << ";\n";
+      std::ostream &out = functionPrologue(functionPrologues_, parent);
+      out << "\n" << cfg_.getReferenceToRelocatedVariable(parmDecl) << " = "
+          << parmDecl->getNameAsString() << ";\n";
     parameterRelocationInitializations_.insert(parmDecl);
   }
 }
 
-/// Adds initialization for relocated private variable after original variable initialization.
-///
-/// e.g. int foo = 1; ===> int foo = 1; _wcl_allocs->pa.helper_function_name__foo = foo;
-/// compiler should afterwards optimize these.
-void WebCLTransformer::addRelocationInitializer(clang::VarDecl *decl) {
-
+void WebCLTransformer::addRelocationInitializer(clang::VarDecl *decl)
+{
   clang::SourceLocation addLoc = wclRewriter_.findLocForNext(decl->getLocEnd(), ';');
   clang::SourceRange replaceRange(addLoc, addLoc);
   std::stringstream inits;
@@ -659,14 +641,6 @@ void WebCLTransformer::addRelocationInitializer(clang::VarDecl *decl) {
 
 }
 
-/// Moves declarations to module prolog.
-///
-/// Expects that declarations are in one of following formats:
-/// typedef <type> <name>; // any typedef
-/// struct <name> { ... }; // struct declaration
-/// struct <name>;         // forward struct declaraition
-///
-/// Unsupported: struct { ... } var; // unnamed declaration or instantiation with declaration
 void WebCLTransformer::moveToModulePrologue(clang::NamedDecl *decl)
 {
     // set typeName if we should make sure that this declaration name is not used multiple times
@@ -790,24 +764,15 @@ bool WebCLTransformer::rewriteKernelPrologue(const clang::FunctionDecl *kernel)
     }
     clang::SourceRange range(body->getLocStart(), body->getLocStart());
     std::string origStr = wclRewriter_.getTransformedText(range) + "\n";
-    wclRewriter_.replaceText(range, origStr + kernelPrologue(kernel).str());
+    wclRewriter_.replaceText(range, origStr + functionPrologue(kernelPrologues_, kernel).str());
     return true;
 }
 
-/// Writes variable declaration to stream as it should be declared inside address space struct.
-///
-/// Drops address space qualifiers from declaration and gets relocated variable name.
-/// e.g. __constant int foo[2] = { 1 } => int _wcl_foo[2]
 void WebCLTransformer::emitVarDeclToStruct(std::ostream &out, const clang::VarDecl *decl)
 {
     emitVarDeclToStruct(out, decl, cfg_.getNameOfRelocatedVariable(decl));
 }
 
-/// Writes variable declaration to stream as it should be written in address space struct.
-///
-/// @param out Stream to write
-/// @param decl Original variable declaration.
-/// @param name Name that should be used when writing declaration to stream.
 void WebCLTransformer::emitVarDeclToStruct(std::ostream &out, const clang::VarDecl *decl,
                                     const std::string &name)
 {
@@ -893,7 +858,6 @@ void WebCLTransformer::emitPrologue(std::ostream &out)
     emitLimitMacros(out);
 }
 
-/// \brief Emits empty initializer for type.
 void WebCLTransformer::emitTypeNullInitialization(
     std::ostream &out, clang::QualType qualType)
 {
