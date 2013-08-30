@@ -161,7 +161,6 @@ private:
   
     // \brief kernel prologue comes before function prologue... kernel might have also functionPrologue
     std::stringstream& kernelPrologue(const clang::FunctionDecl *kernel) {
-      // TODO: cleanup memory...
       if (kernelPrologues_.count(kernel) == 0) {
         kernelPrologues_[kernel] = new std::stringstream();
       }
@@ -169,7 +168,6 @@ private:
     }
 
     std::stringstream& functionPrologue(const clang::FunctionDecl *func) {
-      // TODO: cleanup memory...
       if (functionPrologues_.count(func) == 0) {
         functionPrologues_[func] = new std::stringstream();
       }

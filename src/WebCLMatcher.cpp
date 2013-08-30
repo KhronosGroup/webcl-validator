@@ -63,6 +63,8 @@ WebCLNamelessStructRenamer::WebCLNamelessStructRenamer(
 
 WebCLNamelessStructRenamer::~WebCLNamelessStructRenamer()
 {
+    delete namelessStructHandler_;
+    namelessStructHandler_ = NULL;
 }
 
 void WebCLNamelessStructRenamer::prepare(clang::ast_matchers::MatchFinder &finder)
@@ -160,6 +162,8 @@ WebCLRenamedStructRelocator::WebCLRenamedStructRelocator(
 
 WebCLRenamedStructRelocator::~WebCLRenamedStructRelocator()
 {
+    delete renamedStructHandler_;
+    renamedStructHandler_ = NULL;
 }
 
 void WebCLRenamedStructRelocator::prepare(clang::ast_matchers::MatchFinder &finder)

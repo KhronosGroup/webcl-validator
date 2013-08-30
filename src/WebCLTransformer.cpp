@@ -19,6 +19,17 @@ WebCLTransformer::WebCLTransformer(
 
 WebCLTransformer::~WebCLTransformer()
 {
+    for (FunctionPrologueMap::iterator i = kernelPrologues_.begin();
+         i != kernelPrologues_.end(); ++i) {
+        std::stringstream *out = i->second;
+        delete out;
+    }
+
+    for (FunctionPrologueMap::iterator i = functionPrologues_.begin();
+         i != functionPrologues_.end(); ++i) {
+        std::stringstream *out = i->second;
+        delete out;
+    }
 }
 
 bool WebCLTransformer::rewrite()

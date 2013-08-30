@@ -28,7 +28,7 @@ public:
     int getMatcherArgc() const;
     /// \return Normalization tool arguments. Input is matched with
     /// output of previous (preprocessor or normalization) tool.
-    char const **getMatcherArgv() const;
+    char const **getMatcherArgv();
 
     /// \return Number of arguments of memory access validation tool.
     int getValidatorArgc() const;
@@ -61,6 +61,10 @@ private:
     int validatorArgc_;
     /// Arguments for normalization and memory access validation.
     char const **validatorArgv_;
+
+    /// Arguments for normalization. Only required for releasing
+    /// allocated memory.
+    std::vector<char const **> matcherArgv_;
 
     /// Pair of file descriptor and filename.
     typedef std::pair<int, char const *> TemporaryFile;

@@ -13,6 +13,7 @@ WebCLArguments::WebCLArguments(int argc, char const *argv[])
     , preprocessorArgv_(NULL)
     , validatorArgc_(0)
     , validatorArgv_(NULL)
+    , matcherArgv_()
     , files_()
     , outputs_()
 {
@@ -99,6 +100,12 @@ WebCLArguments::~WebCLArguments()
     delete[] validatorArgv_;
     validatorArgv_ = NULL;
 
+    while (matcherArgv_.size()) {
+        char const **argv = matcherArgv_.back();
+        delete[] argv;
+        matcherArgv_.pop_back();
+    }
+
     while (files_.size()) {
         TemporaryFile &file = files_.back();
         close(file.first);
@@ -135,7 +142,7 @@ char const **WebCLArguments::getPreprocessorArgv() const
     return preprocessorArgv_;
 }
 
-char const **WebCLArguments::getMatcherArgv() const
+char const **WebCLArguments::getMatcherArgv()
 {
     if (!areArgumentsOk(validatorArgc_, validatorArgv_))
         return NULL;
@@ -143,6 +150,7 @@ char const **WebCLArguments::getMatcherArgv() const
     char const **matcherArgv = new char const *[validatorArgc_];
     if (!matcherArgv)
         return NULL;
+    matcherArgv_.push_back(matcherArgv);
     std::copy(validatorArgv_, validatorArgv_ + validatorArgc_, matcherArgv);
 
     // Set input file.
