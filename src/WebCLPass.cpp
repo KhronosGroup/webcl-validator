@@ -4,8 +4,11 @@
 
 #include "clang/AST/ASTContext.h"
 
-WebCLPass::WebCLPass(WebCLAnalyser &analyser, WebCLTransformer &transformer)
-    : analyser_(analyser), transformer_(transformer)
+WebCLPass::WebCLPass(
+    clang::CompilerInstance &instance,
+    WebCLAnalyser &analyser, WebCLTransformer &transformer)
+    : WebCLReporter(instance)
+    , analyser_(analyser), transformer_(transformer)
 {
 }
 
@@ -14,8 +17,9 @@ WebCLPass::~WebCLPass()
 }
 
 WebCLInputNormaliser::WebCLInputNormaliser(
+    clang::CompilerInstance &instance,
     WebCLAnalyser &analyser, WebCLTransformer &transformer)
-    : WebCLPass(analyser, transformer)
+    : WebCLPass(instance, analyser, transformer)
 {
 }
 
@@ -33,8 +37,9 @@ void WebCLInputNormaliser::run(clang::ASTContext &context)
 }
 
 WebCLHelperFunctionHandler::WebCLHelperFunctionHandler(
+    clang::CompilerInstance &instance,
     WebCLAnalyser &analyser, WebCLTransformer &transformer)
-    : WebCLPass(analyser, transformer)
+    : WebCLPass(instance, analyser, transformer)
 {
 }
 
@@ -62,8 +67,9 @@ void WebCLHelperFunctionHandler::run(clang::ASTContext &context)
 }
 
 WebCLAddressSpaceHandler::WebCLAddressSpaceHandler(
+    clang::CompilerInstance &instance,
     WebCLAnalyser &analyser, WebCLTransformer &transformer)
-    : WebCLPass(analyser, transformer)
+    : WebCLPass(instance, analyser, transformer)
     , organizedAddressSpaces_()
     , privates_(), locals_(), constants_()
 {
@@ -183,12 +189,18 @@ void WebCLAddressSpaceHandler::doRelocations()
     }
     
     // add initializer for relocated private address space declarations
-    for (AddressSpaceSet::iterator privDecl = privates_.begin();
-         privDecl != privates_.end(); privDecl++) {
-        if ((*privDecl)->hasInit()) {
-            // LAUNDRY: change assert to be nicer error message
-            assert(analyser_.isInsideForStmt(*privDecl) == false && "Cannot currently relocate variables declared inside for statement. Make sure that you have not taken address of counter variable anywhere with & operator.");
-            transformer_.addRelocationInitializer(*privDecl);
+    for (AddressSpaceSet::iterator i = privates_.begin(); i != privates_.end(); ++i) {
+        clang::VarDecl *privDecl = *i;
+        if (privDecl->hasInit()) {
+            if (analyser_.isInsideForStmt(privDecl)) {
+                const char *message =
+                    "Cannot currently relocate variables declared inside for statement. "
+                    "Make sure that you have not taken address of counter variable "
+                    "anywhere with & operator.";
+                error(privDecl->getLocStart(), message);
+            } else {
+                transformer_.addRelocationInitializer(privDecl);
+            }
         }
     }
 }
@@ -210,6 +222,7 @@ bool WebCLAddressSpaceHandler::isRelocated(clang::VarDecl *decl)
     switch (decl->getType().getAddressSpace()) {
     case clang::LangAS::opencl_global:
         assert(false && "Globals can't be relocated.");
+        return false;
     case clang::LangAS::opencl_constant:
         return constants_.count(decl) > 0;
     case clang::LangAS::opencl_local:
@@ -242,11 +255,12 @@ void WebCLAddressSpaceHandler::removeRelocatedVariables(AddressSpaceSet &variabl
 }
 
 WebCLKernelHandler::WebCLKernelHandler(
+    clang::CompilerInstance &instance,
     WebCLAnalyser &analyser, WebCLTransformer &transformer,
     WebCLAddressSpaceHandler &addressSpaceHandler)
-    : WebCLPass(analyser, transformer)
+    : WebCLPass(instance, analyser, transformer)
     , addressSpaceHandler_(addressSpaceHandler)
-    , helperFunctionHandler_(analyser, transformer)
+    , helperFunctionHandler_(instance, analyser, transformer)
     , globalLimits_(clang::LangAS::opencl_global)
     , constantLimits_(clang::LangAS::opencl_constant)
     , localLimits_(clang::LangAS::opencl_local)
@@ -423,9 +437,10 @@ void WebCLKernelHandler::createDeclarationLimits(clang::VarDecl *decl)
 }
 
 WebCLMemoryAccessHandler::WebCLMemoryAccessHandler(
+    clang::CompilerInstance &instance,
     WebCLAnalyser &analyser, WebCLTransformer &transformer,
     WebCLKernelHandler &kernelHandler)
-    : WebCLPass(analyser, transformer)
+    : WebCLPass(instance, analyser, transformer)
     , kernelHandler_(kernelHandler)
 {
 }

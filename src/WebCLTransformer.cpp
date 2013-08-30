@@ -199,8 +199,13 @@ std::string WebCLTransformer::addressSpaceLimitsInitializer(
             comma = ",";
             break;
 
+        case clang::LangAS::opencl_global:
+            assert(false && "Global address space can't have static allocations.");
+            break;
+
         default:
-            assert(asLimits.getAddressSpace() == 0);
+            assert((asLimits.getAddressSpace() == 0) &&
+                   "Expected private address space.");
             break;
         }
     }
@@ -211,8 +216,7 @@ std::string WebCLTransformer::addressSpaceLimitsInitializer(
         retVal << comma;
         clang::ParmVarDecl *decl = *declIter;
         clang::FunctionDecl *func = llvm::dyn_cast<clang::FunctionDecl>(decl->getParentFunctionOrMethod());
-
-        assert(func);
+        assert(func && "Parameter doesn't have a parent function.");
     
         if (func == kernelFunc) {
             const std::string name = decl->getName();
@@ -818,7 +822,7 @@ void WebCLTransformer::emitVarDeclToStruct(std::ostream &out, const clang::VarDe
       clang::QualType unqualArray = instance_.getASTContext().getUnqualifiedArrayType(type, qualifiers);
       clang::QualType fixedType = clang::QualType(unqualArray.getTypePtr(), qualifiers);
       const clang::ConstantArrayType *constArr = llvm::dyn_cast<clang::ConstantArrayType>(fixedType.getTypePtr()->getAsArrayTypeUnsafe());
-      assert(constArr && "OpenCL cant have non-constant arrays.");
+      assert(constArr && "OpenCL can't have non-constant arrays.");
       out << constArr->getElementType().getAsString() << " " << name << "[" << constArr->getSize().getZExtValue() << "]";
 
     } else {

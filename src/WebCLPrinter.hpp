@@ -31,8 +31,7 @@ protected:
 };
 
 /// \brief Transforms and prints original WebCL C source file.
-class WebCLValidatorPrinter : public WebCLReporter
-                            , public WebCLPrinter
+class WebCLValidatorPrinter : public WebCLPrinter
                             , public WebCLPass
 {
 public:

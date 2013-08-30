@@ -2,6 +2,7 @@
 #define WEBCLVALIDATOR_WEBCLPASS
 
 #include "WebCLHelper.hpp"
+#include "WebCLReporter.hpp"
 
 #include <map>
 #include <set>
@@ -18,11 +19,13 @@ class WebCLTransformer;
 /// Abstract base class for different passes of validation
 /// stage. Derived classes perform transformations that depend on
 /// results of the analysis pass.
-class WebCLPass
+class WebCLPass : public WebCLReporter
 {
 public:
 
-    WebCLPass(WebCLAnalyser &analyser, WebCLTransformer &transformer);
+    WebCLPass(
+        clang::CompilerInstance &instance,
+        WebCLAnalyser &analyser, WebCLTransformer &transformer);
     virtual ~WebCLPass();
 
     /// \brief Apply transformations.
@@ -47,7 +50,9 @@ class WebCLInputNormaliser : public WebCLPass
 {
 public:
 
-    WebCLInputNormaliser(WebCLAnalyser &analyser, WebCLTransformer &transformer);
+    WebCLInputNormaliser(
+        clang::CompilerInstance &instance,
+        WebCLAnalyser &analyser, WebCLTransformer &transformer);
     virtual ~WebCLInputNormaliser();
 
     /// Performs input normalization transformations.
@@ -67,7 +72,9 @@ class WebCLHelperFunctionHandler : public WebCLPass
 {
 public:
 
-    WebCLHelperFunctionHandler(WebCLAnalyser &analyser, WebCLTransformer &transformer);
+    WebCLHelperFunctionHandler(
+        clang::CompilerInstance &instance,
+        WebCLAnalyser &analyser, WebCLTransformer &transformer);
     virtual ~WebCLHelperFunctionHandler();
     
     /// - Adds allocation structure parameter to function signatures.
@@ -82,7 +89,9 @@ class WebCLAddressSpaceHandler : public WebCLPass
 {
 public:
   
-    WebCLAddressSpaceHandler(WebCLAnalyser &analyser, WebCLTransformer &transformer);
+    WebCLAddressSpaceHandler(
+        clang::CompilerInstance &instance,
+        WebCLAnalyser &analyser, WebCLTransformer &transformer);
     virtual ~WebCLAddressSpaceHandler();
 
     /// Constructs initial information about what kind of address
@@ -159,6 +168,7 @@ class WebCLKernelHandler : public WebCLPass
 public:
   
     WebCLKernelHandler(
+        clang::CompilerInstance &instance,
         WebCLAnalyser &analyser, WebCLTransformer &transformer,
         WebCLAddressSpaceHandler &addressSpaceHandler);
     virtual ~WebCLKernelHandler();
@@ -218,6 +228,7 @@ class WebCLMemoryAccessHandler : public WebCLPass
 public:
 
     WebCLMemoryAccessHandler(
+        clang::CompilerInstance &instance,
         WebCLAnalyser &analyser, WebCLTransformer &transformer,
         WebCLKernelHandler &kernelHandler);
     virtual ~WebCLMemoryAccessHandler();

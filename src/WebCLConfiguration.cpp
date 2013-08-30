@@ -223,8 +223,13 @@ const std::string WebCLConfiguration::getReferenceToRelocatedVariable(const clan
     case clang::LangAS::opencl_local:
       prefix = localRecordName_ + ".";
       break;
+    case clang::LangAS::opencl_global:
+        assert(false &&
+               "There can't be relocated variables in global address space.");
+        break;
     default:
-      assert(decl->getType().getAddressSpace() == 0);
+      assert((decl->getType().getAddressSpace() == 0) &&
+             "Expected private address space.");
       prefix = addressSpaceRecordName_ + "->" + privatesField_ + ".";
       break;
   }
@@ -255,6 +260,7 @@ const std::string WebCLConfiguration::getStaticLimitRef(unsigned addressSpaceNum
 
     case clang::LangAS::opencl_global:
         assert(false && "There can't be static allocations in global address space.");
+        return "0, 0";
 
     default:
         prefix += privatesField_;
@@ -278,6 +284,7 @@ const std::string WebCLConfiguration::getDynamicLimitRef(const clang::VarDecl *d
         break;
     default:
         assert(false && "There can't be dynamic limits of private address space.");
+        break;
     }
 
     prefix += ".";
@@ -290,7 +297,8 @@ const std::string WebCLConfiguration::getDynamicLimitRef(const clang::VarDecl *d
 
 const std::string WebCLConfiguration::getNullLimitRef(unsigned addressSpaceNum) const
 {
-    assert(addressSpaceNum == clang::LangAS::opencl_local);
+    assert((addressSpaceNum == clang::LangAS::opencl_local) &&
+           "Expected local address space.");
     const std::string localNull = getNameOfAddressSpaceNull(addressSpaceNum);
     return localNull + ", " + localNull + " + " + getNameOfSizeMacro(addressSpaceNum);
 }

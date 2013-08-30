@@ -21,7 +21,8 @@ WebCLArguments::WebCLArguments(int argc, char const *argv[])
     char const *inputFilename = argv[1];
     const int userOptionOffset = 2;
     const int numUserOptions = argc - userOptionOffset;
-    assert(argc >= userOptionOffset);
+    assert((argc >= userOptionOffset) &&
+           "Expected at least executable name and input file in argv.");
 
     char const *buffer = reinterpret_cast<char const*>(kernel_cl);
     size_t length = kernel_cl_len;

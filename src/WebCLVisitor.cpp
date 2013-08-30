@@ -249,8 +249,12 @@ bool WebCLAnalyser::handleVarDecl(clang::VarDecl *decl)
       info(decl->getLocStart(), "Constant variable declaration. Collect!");
       collectVariable(decl);
       break;
+    case clang::LangAS::opencl_global:
+      assert(false && "Global variables must be kernel parameters.");
+      break;
     default:
-      assert(isPrivate(decl));
+      assert(isPrivate(decl) &&
+             "Expected private address space.");
       if (decl->isFunctionOrMethodVarDecl()) {
         info(decl->getLocStart(), "Private variable declaration. Collect!");
         collectVariable(decl);
@@ -345,13 +349,17 @@ bool WebCLAnalyser::handleUnaryOperator(clang::UnaryOperator *expr)
     info(expr->getLocStart(), "Address of something, might require some handling.");
     if (clang::DeclRefExpr *declRef = llvm::dyn_cast<clang::DeclRefExpr>(expr->getSubExpr())) {
       DEBUG( std::cerr << "Found decl for address of operator:\n"; );
-      info(declRef->getDecl()->getLocStart(), "-- -- Corresponding decl.");
-      clang::VarDecl *decl = llvm::dyn_cast<clang::VarDecl>(declRef->getDecl());
-      assert(decl);
-      declarationsWithAddressOfAccess_.insert(decl);
-      // Add variable to corresponding address space record if its
-      // address is required.
-      collectVariable(decl);
+      clang::ValueDecl *valueDecl = declRef->getDecl();
+      info(valueDecl->getLocStart(), "-- -- Corresponding decl.");
+      clang::VarDecl *varDecl = llvm::dyn_cast<clang::VarDecl>(valueDecl);
+      if (varDecl) {
+          declarationsWithAddressOfAccess_.insert(varDecl);
+          // Add variable to corresponding address space record if its
+          // address is required.
+          collectVariable(varDecl);
+      } else {
+          error(valueDecl->getLocStart(), "Taking of value addresses is not supported.");
+      }
     }
   }
   return true;
@@ -458,7 +466,7 @@ bool WebCLAnalyser::handleForStmt(clang::ForStmt *stmt) {
   if (clang::DeclStmt *declStmt = llvm::dyn_cast<clang::DeclStmt>(stmt->getInit())) {
     for (clang::DeclStmt::decl_iterator i = declStmt->decl_begin(); i != declStmt->decl_end(); i++) {
       clang::VarDecl *varDecl = llvm::dyn_cast<clang::VarDecl>(*i);
-      assert(varDecl && "Unexpected type.");
+      assert(varDecl && "Expected variable declaration in for statement init clause.");
       info(varDecl->getLocStart(), "Found variable declaration made inside for statement declaration.");
       declarationsMadeInForStatements_.insert(varDecl);
     }

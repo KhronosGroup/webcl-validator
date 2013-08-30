@@ -37,9 +37,8 @@ bool WebCLPrinter::print(llvm::raw_ostream &out, const std::string &comment)
 WebCLValidatorPrinter::WebCLValidatorPrinter(
     clang::CompilerInstance &instance, clang::Rewriter &rewriter,
     WebCLAnalyser &analyser, WebCLTransformer &transformer)
-    : WebCLReporter(instance)
-    , WebCLPrinter(rewriter)
-    , WebCLPass(analyser, transformer)
+    : WebCLPrinter(rewriter)
+    , WebCLPass(instance, analyser, transformer)
 {
 }
 
