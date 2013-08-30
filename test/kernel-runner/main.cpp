@@ -7,6 +7,7 @@
 #include <iterator>
 
 #include <cstring>
+#include <sys/time.h>
 
 namespace
 {
@@ -49,6 +50,10 @@ device_vector getDevices(cl_platform_id const& platformId)
     return devices;
 }
 
+int diff_ms_helper(timeval t1, timeval t2){
+  return (((t1.tv_sec - t2.tv_sec)* 1000000) + 
+           (t1.tv_usec - t2.tv_usec))/1000;
+}
 
 void printDevInfo(cl_device_id device)
 {
@@ -78,7 +83,7 @@ typedef struct {
 
 bool testSource(int id, cl_device_id device, std::string const& source, 
     std::string &kernelName, int globalWorkSize, std::vector<BufferArg> &buffers, bool isTransformed, 
-    char* programOutput, bool debug)
+    char* programOutput, bool debug, bool hasOutput)
 {
     cl_int ret = CL_SUCCESS;
 
@@ -101,6 +106,7 @@ bool testSource(int id, cl_device_id device, std::string const& source,
     if (CL_SUCCESS != clBuildProgram(program, 1, &device, NULL, NULL, NULL))
     {
         std::cerr << "Failed to build program." << std::endl;
+        return false;
     }
 
     if (debug) std::cerr << "Creating command queue.\n";
@@ -115,15 +121,23 @@ bool testSource(int id, cl_device_id device, std::string const& source,
         CL_MEM_READ_WRITE|CL_MEM_USE_HOST_PTR, 
         1024 * sizeof(cl_char), &retVal, &ret);
     cleanUpVec.push_back(retBuf);
-    args.appendArray(&retBuf, 1024);
+    if (hasOutput) {
+        if (debug) std::cerr << "Adding char* output buffer\n";
+        args.appendArray(&retBuf, 1024);
+    } else {
+        if (debug) std::cerr << "Skipping char* output buffer\n";
+    }
 
     // init data for float / int types
-    cl_float floatInit[64000];
-    cl_int   intInit[64000];
-    for (int i = 0; i < 64000; i++) { 
+    cl_float floatInit[128000];
+    cl_int   intInit[128000];
+    for (int i = 0; i < 128000; i++) { 
         intInit[i] = i;
         floatInit[i] = i;
     }
+
+    timeval allocate_buffers_begin;
+    gettimeofday(&allocate_buffers_begin, NULL);
 
     for (unsigned i = 0; i < buffers.size(); i++) {        
         if (buffers[i].as == 1) {
@@ -137,6 +151,10 @@ bool testSource(int id, cl_device_id device, std::string const& source,
         }        
     }
 
+    ret = clFinish(command_queue);
+    timeval enqueue_kernel_begin;
+    gettimeofday(&enqueue_kernel_begin, NULL);
+
     // Execute the OpenCL kernel on the list
     size_t global_item_size = globalWorkSize; // Process the entire lists
     if (debug) std::cerr << "Enqueue kernel.\n";
@@ -144,12 +162,25 @@ bool testSource(int id, cl_device_id device, std::string const& source,
                                  NULL, &global_item_size, NULL,
                                  0, NULL, NULL);
 
-    bool testPass = true;
-    if (ret != CL_SUCCESS)
-    {
+    if (ret != CL_SUCCESS) {
         std::cerr << "clEnqueueNDRangeKernel failed with code " << ret << std::endl;
+        return false;
     }
-    else
+
+    ret = clFinish(command_queue);
+    timeval enqueue_kernel_end;
+    gettimeofday(&enqueue_kernel_end, NULL);
+
+    double allocate_buffers_ms = diff_ms_helper(enqueue_kernel_begin, allocate_buffers_begin);
+    double enqueue_kernel_ms = diff_ms_helper(enqueue_kernel_end, enqueue_kernel_begin);
+
+    double elapsed_ms = allocate_buffers_ms + enqueue_kernel_ms;
+    std::cerr << "allocate_buffers: " << allocate_buffers_ms << "ms\n"
+              << "enqueue_kernel: " << enqueue_kernel_ms << "ms\n"
+              << "total:" << elapsed_ms << "ms\n";
+
+    bool testPass = true;
+    if (hasOutput)
     {
         if (debug) std::cerr << "Finish queue.\n";
         ret = clFinish(command_queue);
@@ -242,12 +273,15 @@ int main(int argc, char const* argv[])
     constantBuffer.insert("--constant");
     std::set<std::string> gcount;
     gcount.insert("--gcount");
+    std::set<std::string> nooutput;
+    nooutput.insert("--nooutput");
 
     std::vector<BufferArg> buffers;
     std::string kernel = "test_kernel";
     bool useWebCL = false;
     bool printDebug = false;
     int globalWorkItemCount = 1;
+    bool addOutput = true;
 
     std::map<std::string, int> atotype;
     atotype["int"]   = 0;
@@ -301,9 +335,10 @@ int main(int argc, char const* argv[])
             i++;
         } else if (debug.count(argv[i])) {
             printDebug = true;
+        } else if (nooutput.count(argv[i])) {
+            addOutput = false;
         }
     }
-
     if (printDebug) {
         std::cerr << "webcl: " << useWebCL << std::endl
                   << "kernel:" << kernel << std::endl
@@ -328,7 +363,7 @@ int main(int argc, char const* argv[])
              device != devices.end(); ++device)
         {        
             printDevInfo(*device);
-            if (!testSource(id, *device, source, kernel, globalWorkItemCount, buffers, useWebCL, retVal, printDebug))
+            if (!testSource(id, *device, source, kernel, globalWorkItemCount, buffers, useWebCL, retVal, printDebug, addOutput))
             {
                 return EXIT_FAILURE;
             }
@@ -337,10 +372,12 @@ int main(int argc, char const* argv[])
     }
 
     // print out results
-    for (unsigned i = 0; i < 1024; i++) {
-        std::cout << (int)(retVal[i]) << ",";
+    if (addOutput) {
+        for (unsigned i = 0; i < 1024; i++) {
+            std::cout << (int)(retVal[i]) << ",";
+        }
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
 
     return EXIT_SUCCESS;
 }

@@ -1,9 +1,10 @@
 // RUN: cat %s | %opencl-validator
 // RUN: %webcl-validator %s 2> /dev/null| grep -v "Processing\|CHECK" | %kernel-runner --webcl --kernel zero_private --gcount 40 --global int 40 | grep "1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,2,0,0,0,3,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,2,0,0,0,3,0,0,0,0,0,0,0,"
 
-// TODO: fix test to work with different target layouts and still verify that
-//       private memory was not leaked. 
-//       (add another possible result to grep for other endianess) 
+// TODO: (add another possible result to grep for other endianess) 
+
+// C99 States that {} initializer for struct should do zero-initialization
+// [1] http://www.open-std.org/jtc1/sc22/WG14/www/docs/n1256.pdf chapter 6.7.8 paragraphs 10 and 21 
 
 typedef struct { int first; float4 second; uint3 third[4]; } PrivateStruct;
 
