@@ -37,7 +37,7 @@ bool AddressSpaceLimits::empty()
 
 unsigned AddressSpaceLimits::count()
 {
-    return dynamicLimits_.size() + hasStaticallyAllocatedLimits() ? 1 : 0;
+    return dynamicLimits_.size() + (hasStaticallyAllocatedLimits() ? 1 : 0);
 }
     
 AddressSpaceLimits::LimitList &AddressSpaceLimits::getDynamicLimits()
