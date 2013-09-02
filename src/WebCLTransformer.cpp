@@ -69,7 +69,11 @@ bool WebCLTransformer::rewrite()
       if (functionPrologues_.count(func) > 0) {
         prologue << functionPrologue(func).str();
       }
-      wclRewriter_.insertText(body->getLocStart().getLocWithOffset(1), prologue.str());
+
+      clang::SourceLocation loc = body->getLocStart();
+      clang::SourceRange range(loc, loc);
+      std::string orig = wclRewriter_.getTransformedText(range) + "\n";
+      wclRewriter_.replaceText(range, orig + prologue.str());
     }
 
     flushQueuedTransformations();
@@ -771,8 +775,9 @@ bool WebCLTransformer::rewritePrologue()
     clang::SourceManager &manager = instance_.getSourceManager();
     clang::FileID file = manager.getMainFileID();
     clang::SourceLocation start = manager.getLocForStartOfFile(file);
-
-    wclRewriter_.insertText(start, out.str());
+    clang::SourceRange range(start, start);
+    std::string origStr = wclRewriter_.getTransformedText(range);
+    wclRewriter_.replaceText(range, out.str() + origStr);
     return true;
 }
 
@@ -783,10 +788,9 @@ bool WebCLTransformer::rewriteKernelPrologue(const clang::FunctionDecl *kernel)
         error(kernel->getLocStart(), "Kernel has no body.");
         return false;
     }
-
-    wclRewriter_.insertText(
-        body->getLocStart().getLocWithOffset(1),
-        kernelPrologue(kernel).str());
+    clang::SourceRange range(body->getLocStart(), body->getLocStart());
+    std::string origStr = wclRewriter_.getTransformedText(range) + "\n";
+    wclRewriter_.replaceText(range, origStr + kernelPrologue(kernel).str());
     return true;
 }
 

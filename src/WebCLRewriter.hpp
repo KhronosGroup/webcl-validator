@@ -40,9 +40,6 @@ public:
   /// \brief Removes given range.
   void removeText(clang::SourceRange range);
 
-  /// \brief Inserts text at given location.
-  void insertText(clang::SourceLocation location, const std::string &text);
-
   /// \brief Replaces given range.
   void replaceText(clang::SourceRange range, const std::string &text);
 

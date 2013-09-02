@@ -54,11 +54,6 @@ void WebCLRewriter::removeText(clang::SourceRange range) {
   replaceText(range, "");
 }
 
-void WebCLRewriter::insertText(clang::SourceLocation location, const std::string &text)
-{
-    replaceText(clang::SourceRange(location, location), text);
-}
-
 void WebCLRewriter::replaceText(clang::SourceRange range, const std::string &text)
 {
   isFilteredRangesDirty_ = true;
