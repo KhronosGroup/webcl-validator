@@ -21,12 +21,33 @@ WebCLConsumer::WebCLConsumer(
     , passes_()
 {
     visitors_.push_back(&restrictor_);
+
+    // Collects information about nodes.
     visitors_.push_back(&analyser_);
 
+    // Moves all typedef and struct declarations to start of module
+    // to make sure that they are available when address space types are
+    // declared.
     passes_.push_back(&inputNormaliser_);
+
+    // Collects all the variables that should be moved to address space
+    // structures and writes out typedefs for address spaces.
+    // Also replaces original references to declarations to refer
+    // address space struct fields.
     passes_.push_back(&addressSpaceHandler_);
+  
+    // Collects all the information about memory ranges in the program
+    // including the memory passed through kernel arguments. Gives correct
+    // limitset to check for each memory access expression.
+    // Also fixes kernel and function argument lists to have all necessary
+    // extra args.
     passes_.push_back(&kernelHandler_);
+
+    // Adds check macros to every potentially harmful memory access.
+    // Collects information of biggest memory access of each address space.
     passes_.push_back(&memoryAccessHandler_);
+  
+    // Prints out the final result.
     passes_.push_back(&printer_);
 }
 

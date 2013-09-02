@@ -113,7 +113,7 @@ std::string WebCLRewriter::getTransformedText(clang::SourceRange range) {
       
       if (currentStart != i->first.first) {
         if (currentStart != -1) {
-          // This is a big vague because
+          // This is a bit vague because
           // area size might be zero in location ids
           // if current area cannot overlap earlier or if no earlier or it does not overlap => add area
           if (currentStart != biggestEnd ||

@@ -42,7 +42,9 @@ protected:
 /// itself do contribute to validation.
 ///
 /// FUTURE: This should be refactored to be a separate pass before
-///         validation.
+///         validation. What we have to do here is finding the correct position
+///         where type declarations end and address space type declarations
+///         can be added.
 ///
 /// \see WebCLMatcherAction
 /// \see WebCLTool

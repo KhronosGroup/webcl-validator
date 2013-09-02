@@ -14,7 +14,7 @@ WebCLReporter::~WebCLReporter()
 clang::DiagnosticBuilder WebCLReporter::info(clang::SourceLocation location, const char *format)
 {
   // NOTE: set this from
-  //       clang::DiagnosticsEngine::Note to
+  //       clang::DiagnosticsEngine::Note to hide.
   //       clang::DiagnosticsEngine::Warning to see
   //       output where WebCLAnalyser has found stuff.
   return message(clang::DiagnosticsEngine::Note, format, &location);
