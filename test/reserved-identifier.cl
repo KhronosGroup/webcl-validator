@@ -1,4 +1,4 @@
-// RUN: cat %s | %opencl-validator
+// RUN: %opencl-validator < %s
 // RUN: %webcl-validator %s -ferror-limit=0 2>&1 | grep "error: " | LC_ALL=C sort | %FileCheck %s
 
 struct _wcl_struct { int _wcl_field; };

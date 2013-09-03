@@ -1,4 +1,4 @@
-// RUN: cat %s | grep -v ^#pragma | %opencl-validator
+// RUN: grep -v ^#pragma %s | %opencl-validator
 // RUN: %webcl-validator %s
 
 // All extensions are disabled by default in OpenCL. We don't complain

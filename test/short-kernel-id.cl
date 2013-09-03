@@ -1,5 +1,5 @@
-// RUN: cat %s | %opencl-validator
-// RUN: %webcl-validator %s 2>/dev/null | grep -v "Processing" | %opencl-validator
+// RUN: %opencl-validator < %s
+// RUN: %webcl-validator %s | %opencl-validator
 
 // prototype declarations for apple driver
 int a_function_identifier_that_is_255_characters_long_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_12345(

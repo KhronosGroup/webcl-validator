@@ -1,6 +1,6 @@
-// RUN: cat %s | %opencl-validator
-// RUN: %webcl-validator %s | grep -v "Processing\|CHECK" | %opencl-validator
-// RUN: %webcl-validator %s | grep -v "Processing\|CHECK" | %FileCheck %s
+// RUN: %opencl-validator < %s
+// RUN: %webcl-validator %s | %opencl-validator
+// RUN: %webcl-validator %s | grep -v CHECK | %FileCheck %s
 
 __kernel void attack(__global int *array)
 {

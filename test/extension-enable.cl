@@ -1,4 +1,4 @@
-// RUN: cat %s | grep -v ^#pragma | %opencl-validator
+// RUN: grep -v ^#pragma %s | %opencl-validator
 // RUN: %webcl-validator %s 2>&1 | grep -v CHECK | %FileCheck %s
 
 // We allow only certain extensions to be enabled.

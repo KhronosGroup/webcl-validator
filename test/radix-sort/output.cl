@@ -1,5 +1,5 @@
-// RUN: cat %s | %opencl-validator
-// RUN: cat %s | %radix-sort -transform
+// RUN: %opencl-validator < %s
+// RUN: %radix-sort -transform < %s
 
 // Code derives (very loosely) from example in "Heterogeneous
 // Computing with OpenCL" published 2011 by Morgan Kaufmann.

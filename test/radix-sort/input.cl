@@ -1,6 +1,6 @@
-// RUN: cat %s | %opencl-validator
-// RUN: cat %s | %radix-sort -original
-// RUN: %webcl-validator %s 2>/dev/null | grep -v "Processing:" | %radix-sort -transform
+// RUN: %opencl-validator < %s
+// RUN: %radix-sort -original < %s
+// RUN: %webcl-validator %s | %radix-sort -transform
 
 // Code derives (very loosely) from example in "Heterogeneous
 // Computing with OpenCL" published 2011 by Morgan Kaufmann.

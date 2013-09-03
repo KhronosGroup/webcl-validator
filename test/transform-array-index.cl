@@ -1,5 +1,5 @@
-// RUN: cat %s | %opencl-validator
-// RUN: %webcl-validator %s 2>/dev/null | grep -v "Processing\|CHECK" | %opencl-validator
+// RUN: %opencl-validator < %s
+// RUN: %webcl-validator %s | %opencl-validator
 // RUN: %webcl-validator %s | grep -v CHECK | %FileCheck %s
 
 __kernel void transform_array_index(

@@ -1,5 +1,5 @@
-// RUN: cat %s | %opencl-validator
-// RUN: %webcl-validator %s 2>/dev/null | grep -vE "(CHECK|Processing)" | %opencl-validator
+// RUN: %opencl-validator < %s
+// RUN: %webcl-validator %s | %opencl-validator
 
 //prototypes for apple driver
 int get_incorrectly_indexed_value(const int triple[6], int index);

@@ -1,4 +1,4 @@
-// RUN: cat %s | %opencl-validator
+// RUN: %opencl-validator < %s
 // RUN: %webcl-validator %s 2>&1 | grep "error: " | LC_ALL=C sort | %FileCheck %s
 
 // prototype declarations for apple driver
