@@ -1,10 +1,10 @@
-// RUN: cat %s | %opencl-validator
-// RUN: %webcl-validator %s 2> /dev/null| grep -v "Processing\|CHECK" | sed 's@////@@' | %kernel-runner --webcl --kernel read_memory --constant int 100 --global int 100 --local int 100 | grep "33,33,33,33,33,33,33,33,33,33,33,33,33,33,33,33,1,1,1,1,0,1,1,1,1,0,1,1,1,0,"
+// RUN: %opencl-validator < %s
+// RUN: %webcl-validator %s | %opencl-validator
+// RUN: %webcl-validator %s | sed 's@////@@' | %kernel-runner --webcl --kernel read_memory --constant int 100 --global int 100 --local int 100 | grep "33,33,33,33,33,33,33,33,33,33,33,33,33,33,33,33,1,1,1,1,0,1,1,1,1,0,1,1,1,0,"
 
 __constant uchar16 constant_vec = ((uchar16)(33,33,33,33,33,33,33,33,33,33,33,33,33,33,33,33));
 
-#define REL(x) relocate((void*)(&x))
-void relocate(void *param) {}
+#define REL(x) (&x)
 
 __kernel void read_memory(__global char* output, 
     __constant int *factors, 
