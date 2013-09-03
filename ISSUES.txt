@@ -115,7 +115,10 @@ Workaround: ?
 
 Issue D4: Apple i5 CPU driver compilation crashes is local memory 
           zeroing macro is replaced with with following:
-          #define WCL_LOCAL_RANGE_INIT(begin, end) for(_local char* cur = (__local char*)begin; cur != (__local char*)end; cur++) { *cur = _WCL_FILLCHAR; }
+          #define WCL_LOCAL_RANGE_INIT(begin, end) \
+              for(_local char* cur = (__local char*)begin; cur != (__local char*)end; cur++) { \
+                  *cur = _WCL_FILLCHAR; \
+              }
 Workaround: Zeroing is written differently.
 
 Clang
@@ -192,3 +195,11 @@ Also opened bug report: http://llvm.org/bugs/show_bug.cgi?id=16560
 
 For now the bug can be circumvented by having vector initializations
 wrapped inside parentheses: (float4)(0,0,0,0) -> ((float4)(0,0,0,0)).
+
+Vector element access doesn't preserve address space
+----------------------------------------------------
+
+If we have "__global float4 *vec", the type of "(*vec).x" has correct
+address space but "vec->x" doesn't. This can be worked around by
+determining the correct address space indirectly from the type of
+"vec" or by transforming "vec->x" to "(*vec).x".
