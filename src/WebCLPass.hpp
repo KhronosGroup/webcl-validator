@@ -184,6 +184,13 @@ public:
     /// \see WebCLPass
     virtual void run(clang::ASTContext &context);
 
+    /// \return Correct address space for the type of given
+    /// expression.
+    ///
+    /// Works around a bug in Clang's vector element access
+    /// expression.
+    unsigned getAddressSpace(clang::Expr *expr);
+
     /// \return Memory area limits for the address space of given
     /// expression.
     AddressSpaceLimits& getLimits(clang::Expr *access, clang::VarDecl *decl);
@@ -243,6 +250,7 @@ public:
 
 private:
 
+    /// Contains information about address space limits.
     WebCLKernelHandler &kernelHandler_;
 };
 

@@ -381,12 +381,22 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
     addressSpaceHandler_.emitConstantAddressSpaceAllocation();
 }
 
+unsigned WebCLKernelHandler::getAddressSpace(clang::Expr *expr)
+{
+    clang::ExtVectorElementExpr *vecExpr =
+        llvm::dyn_cast<clang::ExtVectorElementExpr>(expr);
+    clang::QualType exprType = (vecExpr && vecExpr->isArrow()) ?
+        vecExpr->getBase()->getType().getTypePtr()->getPointeeType() :
+        expr->getType();
+    return exprType.getAddressSpace();
+}
+
 AddressSpaceLimits& WebCLKernelHandler::getLimits(
     clang::Expr *access, clang::VarDecl *decl)
 {
     // TODO: remove if true after better limit resolving is added
     if (true || decl == NULL) {
-        switch( access->getType().getAddressSpace()) {
+        switch(getAddressSpace(access)) {
         case clang::LangAS::opencl_global:
             return globalLimits_;
         case clang::LangAS::opencl_constant:
@@ -469,7 +479,7 @@ void WebCLMemoryAccessHandler::run(clang::ASTContext &context)
         clang::VarDecl *decl = i->second;
       
         // update maximum access data
-        unsigned addressSpace = access->getType().getAddressSpace();
+        unsigned addressSpace = kernelHandler_.getAddressSpace(access);
         unsigned accessWidth = context.getTypeSize(access->getType());
         if (maxAccess.count(addressSpace) == 0) {
             maxAccess[addressSpace] = accessWidth;
