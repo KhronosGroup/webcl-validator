@@ -85,6 +85,11 @@ Issue B6: Intel compiler crashes when the validated version of test
           case "remove-variables.cl" is compiled.
 Workaround: ?
 
+Issue B7: AMD compiler crashes when the validated versions of test
+          cases "short-kernel-id.cl", "remove-variables.cl" and
+          "relocate-variables.cl" are compiled.
+Workaround: ?
+
 OpenCL Driver Bugs
 ------------------
 
@@ -120,6 +125,11 @@ Issue D4: Apple i5 CPU driver compilation crashes is local memory
                   *cur = _WCL_FILLCHAR; \
               }
 Workaround: Zeroing is written differently.
+
+Issue D5: AMD driver crashes when test cases "private_mem_zeroing.cl",
+          "radixsort/output.cl" and "reading_invalid_addresses" are
+          run.
+Workaround: ?
 
 Clang
 =====
