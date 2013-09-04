@@ -1,5 +1,5 @@
-Some notes about the system and how does it work
-================================================
+Overview of the validator design
+================================
 
 
 General overview
@@ -10,13 +10,14 @@ file as its input and outputs a validated version of the input
 source. The validated source contains checks that prevent illegal
 memory references. If validation can't be done, the tool outputs
 nothing but relevant error messages. If everything goes well the
-transformed output source is fed to an OpenCL driver.
+transformed output source can be fed to an OpenCL driver.
 
 The validator has been implemented as a Clang tool. There are actually
-two Clang tools implementing different validation phases embedded into
-a single executable. The first phase tool preprocesses the input
-source and passes it to the second phase tool that applies
-transformations to the preprocessed source.
+multiple Clang tools embedded into a single executable. Each of them
+implement different validation phases. The first phase tool
+preprocesses the input source. Intermediate phases normalize and
+simplify the input source. The last phase runs the validation
+algorithm.
 
 
 Preprocessing and interfacing
@@ -27,7 +28,7 @@ any preprocessing directives because the validator phase needs to know
 what it's going to validate. That wouldn't be possible if there were
 any (complicated) branching directives in the code.
 
-Since WebCL C code may contain conditional preprocessor branches any
+Since WebCL C code may contain conditional preprocessor branches, any
 implicit preprocessor definitions need to be known. In practice these
 implicit definitions are the features and extensions supported by the
 used OpenCL driver. More specifically, the supported features and
@@ -42,11 +43,44 @@ without OpenCL driver dependency if the relevant implicit defines are
 passed to the tool as command line options. For this reason each
 implicit define should be passed to the tool with -D option.
 
+Currently supported options (extensions) are:
+    -Dcl_khr_fp16
+    -Dcl_khr_fp64
+    -Dcl_khr_gl_sharing
+    -Dcl_khr_initialize_memory
+
+
+Normalization of input
+----------------------
+
+The input sources are normalized after preprocessing. Normalizations
+are transformations that simplify the structure of the code but don't
+change the functionality. For example, one possible normalization is
+the separation of type definitions from variable declarations:
+
+struct Type { int field; } variable;
+->
+struct Type { int field; };
+struct Type variable;
+
+Normalizations are done only to simplify transformations. Sometimes
+multiple transformations need to be applied to same source code
+locations and it's much easier to implement one specific
+transformation at a time than to keep track of a very complex
+transformation consisting of multiple partial transformations. This is
+because Clang's source code rewriting mechanism allows only one
+transformation to be applied reliably to a specific source code
+location.
+
+Therefore there are multiple passes, each pass applying no more than a
+single transformation to a single source code location and each
+subsequent pass reparsing the output of the previous pass.
+
 
 Validation approach
 -------------------
 
-The validation solution described here is based on already existing
+The validation solution described here is based on an already existing
 LLVM IR based implementation. This alternative solution was invented
 as a replacement for a smart pointer based solution that wasn't found
 to be good enough in practice.
@@ -81,33 +115,33 @@ The code will be transformed as:
 
 typedef struct {
     int entry__val;
-} WclPrivates;
+} _WclPrivates;
 
 typedef struct {
     __global int *entry__res_min;
     __global int *entry__res_max;
-} WclGlobalLimits;
+} _WclGlobalLimits;
 
 typedef struct {
-    WclGlobalLimits gl;
-    WclPrivates pa;
-} WclProgramAllocations;
+    _WclGlobalLimits gl;
+    _WclPrivates pa;
+} _WclProgramAllocations;
 
-int helper(WclProgramAllocations *wcl_allocs, int *ptr)
+int helper(_WclProgramAllocations *_wcl_allocs, int *ptr)
 {
-    return *CHECK_PRIVATE(wcl_allocs, ptr);
+    return *CHECK_PRIVATE(_wcl_allocs, ptr);
 }
 
-__kernel void entry(__global int *res, unsigned long wcl_res_size)
+__kernel void entry(__global int *res, unsigned long _wcl_res_size)
 {
-    WclProgramAllocations wcl_allocations_allocation = {
-        { &res[0], &res[wcl_res_size] }, // WclGlobalLimits
-        { 0 } // WclPrivates
+    _WclProgramAllocations _wcl_allocations_allocation = {
+        { &res[0], &res[_wcl_res_size] }, // _WclGlobalLimits
+        { 0 } // _WclPrivates
     };
-    WclProgramAllocations *wcl_allocs = &wcl_allocations_allocation;
+    _WclProgramAllocations *_wcl_allocs = &_wcl_allocations_allocation;
 
-    *CHECK_GLOBAL(wcl_allocs, res + get_global_id(0)) =
-        helper(wcl_allocs, &wcl_allocs->pa.entry__val);
+    *CHECK_GLOBAL(_wcl_allocs, res + get_global_id(0)) =
+        helper(_wcl_allocs, &_wcl_allocs->pa.entry__val);
 }
 
 
@@ -118,7 +152,7 @@ Variable relocation:
 
 Any variable that requires its address to be known, must be relocated
 to an address space specific structure. In the example 'val' was
-relocated to 'WclPrivates'. Similar structures are required for local
+relocated to '_WclPrivates'. Similar structures are required for local
 and constant address spaces.
 
 Variable renaming:
@@ -133,7 +167,7 @@ Type relocation:
 The types of relocated variables need to be relocated as well (or at
 least forward declarations need to be generated). If the type of 'val'
 would have been 'struct V { int v; }' instead of 'int', the type would
-have had to be introduced before 'WclPrivates'.
+have had to be introduced before '_WclPrivates'.
 
 Type renaming:
 
@@ -145,35 +179,35 @@ Static limit check:
 Accesses for memory that has been defined inside the kernel can be
 checked by determining the begin and end addresses of the
 corresponding address space structure. In the example 'CHECK_PRIVATE'
-can clamp 'ptr' to be within instance of 'WclPrivates'. The limits of
+can clamp 'ptr' to be within instance of '_WclPrivates'. The limits of
 this check are known at compile time.
 
 Dynamic limit check:
 
 Size of memory regions passed to kernels need to be defined. In the
-example 'wcl_res_size' was introduced for 'res'. The extra size
+example '_wcl_res_size' was introduced for 'res'. The extra size
 parameters can be used to define limits for passed memory
-regions. This is shown in 'WclGlobalLimits'. Similar limit structures
+regions. This is shown in '_WclGlobalLimits'. Similar limit structures
 are needed for local and constant address spaces as well. In the
-example 'CHECK_GLOBAL' will use the limit information to clamp 'res +
-get_global_id(0)'.
+example 'CHECK_GLOBAL' will use the limit information to clamp
+'res + get_global_id(0)'.
 
 Initialization:
 
 All address space structures (for internal allocations) and limit
 structures (for external allocations) are put together into
-'WclProgramAllocations'. Instances of the generated structures need to
+'_WclProgramAllocations'. Instances of the generated structures need to
 be created and initialized in the beginning of each kernel.
 
 Transformation:
 
-A pointer to the main allocation structure, 'wcl_allocs', needs to be
+A pointer to the main allocation structure, '_wcl_allocs', needs to be
 passed to any function that performs pointer checks. The signatures of
 these functions need to be modfied so that they can accept this extra
 argument. See the signature and call of 'helper'.
 
 Each reference to relocated variables needs to be transformed. In the
-example 'val' was transformed to 'wcl_allocs->pa.entry__val'.
+example 'val' was transformed to '_wcl_allocs->pa.entry__val'.
 
 
 Issues with required transformations
@@ -229,9 +263,9 @@ makes at least AMDs OpenCL C compiler crash:
 typedef struct {
     int val;
     __constant int *ptr;
-} WclConstants;
+} _WclConstants;
 
-__constant WclConstants wcl_constants = { 0, &wcl_constants.val };
+__constant _WclConstants _wcl_constants = { 0, &_wcl_constants.val };
 
 Dynamic limit check:
 
@@ -275,7 +309,6 @@ in some cases. Consider the following example:
 In this case 'base' can't have valid limits and therefore evaluating
 '*(base + offset)' must fail with smart pointers.
 
-
 Size required by pointers:
 
 Alternative solution doesn't suffer size overhead regarding
@@ -301,7 +334,7 @@ would need to do indirect load operation for every pointer access to
 get limits for that single memory access.
 
 With the altenative approach we have single limits for private address
-space, which we can load just once in running kernel and re-use the
+space, which we can load just once in running kernel and reuse the
 loaded values for every memory access of private address space. For
 other address spaces we have few separate limits, which the compiler
 should be able to optimize in such a way that the required limit loads
@@ -309,8 +342,8 @@ would be done just once in each function.
 
 Number of region checks in pointer accesses:
 
-Smart pointers require only one region check for each pointer access
-where min and max limits are always loaded indirectly whereas the
+Smart pointers require only one region check for each pointer access,
+where min and max limits are always loaded indirectly, whereas the
 alternative approach may require multiple checks and usually limits
 needs to be loaded just once for each limit range in the program.
 
@@ -339,17 +372,18 @@ region checks are required.
 Coding guidelines for programmer to avoid checks
 ------------------------------------------------
 
-Avoid having to use unneccessary amount of 
-*(), -> or [] operators, each of them causes check to be added to
-code.
+Avoid having to use unneccessary amount of *(), -> or [] operators,
+because each of them causes check to be added to code.
 
-NOTE: in the future dependecy analysis can help to remove checks in many cases  
+NOTE: In the future, dependecy analysis can help to remove checks in
+      many cases.
 
 
-What memory accesses are recognized and how are they made safe
---------------------------------------------------------------
+Memory access validation
+------------------------
 
-First all types of accesses are recognized and normalized to *() access
+All types of memory accesses are recognized and normalized to *()
+access:
 
 table[index]; -> (*(table + index));
 
@@ -359,160 +393,107 @@ vector_type_ptr->x -> (*(vector_type_ptr)).x;
 
 *(any_pointer); -> *(any_pointer);
 
-Then the address inside *() notation is clamped to correct range:
+The address inside *() notation is then clamped to correct range:
 
-*(WCL_CLAMP((type), ptr, min_ptr, max_ptr))
+*(WCL_CLAMP((type), ptr, min_ptr, max_ptr, null_ptr))
 
 
-Memory zero initialization
---------------------------
+Null pointers
+-------------
 
-* local memory is zeroed in start of each workitem
+The validation algorithm keeps track of the largest *() memory access
+for each address space. If there is a memory access that doesn't fit
+into any valid memory area, two courses of action can be taken.
 
-* private memory is zeroed in start of each workitem, if secure way
-  is found for statically allocated constant memory initialization, 
-  that method should be able to be used for private memory as well. 
+A special null variable can be introduced and the invalid memory
+access will then access that variable. The null variable is simply an
+initialized memory region that is big enough for the largest *()
+memory access. This is done for locals and constants.
 
-ISSUE: How to avoid padding leakage for global variable initialization 
-       without making assumptions of device architecture:
+Code can be emitted at the beginning of each kernel that simply makes
+the kernel return if there is a risk that some memory accesses can't
+be made safely. This is done for globals and privates.
 
-https://www.securecoding.cert.org/confluence/display/seccode/DCL39-C.+Avoid+information+leak+in+structure+padding
 
-Which variable declarations must be collected to address space
---------------------------------------------------------------
+Memory initialization
+---------------------
 
-* In the first phase all of them.
+Global memory is not initialized. Constant memory passed as a kernel
+parameter is also left uninitialized.
 
-* Also if function argument is passed to other function as pointer,
-new variable must be created for it to address space struct and 
-add assignment to start of function
+Local memory, which doesn't support variable initializers, is
+initialized at start of each workitem by calling a parallel
+initialization algorithm.
 
-e.g. void foo(int bar) {
-    foo2(&bar);
+Private memory is initialized at start of each workitem by using an
+initializer. Constants memory is initialized in the same manner.
+
+
+Collecting variables to address space structures
+------------------------------------------------
+
+Basically all variables, whose contents may be accessed with a
+pointer, must be collected. For example, whole structures are
+collected if the address of one of their fields is taken:
+
+struct { int a; int b; } variable;
+foo(&(variable.a));
+
+This means that function parameters may need to be collected as well:
+
+void bar(int parameter)
+{
+    foo(&parameter);
 }
 
-- transformed to ->
 
-void foo(int bar) {
-    wcl_allocs->pa.foo__bar = bar;
-    foo2(&wcl_allocs->pa.foo__bar);
-}
+Future improvements
+-------------------
 
-
-What other information analysis pass should collect
-----------------------------------------------------
-
-* Find out which calls are builtin calls and which ones
-  are calls to internal functions.
-
-* Find out type of each pointer that is accessed by * operator
-  to be able to figure out the worst case limits.
-
-
-What kind of other checks are done to validate the webcl
-----------------------------------------------------------
-
-* Check that only list of preprocessor directives that we allow 
-  pass through.
-
-* 3d image type is not supported.
-
-* TODO: double underscore is not allowed in kernel arguments (because of our naming scheme)
-
-*. TODO: add some more info about checks 
-
-
-What additional transformations are needed
-------------------------------------------
-
-* all typedefs are collected and located to start of source in the 
-original order (our own typedefs needs to be injected after originals)
-
-TODO:
-
-* Add list / checks of allowed preprocessor directives 
-
-* Create address space specific null pointers and code to initialize them.
-
-* add converter which adds padding to constant address space struct initializer
-
-* fix private memory initializers (support only basic types and arrays)
-
-FUTURE:
+Here is a list of improvements that could be done in the future:
 
 * Add dependecy analysis to follow dependencies of limits to respect
   between function calls.
 
-* Inject safe builtin implementations, for the builtin functions which
-  might access memory evil ways (probably we need to generate code on the 
-  fly if multiple limits to check). 
+* Inject safe builtin implementations for the builtin functions which
+  take pointers as arguments.
 
 * Add separate version of helper functions for each kernel and create
-  different limit structures for each kernel. 
+  different limit structures for each kernel.
 
 * Find worst case scenario from call graph about needed private memory
-  and write stack emulation, instead of having all the private variables
-  separately in provate address space struct
+  and write stack emulation, instead of having all the private
+  variables separately in private address space structure.
 
-* Add value range analysis to be able to remove checks out from loops and
-  to start of program or in extreme case completely create pre-validation 
-  kernel, which checks that arguments are ok before just executing the code 
-  (this would allow e.g. autovectorization to work normally).
+* Add value range analysis, so that checks can be moved out of loops
+  to start of program, or in extreme case completely create
+  pre-validation kernel, which checks that arguments are ok before
+  just executing the code (this would allow e.g. autovectorization to
+  work normally).
 
 
-Implementation details and brief intro to code base
-====================================================
+Implementation details and brief introduction to code base
+==========================================================
 
-Magic starts with main.cpp: We create our WebCLAction and run it with webclTool.
+main: Creates and runs cascaded tools. Each tool takes OpenCL C code
+as input and outputs the code with some transformations.
 
-    clang::tooling::ClangTool webclTool(optionsParser.GetCompilations(),
-                                        optionsParser.GetSourcePathList());
+WebCLAction, WebCLTool: Components that represent the preprocessing,
+normalization and validation passes.
 
-    clang::tooling::FrontendActionFactory *webCLActionFactory = 
-        clang::tooling::newFrontendActionFactory<WebCLAction>();
+WebCLMatcher: Components that implement normalization passes using AST
+matchers.
 
-    const int status = webclTool.run(webCLActionFactory);
+WebCLConsumer: Runs the memory access validation algorithm. Calls
+visitors to check and analyse the AST and then runs further passes
+that transform the code based on earlier analysis.
 
-WebCLAction.cpp: Does initialize some classes, most importantly WebCLConsumer, which coordinates 
-all the hard work to different pieces.
+WebCLVisitor: Components for validation pass that check and analyze
+ASTs, but don't do any transformations.
 
-WebCLConsumer.cpp: 
+WebCLPass: Components for validation pass that perform
+transformations.
 
-Calls all visitors to analyse and interpret AST tree. WebCLAnalyser is the visitor, which collects 
-all the information that is needed for the few handler classes to be able to model the address 
-spaces, dynamic memory got from kernel arguments and memory accesses in the program.
-
-This all is done in WebCLConsumer::HandleTranslationUnit method.
-
-Handler classes calls internally WebCLTransformer to do required changes to code. To keep system 
-simple and brains in one place transformer does not know anything about state between calls. It does 
-only single transformations to source according to data provided by handler classes.
-
-Currently design has following handlers:
-
-InputNormaliser: This class just moves typedefs to start of module so that typedefs are 
-                 available when defining types of address spaces.
-
-HelperFunctionHandler: Adds additinal parameter to every helper function signature and to calls
-                       of internal functions.
-
-AddressSpaceHandler: Collects information about which variables must be collected to each address space
-                     and if necessary organizes order of data and adds explicit paddin bytes to prevent
-                     information leakage. Class also does relocations of variable uses to refer address
-                     space equivalents instead.
-
-KernelHandler: Class collects information of every limit that exists in program and contains information
-               which limits each variable use should respect. Limits are collected from AddressSpaceHandler
-               and from pointers passed to kernel arguments. Class also creates initialization code for
-               each kernel, where static allocations of private and local address space data are done.
-
-MemoryAccessHandler: This class knows everything about memory accesses and uses limit information got from
-                     kernel handler to inject memory access clamping macro calls.
-
-WebCLTransformer.cpp: Handler classes use transformer to create all simple transformations.
-This should be mostly brainless class that e.g. knows how relocation is done, but does not
-know if it should be done. 
-
-Does the hard work of keeping track generated prologues of every function / kernel and
-module prologue. Provides easy API for handlers to be able to create transformations
-required by the algorithm, but does not store internally data about program structure. 
+WebCLTransformer: Provides a way for validation passes to create
+transformations. This should be mostly a brainless class that knows
+how transformations are done, but doesn't know when to do them.
