@@ -203,6 +203,7 @@ public:
     ///   for each memory object parameter.
     /// - Allocates and initializes address space structures and
     ///   limits.
+    /// - Exports kernel signatures in JSON format.
     ///
     /// \see WebCLPass
     virtual void run(clang::ASTContext &context);

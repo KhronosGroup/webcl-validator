@@ -170,7 +170,7 @@ const std::string WebCLConfiguration::getNameOfType(clang::QualType type) const
     return type.getUnqualifiedType().getAsString();
 }
 
-const std::string WebCLConfiguration::getNameOfSizeParameter(clang::ParmVarDecl *decl) const
+const std::string WebCLConfiguration::getNameOfSizeParameter(const clang::ParmVarDecl *decl) const
 {
     const std::string name = decl->getName();
     return variablePrefix_ + "_" + name + "_size";

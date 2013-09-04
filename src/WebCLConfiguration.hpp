@@ -85,7 +85,7 @@ public:
     const std::string getNameOfType(clang::QualType type) const;
     /// \return Name of kernel parameter that contains the size of
     /// given memory object parameter.
-    const std::string getNameOfSizeParameter(clang::ParmVarDecl *decl) const;
+    const std::string getNameOfSizeParameter(const clang::ParmVarDecl *decl) const;
     /// \return Name that should be generated for given anonymous or
     /// nameless structure.
     const std::string getNameOfAnonymousStructure(const clang::RecordDecl *decl);

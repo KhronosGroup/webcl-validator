@@ -69,6 +69,10 @@ public:
     /// shouldn't be output if there were errors.
     bool rewrite();
 
+    /// Creates a comment that contains information about kernels and
+    /// kernel parameters in JSON format.
+    void createJsonHeader(std::set<clang::FunctionDecl*> &kernels);
+
     /// Create address space structure. The structure contains all
     /// relocated variables of the given address space as fields.
     void createAddressSpaceTypedef(
@@ -273,7 +277,9 @@ private:
     /// A kernel might have both function and kernel prologue
     /// streams. Kernel prologue comes before function prologue.
     std::stringstream& functionPrologue(FunctionPrologueMap &prologues, const clang::FunctionDecl *func);
-  
+
+    /// Stream for JSON header.
+    std::stringstream jsonPrologue_;
     /// Stream for code that needs to be located at the beginning of
     /// the transformed program even before typedefs.
     std::stringstream preModulePrologue_;

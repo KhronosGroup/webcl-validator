@@ -24,6 +24,7 @@ add_clang_executable(
   WebCLBuiltins.cpp
   WebCLConfiguration.cpp
   WebCLConsumer.cpp
+  WebCLHeader.cpp
   WebCLHelper.cpp
   WebCLMatcher.cpp
   WebCLPass.cpp

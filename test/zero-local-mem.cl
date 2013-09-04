@@ -21,7 +21,7 @@ void init_local_mem(
 }
 
 __kernel void zero_local_mem(
-    __global bool *result,
+    __global int *result,
     __local int *int_array,
     __local char *char_array,
     __local float *float_array,

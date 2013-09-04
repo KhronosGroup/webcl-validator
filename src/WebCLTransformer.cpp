@@ -21,10 +21,10 @@
 ** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 */
 
+#include "WebCLDebug.hpp"
+#include "WebCLHeader.hpp"
 #include "WebCLTransformer.hpp"
 #include "general.h"
-
-#include "WebCLDebug.hpp"
 
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
@@ -102,6 +102,12 @@ bool WebCLTransformer::rewrite()
     flushQueuedTransformations();
 
     return status;
+}
+
+void WebCLTransformer::createJsonHeader(std::set<clang::FunctionDecl*> &kernels)
+{
+    WebCLHeader header(instance_, cfg_);
+    header.emitHeader(jsonPrologue_, kernels);
 }
 
 std::stringstream& WebCLTransformer::functionPrologue(
@@ -869,6 +875,7 @@ std::string WebCLTransformer::getWclAddrCheckMacroDefinition(unsigned aSpaceNum,
 
 void WebCLTransformer::emitPrologue(std::ostream &out)
 {
+    out << jsonPrologue_.str();
     out << preModulePrologue_.str();
     out << modulePrologue_.str();
     emitGeneralCode(out);
