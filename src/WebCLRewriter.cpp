@@ -188,8 +188,8 @@ std::string WebCLRewriter::getTransformedText(clang::SourceRange range) {
     retVal = result.str();
   }
   
-  std::cerr << "Get SourceLoc "
-            << rawStart << ":" << rawEnd << " : " << retVal << "\n";
+  DEBUG( std::cerr << "Get SourceLoc "
+         << rawStart << ":" << rawEnd << " : " << retVal << "\n"; );
   
   return retVal;
 }

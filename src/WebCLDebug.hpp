@@ -1,7 +1,7 @@
 #ifndef WEBCLVALIDATOR_WEBCLDEBUG
 #define WEBCLVALIDATOR_WEBCLDEBUG
 
-#define DEBUG 1
+//#define DEBUG 1
 
 #ifdef DEBUG
 #undef DEBUG
