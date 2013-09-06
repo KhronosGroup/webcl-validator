@@ -30,8 +30,9 @@ WebCLArguments::WebCLArguments(int argc, char const *argv[])
     char const *headerFilename = createFullTemporaryFile(headerDescriptor, buffer, length);
     if (!headerFilename)
         return;
-    files_.push_back(TemporaryFile(headerDescriptor, headerFilename));
-
+    files_.push_back(TemporaryFile(-1, headerFilename));
+    close(headerDescriptor);
+  
     char const *preprocessorInvocation[] = {
         commandName, inputFilename, "--"
     };
@@ -109,7 +110,7 @@ WebCLArguments::~WebCLArguments()
 
     while (files_.size()) {
         TemporaryFile &file = files_.back();
-        close(file.first);
+        // close(file.first);
         remove(file.second);
         delete[] file.second;
         files_.pop_back();
@@ -184,7 +185,8 @@ char const *WebCLArguments::getInput(int argc, char const **argv, bool createOut
         char const *name = createEmptyTemporaryFile(fd);
         if (!name)
             return NULL;
-        files_.push_back(TemporaryFile(fd, name));
+        files_.push_back(TemporaryFile(-1, name));
+        close(fd);
         outputs_.push_back(name);
     }
 
