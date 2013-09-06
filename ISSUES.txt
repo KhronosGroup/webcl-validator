@@ -79,7 +79,7 @@ Issue B5: POCL compiler may crash when structure pointers are cast to
           routine. AMD and Intel compilers work fine.
 Workaround: Sometimes casting indirectly via pointers to larger types
             may help, but not always. For example, type* -> char* may
-            crash but type* -> int* -> char* may work.
+            crash but type* -> int* -> char* may work. 
 
 Issue B6: Intel compiler crashes when the validated version of test
           case "remove-variables.cl" is compiled.

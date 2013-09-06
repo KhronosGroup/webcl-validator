@@ -9,6 +9,8 @@
 #include <cstring>
 #include <sys/time.h>
 
+#define SCALAR 0
+
 namespace
 {
     typedef std::vector<cl_platform_id> platform_vector;
@@ -79,10 +81,11 @@ typedef struct {
     int initType; 
     int as; 
     int size; 
-    int length; } BufferArg;
+    int length; 
+    float init; } BufferArg;
 
 bool testSource(int id, cl_device_id device, std::string const& source, 
-    std::string &kernelName, int globalWorkSize, std::vector<BufferArg> &buffers, bool isTransformed, 
+    std::string &kernelName, int globalWorkSize, int loopCount, std::vector<BufferArg> &buffers, bool isTransformed, 
     char* programOutput, bool debug, bool hasOutput)
 {
     cl_int ret = CL_SUCCESS;
@@ -131,24 +134,55 @@ bool testSource(int id, cl_device_id device, std::string const& source,
     // init data for float / int types
     cl_float floatInit[128000];
     cl_int   intInit[128000];
+    cl_uchar ucharInit[128000];
     for (int i = 0; i < 128000; i++) { 
         intInit[i] = i;
         floatInit[i] = i;
+        ucharInit[i] = i;
     }
 
     timeval allocate_buffers_begin;
     gettimeofday(&allocate_buffers_begin, NULL);
 
     for (unsigned i = 0; i < buffers.size(); i++) {        
-        if (buffers[i].as == 1) {
-            args.appendArray(buffers[i].size, NULL, buffers[i].length);
+        if (buffers[i].size == SCALAR) {
+            switch (buffers[i].initType) {
+            case 0:
+                args.appendInt((int)buffers[i].init);
+                break;
+            case 1:
+                args.appendFloat(buffers[i].init);
+                break;
+            default:
+                std::cerr << "Unhandled argument type: " << buffers[i].initType << std::endl;
+                return false;
+            }
         } else {
-            cl_mem memBuf = clCreateBuffer(context, 
-                CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR, 
-                buffers[i].size, buffers[i].initType == 0 ? (void*)intInit : (void*)floatInit, &ret);
-            cleanUpVec.push_back(memBuf);
-            args.appendArray(&memBuf, buffers[i].length);
-        }        
+            if (buffers[i].as == 1) {
+                args.appendArray(buffers[i].size, NULL, buffers[i].length);
+            } else {
+                void *initBuffer = NULL;
+                switch(buffers[i].initType) {
+                case 0:
+                    initBuffer = intInit;
+                    break;
+                case 1:
+                    initBuffer = floatInit;
+                    break;
+                case 2:
+                    initBuffer = ucharInit;
+                    break;
+                default:
+                    std::cerr << "Unhandled buffer type: " << buffers[i].initType << std::endl;
+                    return false;
+                }
+                cl_mem memBuf = clCreateBuffer(context, 
+                    CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR, 
+                    buffers[i].size, initBuffer, &ret);
+                cleanUpVec.push_back(memBuf);
+                args.appendArray(&memBuf, buffers[i].length);
+            }        
+        }
     }
 
     ret = clFinish(command_queue);
@@ -158,15 +192,18 @@ bool testSource(int id, cl_device_id device, std::string const& source,
     // Execute the OpenCL kernel on the list
     size_t global_item_size = globalWorkSize; // Process the entire lists
     if (debug) std::cerr << "Enqueue kernel.\n";
-    ret = clEnqueueNDRangeKernel(command_queue, kernel, 1,
-                                 NULL, &global_item_size, NULL,
-                                 0, NULL, NULL);
 
-    if (ret != CL_SUCCESS) {
-        std::cerr << "clEnqueueNDRangeKernel failed with code " << ret << std::endl;
-        return false;
+    for ( int loops = 0; loops < loopCount; loops++) {
+        ret = clEnqueueNDRangeKernel(command_queue, kernel, 1,
+                                     NULL, &global_item_size, NULL,
+                                     0, NULL, NULL);
+
+        if (ret != CL_SUCCESS) {
+            std::cerr << "clEnqueueNDRangeKernel failed with code " << ret << std::endl;
+            return false;
+        }
     }
-
+    
     ret = clFinish(command_queue);
     timeval enqueue_kernel_end;
     gettimeofday(&enqueue_kernel_end, NULL);
@@ -217,7 +254,7 @@ bool testSource(int id, cl_device_id device, std::string const& source,
 std::string usage = 
 "/// Runs opencl / webcl kernel and prints out the return value table.\n"
 "/// \n"
-"/// __kernel <kernel_name>(__global *char ret_val, <rest of the args> );\n"
+"/// __kernel <kernel_name>(__global char *ret_val, <rest of the args> );\n"
 "///\n"
 "/// ret_val buffer is 1024 bytes and it is read as null terminated string.\n"
 "///\n"
@@ -228,7 +265,10 @@ std::string usage =
 "/// --global   <type> <size> Adds global address space buffer.\n"
 "/// --local    <type> <size> Adds local address space buffer.\n"
 "/// --constant <type> <size> Adds constant address space buffer.\n"
+"/// --scalar   <type> <val> Add scalar argument to kernel.\n"
 "/// -d         Print out parsed options and other debug.\n"
+"/// --nooutput Do not require char* ret_val argument..\n"
+"/// --loop     <int> How many times kernel will be called.\n"
 "///\n"
 "/// All buffers are initialized with values from 0 to buffer size.\n"
 "/// <type> can be one of int,float,int<2-16>,float<2-16>\n"
@@ -275,6 +315,10 @@ int main(int argc, char const* argv[])
     gcount.insert("--gcount");
     std::set<std::string> nooutput;
     nooutput.insert("--nooutput");
+    std::set<std::string> scalar;
+    scalar.insert("--scalar");
+    std::set<std::string> loopcount;
+    loopcount.insert("--loop");
 
     std::vector<BufferArg> buffers;
     std::string kernel = "test_kernel";
@@ -282,6 +326,7 @@ int main(int argc, char const* argv[])
     bool printDebug = false;
     int globalWorkItemCount = 1;
     bool addOutput = true;
+    int loopCount = 1;
 
     std::map<std::string, int> atotype;
     atotype["int"]   = 0;
@@ -296,6 +341,12 @@ int main(int argc, char const* argv[])
     atotype["float4"]  = 1;
     atotype["float8"]  = 1;
     atotype["float16"] = 1;
+    atotype["uchar"]   = 2;
+    atotype["uchar2"]  = 2;
+    atotype["uchar3"]  = 2;
+    atotype["uchar4"]  = 2;
+    atotype["uchar8"]  = 2;
+    atotype["uchar16"] = 2;
 
     std::map<std::string, int> atotypesize;
     atotypesize["int"]   = sizeof(int);
@@ -310,6 +361,12 @@ int main(int argc, char const* argv[])
     atotypesize["float4"]  = 4*sizeof(float);
     atotypesize["float8"]  = 8*sizeof(float);
     atotypesize["float16"] = 16*sizeof(float);
+    atotypesize["uchar"]   = 1*sizeof(cl_uchar);
+    atotypesize["uchar2"]  = 2*sizeof(cl_uchar);
+    atotypesize["uchar3"]  = 4*sizeof(cl_uchar);
+    atotypesize["uchar4"]  = 4*sizeof(cl_uchar);
+    atotypesize["uchar8"]  = 8*sizeof(cl_uchar);
+    atotypesize["uchar16"] = 16*sizeof(cl_uchar);
 
     // parse commandline and expect that user is not hostile
     for (int i = 1; i < argc; ++i) {
@@ -337,6 +394,13 @@ int main(int argc, char const* argv[])
             printDebug = true;
         } else if (nooutput.count(argv[i])) {
             addOutput = false;
+        } else if (scalar.count(argv[i])) {
+            BufferArg buf = { atotype[argv[i+1]], 0, SCALAR, 1, atof(argv[i+2]) };
+            buffers.push_back(buf);
+            i+=2;
+        } else if (loopcount.count(argv[i])) {
+            loopCount = atoi(argv[i+1]);
+            i++;
         }
     }
     if (printDebug) {
@@ -363,7 +427,7 @@ int main(int argc, char const* argv[])
              device != devices.end(); ++device)
         {        
             printDevInfo(*device);
-            if (!testSource(id, *device, source, kernel, globalWorkItemCount, buffers, useWebCL, retVal, printDebug, addOutput))
+            if (!testSource(id, *device, source, kernel, globalWorkItemCount, loopCount, buffers, useWebCL, retVal, printDebug, addOutput))
             {
                 return EXIT_FAILURE;
             }

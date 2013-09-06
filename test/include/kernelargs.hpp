@@ -51,6 +51,18 @@ public:
         }
     }
 
+    void appendInt(cl_int val) {
+        cl_int ret = clSetKernelArg(kernel_, argi_++, sizeof(val), &val);
+        if (ret != CL_SUCCESS)
+            std::cerr << "clSetKernelArg failed for cl_int." << std::endl;
+    }
+
+    void appendFloat(cl_float val) {
+        cl_int ret = clSetKernelArg(kernel_, argi_++, sizeof(val), &val);
+        if (ret != CL_SUCCESS)
+            std::cerr << "clSetKernelArg failed for cl_float." << std::endl;
+    }
+
 private:
 
     cl_kernel kernel_;
