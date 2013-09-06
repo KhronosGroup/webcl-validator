@@ -6,7 +6,26 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <fcntl.h>
 #include <unistd.h>
+
+// TODO: maybe we should resolve directory separator and temp directory
+//       in windows runtime, since it depends if we are running from msys / cygwin shell
+//       or from windows commandline?
+
+#ifdef __MINGW32__
+#define DIR_SEPARATOR "\\"
+#define TEMP_DIR "."
+#else
+#define DIR_SEPARATOR "/"
+#define TEMP_DIR P_tmpdir
+#endif
+
+int mingwcompatible_mkstemp(char* tmplt) {
+  char *filename = mktemp(tmplt);
+  if (filename == NULL) return -1;
+  return open(filename, O_RDWR | O_CREAT, 0600);
+}
 
 WebCLArguments::WebCLArguments(int argc, char const *argv[])
     : preprocessorArgc_(0)
@@ -200,8 +219,8 @@ bool WebCLArguments::areArgumentsOk(int argc, char const **argv) const
 
 char const *WebCLArguments::createEmptyTemporaryFile(int &fd) const
 {
-    char const *directory = P_tmpdir;
-    char const *filename = "/wclXXXXXX";
+    char const *directory = TEMP_DIR;
+    char const *filename = DIR_SEPARATOR "wclXXXXXX";
 
     const int directoryLength = strlen(directory);
     const int filenameLength = strlen(filename);
@@ -217,7 +236,7 @@ char const *WebCLArguments::createEmptyTemporaryFile(int &fd) const
     std::copy(filename, filename + filenameLength, result + directoryLength);
     result[templateLength] = '\0';
 
-    fd = mkstemp(result);
+    fd = mingwcompatible_mkstemp(result);
     if (fd == -1) {
         std::cerr << "Internal error. Can't create temporary file." << std::endl;
         delete[] result;
