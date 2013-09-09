@@ -399,15 +399,15 @@ int main(int argc, char const* argv[])
             kernel = argv[i+1];
             i++;
         } else if (globalBuffer.count(argv[i])) {
-            BufferArg buf = { atotype[argv[i+1]], 3, atotypesize[argv[i+1]] * atoi(argv[i+2]), atoi(argv[i+2]) };
+            BufferArg buf = { atotype[argv[i+1]], 3, atotypesize[argv[i+1]] * atoi(argv[i+2]), atoi(argv[i+2]), 0 };
             buffers.push_back(buf);
             i+=2;
         } else if (constantBuffer.count(argv[i])) {
-            BufferArg buf = { atotype[argv[i+1]], 2, atotypesize[argv[i+1]] * atoi(argv[i+2]), atoi(argv[i+2]) };
+            BufferArg buf = { atotype[argv[i+1]], 2, atotypesize[argv[i+1]] * atoi(argv[i+2]), atoi(argv[i+2]), 0 };
             buffers.push_back(buf);
             i+=2;
         } else if (localBuffer.count(argv[i])) {
-            BufferArg buf = { atotype[argv[i+1]], 1, atotypesize[argv[i+1]] * atoi(argv[i+2]), atoi(argv[i+2]) };
+            BufferArg buf = { atotype[argv[i+1]], 1, atotypesize[argv[i+1]] * atoi(argv[i+2]), atoi(argv[i+2]), 0 };
             buffers.push_back(buf);
             i+=2;
         } else if (gcount.count(argv[i])) {
