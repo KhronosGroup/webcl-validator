@@ -825,8 +825,8 @@ void WebCLTransformer::emitVarDeclToStruct(std::ostream &out, const clang::VarDe
 
 void WebCLTransformer::emitGeneralCode(std::ostream &out)
 {
-    const char *buffer = reinterpret_cast<const char*>(general_cl);
-    size_t length = general_cl_len;
+    const char *buffer = reinterpret_cast<const char*>(general_endlfix_cl);
+    size_t length = general_endlfix_cl_len;
     const std::string generalClContents(buffer, length);
     out << "\n" << generalClContents << "\n";
 }

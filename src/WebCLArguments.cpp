@@ -66,8 +66,8 @@ WebCLArguments::WebCLArguments(int argc, char const *argv[])
     assert((argc >= userOptionOffset) &&
            "Expected at least executable name and input file in argv.");
 
-    char const *buffer = reinterpret_cast<char const*>(kernel_cl);
-    size_t length = kernel_cl_len;
+    char const *buffer = reinterpret_cast<char const*>(kernel_endlfix_cl);
+    size_t length = kernel_endlfix_cl_len;
     int headerDescriptor = -1;
     char const *headerFilename = createFullTemporaryFile(headerDescriptor, buffer, length);
     if (!headerFilename)
