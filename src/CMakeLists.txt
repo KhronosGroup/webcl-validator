@@ -2,7 +2,7 @@ add_custom_command(
   OUTPUT general.h
   DEPENDS general.cl
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMAND python stripcr.py general.cl > general-endlfix.cl
+  COMMAND ${PYTHON_EXECUTABLE} stripcr.py general.cl general-endlfix.cl
   COMMAND xxd -i general-endlfix.cl general.h
 )
 
@@ -10,7 +10,7 @@ add_custom_command(
   OUTPUT kernel.h
   DEPENDS kernel.cl
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMAND python stripcr.py kernel.cl > kernel-endlfix.cl
+  COMMAND ${PYTHON_EXECUTABLE} stripcr.py kernel.cl kernel-endlfix.cl
   COMMAND xxd -i kernel-endlfix.cl kernel.h
 )
 

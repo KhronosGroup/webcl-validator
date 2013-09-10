@@ -316,10 +316,11 @@ _CL_STATIC_ASSERT(double8 , sizeof(double8 ) == 8 *sizeof(double));
 _CL_STATIC_ASSERT(double16, sizeof(double16) == 16*sizeof(double));
 #endif
 
-_CL_STATIC_ASSERT(size_t, sizeof(size_t) == sizeof(void*));
-_CL_STATIC_ASSERT(ptrdiff_t, sizeof(ptrdiff_t) == sizeof(void*));
-_CL_STATIC_ASSERT(intptr_t, sizeof(intptr_t) == sizeof(void*));
-_CL_STATIC_ASSERT(uintptr_t, sizeof(uintptr_t) == sizeof(void*));
+// pointer size can be smaller than these, it is enough that they fit in
+//_CL_STATIC_ASSERT(size_t, sizeof(size_t) == sizeof(void*));
+//_CL_STATIC_ASSERT(ptrdiff_t, sizeof(ptrdiff_t) == sizeof(void*));
+//_CL_STATIC_ASSERT(intptr_t, sizeof(intptr_t) == sizeof(void*));
+//_CL_STATIC_ASSERT(uintptr_t, sizeof(uintptr_t) == sizeof(void*));
 
 
 
