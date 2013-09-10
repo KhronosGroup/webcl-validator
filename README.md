@@ -79,3 +79,29 @@ forces sources to be interpreted as OpenCL code even if they wouldn't
 use the *.cl* suffix. Option *-include FILE* automatically includes
 helper code, such as OpenCL type and builtin definitions.
 
+
+Building with Windows MinGW + MSYS
+----------------------------------
+
+Get CMake for Windows
+
+Get MinGW64 4.6.3 and MSYS rev 12 from (NOTE: MinGW 4.8.1 failed compiling LLVM)
+
+* http://sourceforge.net/projects/mingwbuilds/files/host-windows/
+* http://sourceforge.net/projects/mingwbuilds/files/external-binary-packages/
+
+Extract mingw to C:\MinGW64 and MSYS to C:\MinGW64\msys 
+
+Add C:\MinGW64\bin to PATH.
+
+Open MSYS shell and according to normal build instructions except tell cmake to generate MSYS make files
+
+        cmake -G "MSYS Makefiles" /path/llvm
+
+CMake might fail to some error, if so run it again. Usually it works second time and build files will be generated. Compilation requires ~4GB RAM.
+
+If you want to build also OpenCL programs and possibly run the tests, set
+
+        export CPLUS_INCLUDE_PATH=/C/path/to/opencl/include
+        export LIBRARY_PATH=/C/path/to/opencl/lib
+
