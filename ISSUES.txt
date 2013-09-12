@@ -10,44 +10,44 @@ issues. Refer to TESTING.txt for more detailed test equipment setups.
 OpenCL Compiler Differences
 ---------------------------
 
-We have seen some differences in OpenCL drivers. These aren't bugs,
-the differences just illustrate how different vendors interpret the
-OpenCL specification either more strictly or more loosely. Each of the
-cases below are accepted by some drivers, but rejected by at least one
-driver.
+We have seen some differences in OpenCL drivers. These aren't
+necessarily bugs, the differences just illustrate how different
+vendors interpret the OpenCL specification either more strictly or
+more loosely. Each of the cases below are accepted by some drivers,
+but rejected by at least one driver.
 
-Issue C1: Intel compiler doesn't support "__local int array[]" as
-          function parameter, because OpenCL specification doesn't
-          require that. One needs to use "__local int *array" instead.
+Issue C1: Intel and AMD compilers support "__local int array[]" as
+          function parameter. This is not required by the OpenCL
+          specification and causes compilation errors on POCL. On POCL
+          one needs to use "__local int *array" instead.
 Workaround: The validator could transform "array[]" to "*array".
 
-Issue C2: AMD compiler doesn't like "size_t" types as kernel
-          parameters.
+Issue C2: POCL compiler supports "size_t" type as kernel
+          parameter. This is forbidden by the OpenCL specification and
+          causes compilation errors with AMD and Intel.
 Workaround: The validator uses "ulong" when it needs to generate size
             parameters for memory objects. The validator could
             transform "size_t" to "ulong" for other kernel parameters.
 
-Issue C3: AMD compiler doesn't allow you to index vectors as in
-          uint4 v; v[0] = 0;
-          because the OpenCL specification doesn't require that.
+Issue C3: Intel and POCL compilers allow vectors to be indexed with
+          constant and non-constant integers. This is not required by
+          the OpenCL specification and causes compilation errors on
+          AMD. On AMD one needs to use "v.x" instead of "v[0]" to
+          access the first element of a vector.
 Workaround: The validator could transform "v[0]" to "v.x". The
             validator could emit an error message for "v[i]".
 
-Issue C4: AMD compiler doesn't allow you to access vector fields with
-          a pointer, because the OpenCL specification doesn't require
-          that. You need to use "uint4 *p = &v; (*p).x = 0;" instead
-          of "p->x = 0;".
+Issue C4: Intel and POCL compilers allow vector fields to be accessed
+          with a vector pointer. This is not required by the OpenCL
+          specification and causes compilation errors on AMD. On AMD
+          one needs to use "(*p).x" instead of "p->x" to access the
+          first element of a vector pointer.
 Workaround: The validator could transform "p->x" to "(*p).x".
 
-Issue C5: Apple compiler requires prototype declarations for each
-          helper function.
-Workaround: To avoid warnings, the validator could make each helper
-            function static, or generate a prototype for them. Minor
-            issue that could be ignored.
-
-Issue C6: Apple compiler gives warnings on e.g. signed vs. unsigned
-          comparisons.
-Workaround: Minor issue that could be ignored.
+Issue C5: POCL and AMD compilers support "event_t" as a kernel
+          parameter. This is forbidden by the OpenCL specification and
+          causes compilation errors on Intel.
+Workaround: The validator could emit and error message for "event_t".
 
 OpenCL Compiler Bugs
 --------------------
