@@ -90,6 +90,14 @@ Issue B7: AMD compiler crashes when the validated versions of test
           "relocate-variables.cl" are compiled.
 Workaround: ?
 
+Issue B8: Apple i5 CPU driver compilation crashes if local memory
+          zeroing macro is replaced with following:
+          #define WCL_LOCAL_RANGE_INIT(begin, end) \
+              for(__local char* cur = (__local char*)begin; cur != (__local char*)end; cur++) { \
+                  *cur = _WCL_FILLCHAR; \
+              }
+Workaround: Zeroing is written differently.
+
 OpenCL Driver Bugs
 ------------------
 
@@ -118,15 +126,7 @@ Issue D3: Apple CPU driver wasn't able to run radix-sort test case at
           causes CL_OUT_OF_RESOURCES error.
 Workaround: ?
 
-Issue D4: Apple i5 CPU driver compilation crashes is local memory 
-          zeroing macro is replaced with with following:
-          #define WCL_LOCAL_RANGE_INIT(begin, end) \
-              for(_local char* cur = (__local char*)begin; cur != (__local char*)end; cur++) { \
-                  *cur = _WCL_FILLCHAR; \
-              }
-Workaround: Zeroing is written differently.
-
-Issue D5: AMD driver crashes when test cases "private_mem_zeroing.cl",
+Issue D4: AMD driver crashes when test cases "private_mem_zeroing.cl",
           "radixsort/output.cl" and "reading_invalid_addresses" are
           run.
 Workaround: ?
