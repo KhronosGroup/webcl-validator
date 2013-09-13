@@ -118,7 +118,8 @@ std::string WebCLRewriter::getTransformedText(clang::SourceRange range) {
     
     // splits source rawStart and rawEnd to pieces which are read from either modified areas table or from original source
     
-    // TODO: refactor to use filteredModifiedRanges() like flushing does
+    // LAUNDRY: if you are going to touch this code, refactor to use 
+    //          filteredModifiedRanges() like flushing does
     // ===== start of filtering nested modified ranges =====
     int currentStart = -1;
     int biggestEnd = -1;

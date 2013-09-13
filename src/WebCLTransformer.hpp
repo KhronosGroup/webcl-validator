@@ -231,10 +231,6 @@ public:
     // Applies already added transformation to the source.
     void flushQueuedTransformations();
   
-    // TODO: Remove methods which require storing any model state.
-    //       The only allowed state should be related to representing
-    //       multiple changes.
-  
     /// Inform about a variable that is accessed indirectly with a
     /// pointer. The variable declaration will be moved to a
     /// corresponding address space structure so that indirect

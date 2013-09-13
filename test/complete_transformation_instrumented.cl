@@ -2,7 +2,10 @@
 
 /**
  * Completely unoptimized instrumentation, which does collect all the variables
- * to the address space.
+ * to the address space. 
+ * 
+ * NOTE: this is one of the first hand instrumented examples to verify that
+ *       our method to apply intrumentation really works.
  */
 
 typedef struct {
@@ -66,9 +69,6 @@ __constant WclConstants wcl_constant_allocations = { (float4)(1.0f,2.0f,3.0f,4.0
 #define WCL_CLAMP(low, value, high)             \
     WCL_MAX((low), WCL_MIN((value), (high)))
 
-// TODO: find out case where min >= max e.g. if memory area to be read is too big
-//       for the limits, basically we could avoid that in compile time by preventing 
-//       of casting pointers to wider types 
 #define WCL_ADDR(type, ptr, min_ptr, max_ptr) \
     WCL_CLAMP( ((type)min_ptr), (ptr), (((type)max_ptr)-1) )
 

@@ -1,6 +1,5 @@
 // RUN: %opencl-validator < %s
 // RUN: %webcl-validator %s | %opencl-validator
-// TODO: Run checks without executing validation phase.
 
 int get_value(int value);
 

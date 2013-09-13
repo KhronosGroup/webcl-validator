@@ -32,9 +32,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-// TODO: maybe we should resolve directory separator and temp directory
-//       in windows runtime, since it depends if we are running from msys / cygwin shell
-//       or from windows commandline?
+// IMPROVEMENT: Maybe we should resolve directory separator and temp directory
+//              in windows runtime, since it depends if we are running from msys / cygwin shell
+//              or from windows commandline?
 
 #ifdef __MINGW32__
 #define DIR_SEPARATOR "\\"
@@ -86,8 +86,6 @@ WebCLArguments::WebCLArguments(int argc, char const *argv[])
     const int numPreprocessorOptions =
         sizeof(preprocessorOptions) / sizeof(preprocessorOptions[0]);
 
-    // TODO: when we port to llvm-3.3 we can just say -target spir and it
-    //       should have valid address space mapping
     char const *validatorInvocation[] = {
         commandName, NULL, "--"
     };

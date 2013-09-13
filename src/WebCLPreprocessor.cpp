@@ -70,7 +70,7 @@ void WebCLPreprocessor::PragmaOpenCLExtension(
     if (State && !extensions_.count(name)) {
         error(NameLoc, "WebCL doesn't support enabling '%0' extension.\n") << name;
     } else if (State == 0 && (name == ClKhrInitializeMemoryStr || name == "all")) {
-        // TODO: For keyword "all", error should not be generated if the extension is not present.
+        // cannot disable all extensions with webcl
         error(NameLoc, "WebCL program cannot disable extension %0.\n") << ClKhrInitializeMemoryStr;
     }
 }

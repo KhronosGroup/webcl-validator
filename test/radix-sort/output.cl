@@ -14,6 +14,8 @@
 // has been formatted on purpose so that it's easy to compare input
 // and output source with a merge tool.
 
+// NOTE: this is the first hand instrumented real test case
+
 typedef struct {
     uint prefix_scan_kernel__scalar_histogram[20];
     uint4 prefix_scan_128__vector_histogram;
@@ -68,9 +70,6 @@ __constant WclConstants wcl_constant_allocations = { 0 };
 #define WCL_CLAMP(low, value, high)             \
     WCL_MAX((low), WCL_MIN((value), (high)))
 
-// TODO: find out case where min >= max e.g. if memory area to be read is too big
-//       for the limits, basically we could avoid that in compile time by preventing 
-//       of casting pointers to wider types 
 #define WCL_ADDR(type, ptr, min_ptr, max_ptr) \
     WCL_CLAMP( ((type)min_ptr), (ptr), (((type)max_ptr)-1) )
 

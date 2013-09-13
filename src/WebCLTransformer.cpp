@@ -139,11 +139,6 @@ std::string WebCLTransformer::addressSpaceInitializer(AddressSpaceInfo &as) {
   for (AddressSpaceInfo::iterator declIter = as.begin();
        declIter != as.end(); ++declIter) {
     retVal << comma;
-    // TODO: check if this works at all for private address space...
-    //       i.e. if initialization is value of some other variable..
-    //       maybe we just have to output zero initializer and assert
-    //       to struct/table initialization.
-
     emitVariableInitialization(retVal, (*declIter));
     comma = ", ";
   }
@@ -605,7 +600,6 @@ void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLim
   const std::string original = wclRewriter_.getOriginalText(access->getSourceRange());
   const std::string baseStr = wclRewriter_.getTransformedText(baseRange);
 
-  // TODO: get strings from our rewriter instead of rewriter to get also nested transformations / relocations to work
   memAddress << "(" << baseStr << ")";
   std::string indexStr;
   if (index) {

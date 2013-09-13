@@ -257,7 +257,8 @@ bool WebCLAddressSpaceHandler::isRelocated(clang::VarDecl *decl)
 
 AddressSpaceInfo& WebCLAddressSpaceHandler::getOrCreateAddressSpaceInfo(AddressSpaceSet *declarations)
 {
-    // TODO: add sorting declarations according to their size
+    // IMPROVEMENT: To optimize padding bytes to minimum
+    //              add sorting declarations according to their size
     if (organizedAddressSpaces_.count(declarations) == 0) {
         for (AddressSpaceSet::iterator declIter = declarations->begin();
              declIter != declarations->end(); ++declIter) {
@@ -417,7 +418,8 @@ unsigned WebCLKernelHandler::getAddressSpace(clang::Expr *expr)
 AddressSpaceLimits& WebCLKernelHandler::getLimits(
     clang::Expr *access, clang::VarDecl *decl)
 {
-    // TODO: remove if true after better limit resolving is added
+    // IMPROVEMENT: remove if true after better static analysis for limit 
+    //              resolving is added
     if (true || decl == NULL) {
         switch(getAddressSpace(access)) {
         case clang::LangAS::opencl_global:

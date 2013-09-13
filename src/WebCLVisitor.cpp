@@ -393,10 +393,6 @@ bool WebCLAnalyser::handleFunctionDecl(clang::FunctionDecl *decl)
   if (!isFromMainFile(decl->getLocStart())) return true;
   
   if (decl->hasAttr<clang::OpenCLKernelAttr>()) {
-    // TODO: go through arguments and collect pointers to bookkeeping
-    //       create names for limit struct as:
-    //       function__argument_name__min and function__argument_name__max
-    //       and organize to lists according to address space of argument
     info(decl->getLocStart(), "This is kernel, go through arguments to collect pointers etc.");
     kernelFunctions_.insert(decl);
   } else {
@@ -450,7 +446,8 @@ bool WebCLAnalyser::handleTypedefDecl(clang::TypedefDecl *decl)
 
   // check there was no struct decl inside this typdef added for moving.. (would be so much easier to do with matchers)
   if (!typeDeclList_.empty()) {
-    // LAUNDRY: do not use getRaw...
+    // LAUNDRY: it cuold be easier to recognize required structures from code with matchers, 
+    //          this was particulary inconvienient to do with visitor.
     clang::TypeDecl *lastType = typeDeclList_.back();
     if (lastType->getLocStart().getRawEncoding() > decl->getLocStart().getRawEncoding() &&
         lastType->getLocEnd().getRawEncoding()   < decl->getLocEnd().getRawEncoding()) {
