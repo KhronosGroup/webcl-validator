@@ -72,7 +72,15 @@ You can find the WebCL Validator and example WebCL kernels from:
 Run the following command to let WebCL Validator transform your WebCL
 kernels:
 
-        webcl-validator kernel.cl [-- CLANG OPTIONS]
+        webcl-validator kernel.cl [CLANG OPTIONS]
+
+For example, use -D to inform WebCL Validator about used
+extensions. Passing -Dcl_khr_initialize memory tells that local memory
+initialization shouldn't be done, because the driver should initialize
+local memory with cl_khr_initialize_memory extension. See DESIGN.txt
+for more details:
+
+        webcl-validator kernel.cl -Dcl_khr_initialize_memory
 
 The validator adds some Clang options automatically. Option *-x cl*
 forces sources to be interpreted as OpenCL code even if they wouldn't
