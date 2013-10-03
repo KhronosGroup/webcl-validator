@@ -135,38 +135,8 @@ private:
     /// Emits correct indentation based on current indentation level.
     void emitIndentation(std::ostream &out) const;
 
-    /// Add host mappings for scalar types:
-    /// int -> cl_int
-    void initializeScalarTypes();
-    /// Add host mappings for vector types:
-    /// float4 -> cl_float4
-    void initializeVectorTypes();
-    /// Add host mappings for builtin types:
-    /// image2d_t -> image2d_t
-    void initializeSpecialTypes();
-
-    /// Reduce the given type to a host mapping type. If the reduction
-    /// can't be done, the original type will be returned without
-    /// modifications.
-    ///
-    /// typedef struct opaque_t* image2d_t;
-    /// typedef image2d_t my_image;
-    ///
-    /// my_image -> image2d_t
-    clang::QualType reduceType(clang::QualType type);
-
     /// Contains information about recurring names.
     WebCLConfiguration &cfg_;
-    /// Maps OpenCL C types to host types: int -> cl_int.
-    typedef std::map<std::string, std::string> HostTypes;
-    HostTypes hostTypes_;
-    /// Contains OpenCL C builtin types that can occur as kernel
-    /// parameters.
-    typedef std::set<std::string> BuiltinTypes;
-    BuiltinTypes supportedBuiltinTypes_;
-    /// Constains OpenCL C builtin types that may not occur as kernel
-    /// parameters.
-    BuiltinTypes unsupportedBuiltinTypes_;
     /// Basic tab width for indentation.
     const std::string indentation_;
     /// Current indentation level.

@@ -23,6 +23,7 @@
 
 #include "WebCLConfiguration.hpp"
 #include "WebCLHeader.hpp"
+#include "WebCLTypes.hpp"
 
 #include "clang/AST/Decl.h"
 #include "clang/AST/TypeLoc.h"
@@ -35,15 +36,10 @@ WebCLHeader::WebCLHeader(
     clang::CompilerInstance &instance, WebCLConfiguration &cfg)
     : WebCLReporter(instance)
     , cfg_(cfg)
-    , hostTypes_()
-    , supportedBuiltinTypes_()
-    , unsupportedBuiltinTypes_()
     , indentation_("    ")
     , level_(0)
 {
-    initializeScalarTypes();
-    initializeVectorTypes();
-    initializeSpecialTypes();
+    // nothing
 }
 
 WebCLHeader::~WebCLHeader()
@@ -96,8 +92,10 @@ void WebCLHeader::emitHostType(
     std::ostream &out,
     const std::string &key, const std::string &type)
 {
-    HostTypes::iterator i = hostTypes_.find(type);
-    if (i == hostTypes_.end()) {
+    using namespace WebCLTypes;
+    
+    HostTypes::const_iterator i = hostTypes().find(type);
+    if (i == hostTypes().end()) {
         error("Can't determine host type for %0.") << type;
         return;
     }
@@ -199,7 +197,7 @@ void WebCLHeader::emitArrayParameter(
 
     emitStringEntry(out, "host-type", "cl_mem");
     out << ",\n";
-    emitHostType(out, "host-element-type", reduceType(elementType).getAsString());
+    emitHostType(out, "host-element-type", WebCLTypes::reduceType(instance_, elementType).getAsString());
     out << ",\n";
 
     unsigned addressSpace = elementType.getAddressSpace();
@@ -244,10 +242,10 @@ void WebCLHeader::emitKernel(std::ostream &out, const clang::FunctionDecl *kerne
             out << ",\n";
 
         clang::QualType originalType = parameter->getType();
-        clang::QualType reducedType = reduceType(originalType);
+        clang::QualType reducedType = WebCLTypes::reduceType(instance_, originalType);
         const std::string reducedName = reducedType.getAsString();
 
-        if (supportedBuiltinTypes_.count(reducedName)) {
+        if (WebCLTypes::supportedBuiltinTypes().count(reducedName)) {
             // images and samplers
             emitBuiltinParameter(out, parameter, index, reducedName);
         } else if (parameter->getType().getTypePtr()->isPointerType()) {
@@ -298,92 +296,4 @@ void WebCLHeader::emitIndentation(std::ostream &out) const
 {
     for (unsigned int i = 0; i < level_; ++i)
         out << indentation_;
-}
-
-void WebCLHeader::initializeScalarTypes()
-{
-    hostTypes_["char"] = "cl_char";
-    hostTypes_["unsigned char"] = "cl_uchar";
-    hostTypes_["uchar"] = "cl_uchar";
-
-    hostTypes_["short"] = "cl_short";
-    hostTypes_["unsigned short"] = "cl_ushort";
-    hostTypes_["ushort"] = "cl_ushort";
-
-    hostTypes_["int"] = "cl_int";
-    hostTypes_["unsigned int"] = "cl_uint";
-    hostTypes_["uint"] = "cl_uint";
-
-    hostTypes_["long"] = "cl_long";
-    hostTypes_["unsigned long"] = "cl_ulong";
-    hostTypes_["ulong"] = "cl_ulong";
-
-    hostTypes_["double"] = "cl_double";
-    hostTypes_["float"] = "cl_float";
-    hostTypes_["half"] = "cl_half";
-}
-
-void WebCLHeader::initializeVectorTypes()
-{
-    static const char *lengths[] = { "2", "3", "4", "8", "16" };
-    static const int numLengths = sizeof(lengths) / sizeof(lengths[0]);
-
-    for (int i = 0; i < numLengths; ++i) {
-        const std::string length = lengths[i];
-
-        hostTypes_["char" + length] = "cl_char" + length;
-        hostTypes_["uchar" + length] = "cl_uchar" + length;
-
-        hostTypes_["short" + length] = "cl_short" + length;
-        hostTypes_["ushort" + length] = "cl_ushort" + length;
-
-        hostTypes_["int" + length] = "cl_int" + length;
-        hostTypes_["uint" + length] = "cl_uint" + length;
-
-        hostTypes_["long" + length] = "cl_long" + length;
-        hostTypes_["ulong" + length] = "cl_ulong" + length;
-
-        hostTypes_["double" + length] = "cl_double" + length;
-        hostTypes_["float" + length] = "cl_float" + length;
-    }
-}
-
-void WebCLHeader::initializeSpecialTypes()
-{
-    static const char *image3d = "image3d_t";
-    static const char *sampler = "sampler_t";
-
-    supportedBuiltinTypes_.insert(image2d);
-    supportedBuiltinTypes_.insert(image3d);
-    supportedBuiltinTypes_.insert(sampler);
-
-    hostTypes_[image2d] = image2d;
-    hostTypes_[image3d] = image3d;
-    hostTypes_[sampler] = sampler;
-
-    static const char *event = "event_t";
-
-    unsupportedBuiltinTypes_.insert(event);
-}
-
-clang::QualType WebCLHeader::reduceType(clang::QualType type)
-{
-    clang::QualType reducedType = type;
-
-    if (reducedType.isCanonical() && !reducedType.hasQualifiers())
-        return reducedType;
-
-    do {
-        reducedType = type.getUnqualifiedType();
-        const std::string reducedName = reducedType.getAsString();
-        if (unsupportedBuiltinTypes_.count(reducedName))
-            return reducedType;
-        if (hostTypes_.count(reducedName))
-            return reducedType;
-
-        type = type.getSingleStepDesugaredType(instance_.getASTContext());
-        type = type.getUnqualifiedType();
-    } while (type != reducedType);
-
-    return reducedType;
 }

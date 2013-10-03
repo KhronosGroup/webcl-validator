@@ -36,6 +36,7 @@ add_clang_executable(
   WebCLTool.cpp
   WebCLTransformer.cpp
   WebCLVisitor.cpp
+  WebCLTypes.cpp
 )
 
 target_link_libraries(
