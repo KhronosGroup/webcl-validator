@@ -910,3 +910,10 @@ void WebCLTransformer::emitVariableInitialization(
     const std::string original = wclRewriter_.getTransformedText(init->getSourceRange());
     out << original;
 }
+
+void WebCLTransformer::changeFunctionCallee(clang::CallExpr *expr, 
+    std::string newName)
+{
+    clang::Expr *callee = expr->getCallee();
+    wclRewriter_.replaceText(callee->getSourceRange(), newName);
+}

@@ -253,6 +253,9 @@ public:
     /// kernel(a, array, b) -> kernel(a, array, array_size, b)
     void addSizeParameter(clang::ParmVarDecl *decl);
 
+    /// Modify a function call to call a function of another name
+    void changeFunctionCallee(clang::CallExpr *expr, std::string newName);
+
 private:
 
     /// Caches source code replacements.
