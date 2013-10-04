@@ -26,6 +26,8 @@
 #include <string>
 
 #include "clang/Frontend/CompilerInstance.h"
+#include "clang/AST/ASTContext.h"
+#include "clang/AST/Expr.h"
 
 #include "WebCLTypes.hpp"
 
@@ -156,5 +158,15 @@ namespace WebCLTypes {
 	} while (type != reducedType);
 
 	return reducedType;
+    }
+
+    unsigned getAddressSpace(clang::Expr *expr)
+    {
+	clang::ExtVectorElementExpr *vecExpr =
+	    llvm::dyn_cast<clang::ExtVectorElementExpr>(expr);
+	clang::QualType exprType = (vecExpr && vecExpr->isArrow()) ?
+	    vecExpr->getBase()->getType().getTypePtr()->getPointeeType() :
+	    expr->getType();
+	return exprType.getAddressSpace();
     }
 }

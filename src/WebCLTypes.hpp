@@ -52,6 +52,13 @@ namespace WebCLTypes {
     ///
     /// my_image -> image2d_t
     clang::QualType reduceType(const clang::CompilerInstance &instance, clang::QualType type);
+
+    /// \return Correct address space for the type of given
+    /// expression.
+    ///
+    /// Works around a bug in Clang's vector element access
+    /// expression.
+    unsigned getAddressSpace(clang::Expr *expr);
 }
 
 #endif // WEBCLVALIDATOR_TYPES
