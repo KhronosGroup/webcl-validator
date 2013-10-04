@@ -98,6 +98,10 @@ Issue B8: Apple i5 CPU driver compilation crashes if local memory
               }
 Workaround: Zeroing is written differently.
 
+ISSUE B9: Intel compiler crashes on image typedefs:
+          typedef __read_only image2d_t my_image2d_t;
+Workaround: It's not necessary to use image typedefs.
+
 OpenCL Driver Bugs
 ------------------
 
