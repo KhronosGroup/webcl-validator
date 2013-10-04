@@ -29,6 +29,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <set>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -99,8 +100,17 @@ WebCLArguments::WebCLArguments(int argc, char const *argv[])
     const int numValidatorOptions =
         sizeof(validatorOptions) / sizeof(validatorOptions[0]);
 
-    preprocessorArgc_ = preprocessorInvocationSize + numPreprocessorOptions;
-    validatorArgc_ = validatorInvocationSize + numUserOptions + numValidatorOptions;
+    std::set<char const *> userDefines;
+    for (int i = 0; i < numUserOptions; ++i) {
+        char const *option = argv[userOptionOffset + i];
+        if (!std::string(option).substr(0, 2).compare("-D"))
+            userDefines.insert(option);
+    }
+
+    preprocessorArgc_ =
+        preprocessorInvocationSize + userDefines.size() + numPreprocessorOptions;
+    validatorArgc_ =
+        validatorInvocationSize + numUserOptions + numValidatorOptions;
 
     preprocessorArgv_ = new char const *[preprocessorArgc_];
     if (!preprocessorArgv_) {
@@ -119,9 +129,12 @@ WebCLArguments::WebCLArguments(int argc, char const *argv[])
     std::copy(preprocessorInvocation,
               preprocessorInvocation + preprocessorInvocationSize,
               preprocessorArgv_);
+    std::copy(userDefines.begin(),
+              userDefines.end(),
+              preprocessorArgv_ + preprocessorInvocationSize);
     std::copy(preprocessorOptions,
               preprocessorOptions + numPreprocessorOptions,
-              preprocessorArgv_ + preprocessorInvocationSize);
+              preprocessorArgv_ + preprocessorInvocationSize + userDefines.size());
 
     // validator arguments
     std::copy(validatorInvocation,
