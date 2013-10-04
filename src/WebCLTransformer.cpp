@@ -577,61 +577,78 @@ std::string WebCLTransformer::getClampMacroCall(std::string addr, std::string ty
   return retVal.str();
 }
 
+namespace {
+    struct BaseIndexField {
+	clang::Expr *base;
+	clang::Expr *index;
+	std::string  field;
+  
+	BaseIndexField(clang::Expr *access) : 
+	    base(access), index(NULL) 
+	{
+	    if (clang::MemberExpr *memberExpr = llvm::dyn_cast<clang::MemberExpr>(access)) {
+		base = memberExpr->getBase();
+		field = memberExpr->getMemberNameInfo().getName().getAsString();
+
+	    } else if (clang::ExtVectorElementExpr *vecExpr =
+		llvm::dyn_cast<clang::ExtVectorElementExpr>(access)) {
+		base = vecExpr->getBase();
+		field = vecExpr->getAccessor().getName().str();
+  
+	    } else if (clang::ArraySubscriptExpr *arraySubExpr =
+		llvm::dyn_cast<clang::ArraySubscriptExpr>(access)) {
+		base = arraySubExpr->getBase();
+		index = arraySubExpr->getIdx();
+    
+	    } else if (clang::UnaryOperator *unary = llvm::dyn_cast<clang::UnaryOperator>(access)) {
+		base = unary->getSubExpr();
+	    }
+	}
+	
+    };
+}
+
+std::string WebCLTransformer::getClampMacroExpression(clang::Expr *access, AddressSpaceLimits &limits)
+{
+    BaseIndexField     bif(access);
+    clang::SourceRange baseRange = clang::SourceRange(bif.base->getLocStart(), bif.base->getLocEnd());
+    const std::string  original  = wclRewriter_.getOriginalText(access->getSourceRange());
+    const std::string  baseStr   = wclRewriter_.getTransformedText(baseRange);
+    std::stringstream  memAddress;
+
+    memAddress << "(" << baseStr << ")";
+    std::string indexStr;
+    if (bif.index) {
+	indexStr = wclRewriter_.getTransformedText(bif.index->getSourceRange());
+	memAddress << "+(" << indexStr << ")";
+    }
+  
+    // trust limits given in parameter or check against all limits
+    std::string macro = getClampMacroCall(memAddress.str(), bif.base->getType().getAsString(), limits);
+
+    std::stringstream retVal;
+    retVal << "(*(" << macro  << "))";
+    if (!bif.field.empty()) {
+	retVal << "." << bif.field;
+    }
+	
+    return retVal.str();
+}
+
 void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLimits &limits)
 {
-  clang::Expr *base = access;
-  clang::Expr *index = NULL;
-  std::string field;
-  
-  if (clang::MemberExpr *memberExpr = llvm::dyn_cast<clang::MemberExpr>(access)) {
-    base = memberExpr->getBase();
-    field = memberExpr->getMemberNameInfo().getName().getAsString();
-
-  } else if (clang::ExtVectorElementExpr *vecExpr =
-             llvm::dyn_cast<clang::ExtVectorElementExpr>(access)) {
-    base = vecExpr->getBase();
-    field = vecExpr->getAccessor().getName().str();
-  
-  } else if (clang::ArraySubscriptExpr *arraySubExpr =
-             llvm::dyn_cast<clang::ArraySubscriptExpr>(access)) {
-    base = arraySubExpr->getBase();
-    index = arraySubExpr->getIdx();
-    
-  } else if (clang::UnaryOperator *unary = llvm::dyn_cast<clang::UnaryOperator>(access)) {
-    base = unary->getSubExpr();
-  }
-
-  std::stringstream memAddress;
-  clang::SourceRange baseRange = clang::SourceRange(base->getLocStart(), base->getLocEnd());
-  const std::string original = wclRewriter_.getOriginalText(access->getSourceRange());
-  const std::string baseStr = wclRewriter_.getTransformedText(baseRange);
-
-  memAddress << "(" << baseStr << ")";
-  std::string indexStr;
-  if (index) {
-    indexStr = wclRewriter_.getTransformedText(index->getSourceRange());
-    memAddress << "+(" << indexStr << ")";
-  }
-  
-  // trust limits given in parameter or check against all limits
-  std::string safeAccessMacro = getClampMacroCall(memAddress.str(), base->getType().getAsString(), limits);
-  
-  std::stringstream retVal;
-  retVal << "(*(" << safeAccessMacro << "))";
-  if (!field.empty()) {
-    retVal << "." << field;
-  }
+  std::string retVal = getClampMacroExpression(access, limits);
   
   DEBUG(
     std::cerr << "Creating memcheck for: " << original
               << "\n                 base: " << baseStr
               << "\n                index: " << indexStr
-              << "\n          replacement: " << retVal.str()
+              << "\n          replacement: " << retVal
               << "\n----------------------------\n";
     access->dump();
     std::cerr << "============================\n\n"; );
   
-  wclRewriter_.replaceText(access->getSourceRange(), retVal.str());
+  wclRewriter_.replaceText(access->getSourceRange(), retVal);
   DEBUG( std::cerr << "============================\n\n"; );
 }
 

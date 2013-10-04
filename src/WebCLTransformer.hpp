@@ -345,6 +345,11 @@ private:
     /// e.g. _WCL_ADDR_global_1(__global int *, addr, _wcl_allocs->gl.array_min, _wcl_allocs->gl.array_max, _wcl_allocs->gn)
     std::string getClampMacroCall(std::string addr, std::string type, AddressSpaceLimits &limits);
 
+    /// \return A full expression (incorporating a macro call from
+    /// getClampMacroCall) call that forces the given address to point to a safe
+    /// memory area.
+    std::string getClampMacroExpression(clang::Expr *access, AddressSpaceLimits &limits);
+
     /// \brief Writes bytestream generated from general.cl to stream.
     void emitGeneralCode(std::ostream &out);
   
