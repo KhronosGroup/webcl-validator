@@ -1,6 +1,6 @@
 // RUN: %opencl-validator < %s
 // RUN: %webcl-validator %s | %opencl-validator
-// RUN: %webcl-validator %s | grep -v CHECK | %FileCheck %s
+// RUN: %webcl-validator %s -DQUALDEFS | grep -v CHECK | %FileCheck %s
 
 typedef char wcl_char;
 typedef unsigned char wcl_unsigned_char;
@@ -27,6 +27,10 @@ typedef ulong4 wcl_ulong4;
 typedef float4 wcl_float4;
 
 typedef image2d_t wcl_image2d_t;
+#ifdef QUALDEFS
+typedef __read_only image2d_t wcl_ro_image2d_t;
+typedef __write_only image2d_t wcl_wo_image2d_t;
+#endif
 typedef sampler_t wcl_sampler_t;
 
 __kernel void json_scalars(
@@ -94,10 +98,16 @@ __kernel void json_vector_arrays(
 }
 
 __kernel void json_builtins(
+    wcl_image2d_t image_arg, // __read_only
     __read_only wcl_image2d_t read_image_arg,
-    wcl_image2d_t read_write_image_arg,
     __write_only wcl_image2d_t write_image_arg,
-    wcl_sampler_t sampler_arg)
+    wcl_sampler_t sampler_arg
+#ifdef QUALDEFS
+    ,
+    wcl_ro_image2d_t read_image_arg2,
+    wcl_wo_image2d_t write_image_arg2
+#endif
+    )
 {
 }
 
@@ -515,25 +525,40 @@ __kernel void json_builtins(
 // CHECK:                },
 // CHECK:            "json_builtins" :
 // CHECK:                {
-// CHECK:                    "read_image_arg" :
+// CHECK:                    "image_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 0,
-// CHECK:                            "host-type" : "image2d_t"
+// CHECK:                            "host-type" : "image2d_t",
+// CHECK:                            "access" : "read_only"
 // CHECK:                        },
-// CHECK:                    "read_write_image_arg" :
+// CHECK:                    "read_image_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 1,
-// CHECK:                            "host-type" : "image2d_t"
+// CHECK:                            "host-type" : "image2d_t",
+// CHECK:                            "access" : "read_only"
 // CHECK:                        },
 // CHECK:                    "write_image_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 2,
-// CHECK:                            "host-type" : "image2d_t"
+// CHECK:                            "host-type" : "image2d_t",
+// CHECK:                            "access" : "write_only"
 // CHECK:                        },
 // CHECK:                    "sampler_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 3,
 // CHECK:                            "host-type" : "sampler_t"
+// CHECK:                        }
+// CHECK:                    "read_image_arg2" :
+// CHECK:                        {
+// CHECK:                            "index" : 4,
+// CHECK:                            "host-type" : "image2d_t",
+// CHECK:                            "access" : "read_only"
+// CHECK:                        }
+// CHECK:                    "write_image_arg2" :
+// CHECK:                        {
+// CHECK:                            "index" : 5,
+// CHECK:                            "host-type" : "image2d_t",
+// CHECK:                            "access" : "write_only"
 // CHECK:                        }
 // CHECK:                }
 // CHECK:        }

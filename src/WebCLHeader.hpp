@@ -72,13 +72,28 @@ private:
     /// "unsigned long" -> "host-type" : "cl_ulong"
     void emitHostType(std::ostream &out, const std::string &key, const std::string &type);
 
+    /// Contains optional "key" : "string" entries for parameters.
+    typedef std::map<std::string, std::string> Fields;
+
     /// Emits parameter to the given stream:
     /// "int foo", 0
     /// ->
     /// "foo" : { "index" : 0, "host-type" : "cl_int" }
+    ///
+    /// Additional "key" : "string" entries are emitted if the extra
+    /// fields parameter is defined.
     void emitParameter(
         std::ostream &out,
-        const std::string &parameter, int index, const std::string &type);
+        const std::string &parameter, int index, const std::string &type,
+        const Fields &fields = Fields());
+
+    /// Emits builtin parameter to the given stream:
+    /// "__read_only image2d_t img", 0
+    /// ->
+    /// "img" : { "index" : 0, "host-type" : image2d_t", "access" : "read_only" }
+    void emitBuiltinParameter(
+        std::ostream &out,
+        const clang::ParmVarDecl *parameter, int index, const std::string &type);
 
     /// Emits a size parameter for the given memory object parameter:
     /// "__global int *foo", 0

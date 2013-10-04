@@ -25,8 +25,11 @@
 #include "WebCLHeader.hpp"
 
 #include "clang/AST/Decl.h"
+#include "clang/AST/TypeLoc.h"
 #include "clang/Basic/AddressSpaces.h"
 #include "clang/Frontend/CompilerInstance.h"
+
+static const char *image2d = "image2d_t";
 
 WebCLHeader::WebCLHeader(
     clang::CompilerInstance &instance, WebCLConfiguration &cfg)
@@ -105,7 +108,8 @@ void WebCLHeader::emitHostType(
 
 void WebCLHeader::emitParameter(
     std::ostream &out,
-    const std::string &parameter, int index, const std::string &type)
+    const std::string &parameter, int index, const std::string &type,
+    const Fields &fields)
 {
     emitIndentation(out);
     out << "\"" << parameter << "\"" << " :\n";
@@ -117,12 +121,57 @@ void WebCLHeader::emitParameter(
     emitNumberEntry(out, "index", index);
     out << ",\n";
     emitHostType(out, "host-type", type);
+
+    for (Fields::const_iterator i = fields.begin(); i != fields.end(); ++i) {
+        out << ",\n";
+        emitStringEntry(out, i->first, i->second);
+    }
     out << "\n";
 
     --level_;
     emitIndentation(out);
     out << "}";
     --level_;
+}
+
+void WebCLHeader::emitBuiltinParameter(
+    std::ostream &out,
+    const clang::ParmVarDecl *parameter, int index, const std::string &type)
+{
+    const std::string parameterName = parameter->getName();
+    Fields fields;
+
+    // Add "access" : "qualifier" field for images.
+    if (!type.compare(image2d)) {
+        static const char *read_only = "read_only";
+        static const char *write_only = "write_only";
+        std::string access = read_only; // default when unqualified
+
+        clang::QualType previousType;
+        clang::QualType currentType = parameter->getType();
+
+        // We need to traverse the whole typedef chain when looking
+        // for qualifiers.
+        do {
+            // Image access qualifiers aren't stored in clang::Qualifiers.
+            const std::string qualifiers = currentType.getAsString();
+
+            if (qualifiers.find(read_only) != std::string::npos) {
+                access = read_only;
+                break;
+            } else if (qualifiers.find(write_only) != std::string::npos) {
+                access = write_only;
+                break;
+            }
+
+            previousType = currentType;
+            currentType = currentType.getSingleStepDesugaredType(instance_.getASTContext());
+        } while (currentType != previousType);
+
+        fields["access"] = access;
+    }
+
+    emitParameter(out, parameterName, index, type, fields);
 }
 
 void WebCLHeader::emitSizeParameter(
@@ -203,7 +252,7 @@ void WebCLHeader::emitKernel(std::ostream &out, const clang::FunctionDecl *kerne
 
         if (supportedBuiltinTypes_.count(reducedName)) {
             // images and samplers
-            emitParameter(out, parameter->getName(), index, reducedName);
+            emitBuiltinParameter(out, parameter, index, reducedName);
         } else if (parameter->getType().getTypePtr()->isPointerType()) {
             // memory objects
             emitArrayParameter(out, parameter, index);
@@ -304,7 +353,6 @@ void WebCLHeader::initializeVectorTypes()
 
 void WebCLHeader::initializeSpecialTypes()
 {
-    static const char *image2d = "image2d_t";
     static const char *image3d = "image3d_t";
     static const char *sampler = "sampler_t";
 
