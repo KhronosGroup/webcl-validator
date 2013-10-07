@@ -24,6 +24,7 @@
 #include "WebCLDebug.hpp"
 #include "WebCLPass.hpp"
 #include "WebCLVisitor.hpp"
+#include "WebCLTypes.hpp"
 
 #include "clang/AST/ASTContext.h"
 
@@ -431,6 +432,22 @@ AddressSpaceLimits& WebCLKernelHandler::getLimits(
         createDeclarationLimits(decl);
     }
     return *declarationLimits_[decl];
+}
+
+AddressSpaceLimits& WebCLKernelHandler::getDerefLimits(
+    clang::Expr *access)
+{
+    switch(access->getType().getTypePtr()->getPointeeType().getAddressSpace()) {
+    case clang::LangAS::opencl_global:
+	return globalLimits_;
+    case clang::LangAS::opencl_constant:
+	return constantLimits_;
+    case clang::LangAS::opencl_local:
+	return localLimits_;
+    default:
+	return privateLimits_;
+    }
+    assert(false);
 }
 
 bool WebCLKernelHandler::hasProgramAllocations()

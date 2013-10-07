@@ -212,6 +212,10 @@ public:
     /// expression.
     AddressSpaceLimits& getLimits(clang::Expr *access, clang::VarDecl *decl);
 
+    /// \return Memory area limits for the address space of given
+    /// expression when it is being dereference
+    AddressSpaceLimits& getDerefLimits(clang::Expr *access);
+
     /// \return Whether any memory areas need to be checked.
     bool hasProgramAllocations();
 
