@@ -524,7 +524,9 @@ void WebCLMemoryAccessHandler::run(clang::ASTContext &context)
       
         // add memory check generation to transformer
         transformer_.addMemoryAccessCheck(
-            access, kernelHandler_.getLimits(access, decl));
+            access,
+	    1, // a single value
+	    kernelHandler_.getLimits(access, decl));
     }
 
     // add defines for address space specific minimum memory requirements.

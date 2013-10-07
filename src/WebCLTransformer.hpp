@@ -184,7 +184,7 @@ public:
     /// Replaces memory access with a checked access. If the access
     /// doesn't fall within limits of any given disjoint memory areas,
     /// the fallback area (null pointer) is accessed instead.
-    void addMemoryAccessCheck(clang::Expr *access, AddressSpaceLimits &limits);
+    void addMemoryAccessCheck(clang::Expr *access, unsigned size, AddressSpaceLimits &limits);
 
     /// Adds an initialization row to start of function if relocated
     /// variable was a function argument.
@@ -255,6 +255,12 @@ public:
 
     /// Modify a function call to call a function of another name
     void changeFunctionCallee(clang::CallExpr *expr, std::string newName);
+
+    /// \return A macro call that forces the given address to point to
+    /// a safe memory area.
+    ///
+    /// e.g. _WCL_ADDR_global_1(__global int *, addr, _wcl_allocs->gl.array_min, _wcl_allocs->gl.array_max, _wcl_allocs->gn)
+    std::string getClampMacroCall(std::string addr, std::string type, unsigned size, AddressSpaceLimits &limits);
 
 private:
 
@@ -339,16 +345,10 @@ private:
     void emitVarDeclToStruct(std::ostream &out, const clang::VarDecl *decl,
                              const std::string &name);
 
-    /// \return A macro call that forces the given address to point to
-    /// a safe memory area.
-    ///
-    /// e.g. _WCL_ADDR_global_1(__global int *, addr, _wcl_allocs->gl.array_min, _wcl_allocs->gl.array_max, _wcl_allocs->gn)
-    std::string getClampMacroCall(std::string addr, std::string type, AddressSpaceLimits &limits);
-
     /// \return A full expression (incorporating a macro call from
     /// getClampMacroCall) call that forces the given address to point to a safe
     /// memory area.
-    std::string getClampMacroExpression(clang::Expr *access, AddressSpaceLimits &limits);
+    std::string getClampMacroExpression(clang::Expr *access, unsigned size, AddressSpaceLimits &limits);
 
     /// \brief Writes bytestream generated from general.cl to stream.
     void emitGeneralCode(std::ostream &out);

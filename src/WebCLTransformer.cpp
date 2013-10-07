@@ -550,7 +550,7 @@ void WebCLTransformer::removeRelocated(clang::VarDecl *decl)
   wclRewriter_.removeText(decl->getSourceRange());
 }
 
-std::string WebCLTransformer::getClampMacroCall(std::string addr, std::string type, AddressSpaceLimits &limits)
+std::string WebCLTransformer::getClampMacroCall(std::string addr, std::string type, unsigned size, AddressSpaceLimits &limits)
 {
   std::stringstream retVal;
 
@@ -608,7 +608,7 @@ namespace {
     };
 }
 
-std::string WebCLTransformer::getClampMacroExpression(clang::Expr *access, AddressSpaceLimits &limits)
+std::string WebCLTransformer::getClampMacroExpression(clang::Expr *access, unsigned size, AddressSpaceLimits &limits)
 {
     BaseIndexField     bif(access);
     clang::SourceRange baseRange = clang::SourceRange(bif.base->getLocStart(), bif.base->getLocEnd());
@@ -624,7 +624,7 @@ std::string WebCLTransformer::getClampMacroExpression(clang::Expr *access, Addre
     }
   
     // trust limits given in parameter or check against all limits
-    std::string macro = getClampMacroCall(memAddress.str(), bif.base->getType().getAsString(), limits);
+    std::string macro = getClampMacroCall(memAddress.str(), bif.base->getType().getAsString(), size, limits);
 
     std::stringstream retVal;
     retVal << "(*(" << macro  << "))";
@@ -635,9 +635,9 @@ std::string WebCLTransformer::getClampMacroExpression(clang::Expr *access, Addre
     return retVal.str();
 }
 
-void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, AddressSpaceLimits &limits)
+void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, unsigned size, AddressSpaceLimits &limits)
 {
-  std::string retVal = getClampMacroExpression(access, limits);
+  std::string retVal = getClampMacroExpression(access, size, limits);
   
   DEBUG(
     std::cerr << "Creating memcheck for: " << original
