@@ -143,30 +143,27 @@ void WebCLHeader::emitBuiltinParameter(
 
     // Add "access" : "qualifier" field for images.
     if (!type.compare(image2d)) {
-        static const char *read_only = "read_only";
-        static const char *write_only = "write_only";
-        std::string access = read_only; // default when unqualified
+        std::string access = "read_only";
 
-        clang::QualType previousType;
-        clang::QualType currentType = parameter->getType();
-
-        // We need to traverse the whole typedef chain when looking
-        // for qualifiers.
-        do {
-            // Image access qualifiers aren't stored in clang::Qualifiers.
-            const std::string qualifiers = currentType.getAsString();
-
-            if (qualifiers.find(read_only) != std::string::npos) {
-                access = read_only;
+        const clang::OpenCLImageAccess qualifier = parameter->getType().getAccess();
+        if (qualifier) {
+            switch (qualifier) {
+            case clang::CLIA_read_only:
+                access = "read_only";
                 break;
-            } else if (qualifiers.find(write_only) != std::string::npos) {
-                access = write_only;
+            case clang::CLIA_write_only:
+                access = "write_only";
+                break;
+            case clang::CLIA_read_write:
+                access = "read_write";
+                error(parameter->getLocStart(),
+                      "The read_write image access qualifier is not supported.");
+                break;
+            default:
+                error(parameter->getLocStart(), "Unknown image access qualifier.");
                 break;
             }
-
-            previousType = currentType;
-            currentType = currentType.getSingleStepDesugaredType(instance_.getASTContext());
-        } while (currentType != previousType);
+        }
 
         fields["access"] = access;
     }
