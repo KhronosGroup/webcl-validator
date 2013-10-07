@@ -975,6 +975,19 @@ namespace {
 	unsigned	width_;
     };
 
+    class VStore: public BuiltinBase {
+    public:
+	VStore(unsigned width);
+
+	std::string getName() const;
+	unsigned getNumArgs() const;
+
+	std::string wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, const ExprVector &arguments, WebCLKernelHandler &kernelHandler) const;
+
+    private:
+	unsigned	width_;
+    };
+
     BuiltinBase::BuiltinBase()
     {
 	// nothing    
@@ -1116,6 +1129,7 @@ bool WebCLTransformer::wrapBuiltinFunction(std::string wrapperName, clang::CallE
 	 widthIt != cfg_.dataWidths_.end();
 	 ++widthIt) {
 	handler = new VLoad(*widthIt); handlers[handler->getName()] = handler;
+	handler = new VStore(*widthIt); handlers[handler->getName()] = handler;
     }
 
     std::string name = callee->getNameInfo().getAsString();
