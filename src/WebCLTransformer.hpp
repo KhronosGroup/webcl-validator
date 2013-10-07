@@ -47,6 +47,9 @@ namespace clang {
     class DeclRefExpr;
 }
 
+class WebCLAnalyser; // used by wrapBuiltinFunction
+class WebCLKernelHandler; // used by wrapBuiltinFunction
+
 /// Performs transformations that need to be done by the memory access
 /// validation algorithm. Doesn't decide what transformations should
 /// be done, but only offers services to cache and emit basic
@@ -256,6 +259,10 @@ public:
     /// Modify a function call to call a function of another name
     void changeFunctionCallee(clang::CallExpr *expr, std::string newName);
 
+    /// Modify a builtin function call to a generated builtin replacement.
+    /// The replacement function is generated if required.
+    void wrapBuiltinFunction(clang::CallExpr *expr, WebCLKernelHandler &kernelHandler);
+
     /// \return A macro call that forces the given address to point to
     /// a safe memory area.
     ///
@@ -295,6 +302,8 @@ private:
     /// Stream for code at the start of the module like typedefs and
     /// address space structures.
     std::stringstream modulePrologue_;
+    /// Stream for code after limit macros, eg. for builtin macros
+    std::stringstream afterLimitMacros_;
   
     /// Set to ensure that we aren't initializing relocated parameters
     /// multiple times.
