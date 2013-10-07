@@ -28,8 +28,17 @@
 
 #include <string>
 #include <list>
+#include <sstream>
 
 typedef std::list<std::string> StringList;
 typedef std::list<unsigned> UintList;
+
+// makes a string of anything that can be written to a c++ stream
+template <typename T> std::string stringify(const T& value)
+{
+    std::stringstream stream;
+    stream << value;
+    return stream.str();
+}
 
 #endif // WEBCLVALIDATOR_COMMON
