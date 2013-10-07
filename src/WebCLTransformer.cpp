@@ -1069,7 +1069,7 @@ namespace {
 	std::string indent1 = cfg.getIndentation(1);
 	std::stringstream body;
 	body
-	    << indent1 << ptrTypeStr << " ptr = arg1 + " << width_ << " * arg0;\n"
+	    << indent1 << ptrTypeStr << " ptr = arg1 + " << width_ << " * (size_t) arg0;\n"
 	    << indent1 << ptrTypeStr << " clamped = " << transformer.getClampMacroCall("ptr", ptrTypeStr, width_, limits) << ";\n"
 	    << indent1 << "return vload" << width_ << "(0, clamped);\n";
 
