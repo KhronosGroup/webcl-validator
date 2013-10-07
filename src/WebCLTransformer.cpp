@@ -1062,11 +1062,49 @@ namespace {
 
 	return body.str();
     }
+
+    VStore::VStore(unsigned width) :
+	width_(width)
+    {
+	// nothing
+    }
+
+    std::string VStore::getName() const
+    {
+	std::stringstream ss;
+	ss << "vstore" << width_;
+	return ss.str();
+    }
+
+    unsigned VStore::getNumArgs() const
+    {
+	return 3;
+    }
+
+    std::string VStore::wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, const ExprVector &arguments, WebCLKernelHandler &kernelHandler) const
+    {
+	WebCLConfiguration cfg;
+
+	clang::Expr *pointerArg = arguments[2];
+	std::string ptrTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType()).getAsString();
+	
+	AddressSpaceLimits &limits = kernelHandler.getDerefLimits(pointerArg);
+
+	std::string indent1 = cfg.getIndentation(1);
+	std::stringstream body;
+	body
+	    << indent1 << ptrTypeStr << " ptr = arg2 + " << width_ << " * arg1;\n"
+	    << indent1 << ptrTypeStr << " clamped = " << transformer.getClampMacroCall("ptr", ptrTypeStr, width_, limits) << ";\n"
+	    << indent1 << "vstore" << width_ << "(arg0, 0, clamped);\n";
+
+	return body.str();
+    }
 }
 
-void WebCLTransformer::wrapBuiltinFunction(clang::CallExpr *expr, WebCLKernelHandler &kernelHandler)
+bool WebCLTransformer::wrapBuiltinFunction(std::string wrapperName, clang::CallExpr *expr, WebCLKernelHandler &kernelHandler)
 {
     const clang::FunctionDecl *callee = expr->getDirectCallee();
+    bool wrapped = false;
     
     typedef std::map<std::string, BuiltinBase*> BuiltinBaseMap;
 
@@ -1081,14 +1119,10 @@ void WebCLTransformer::wrapBuiltinFunction(clang::CallExpr *expr, WebCLKernelHan
     }
 
     std::string name = callee->getNameInfo().getAsString();
-    unsigned fnCounter = 0;
 
     BuiltinBaseMap::const_iterator handlerIt = handlers.find(name);
     if (handlerIt != handlers.end()) {
-	std::stringstream name;
-	name << "_wcl_" + handlerIt->second->getName() << "_" << fnCounter; 
-
-	afterLimitMacros_ << wrappedDeclaration(instance_, expr, name.str()) << "\n";
+	afterLimitMacros_ << wrappedDeclaration(instance_, expr, wrapperName) << "\n";
 
 	std::string body =
 	    handlerIt->second->wrapFunction(
@@ -1098,11 +1132,10 @@ void WebCLTransformer::wrapBuiltinFunction(clang::CallExpr *expr, WebCLKernelHan
 
 	afterLimitMacros_ << "{\n" << body << "}\n";
 
-	changeFunctionCallee(expr, name.str());
+	changeFunctionCallee(expr, wrapperName);
 	addRecordArgument(expr);
 
-
-	++fnCounter;
+	wrapped = true;
     }
 
     for (BuiltinBaseMap::iterator it = handlers.begin();
@@ -1110,4 +1143,6 @@ void WebCLTransformer::wrapBuiltinFunction(clang::CallExpr *expr, WebCLKernelHan
 	 ++it) {
 	delete it->second;
     }
+
+    return wrapped;
 }

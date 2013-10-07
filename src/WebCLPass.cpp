@@ -25,6 +25,7 @@
 #include "WebCLPass.hpp"
 #include "WebCLVisitor.hpp"
 #include "WebCLTypes.hpp"
+#include "WebCLCommon.hpp"
 
 #include "clang/AST/ASTContext.h"
 
@@ -553,10 +554,21 @@ void WebCLBuiltinHandler::run(clang::ASTContext &context)
 {
     WebCLAnalyser::CallExprSet builtinCalls = analyser_.getBuiltinCalls();
 
+    unsigned fnCounter = 0;
+
     for (WebCLAnalyser::CallExprSet::const_iterator builtinCallIt = builtinCalls.begin();
 	 builtinCallIt != builtinCalls.end();
 	 ++builtinCallIt) {
-	transformer_.wrapBuiltinFunction(*builtinCallIt, kernelHandler_);
+	std::string origName = (*builtinCallIt)->getDirectCallee()->getNameInfo().getAsString();
+	std::string wrapperName = "_wcl_" + origName + "_" + stringify(fnCounter);
+
+	bool success = transformer_.wrapBuiltinFunction(wrapperName, *builtinCallIt, kernelHandler_);
+
+	if (success) {
+	    ++fnCounter;
+	} else {
+	    warning((*builtinCallIt)->getLocStart(), ("Builtin " + origName + " is not supported").c_str());
+	}
     }
 }
 

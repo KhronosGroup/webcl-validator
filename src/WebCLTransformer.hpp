@@ -259,9 +259,11 @@ public:
     /// Modify a function call to call a function of another name
     void changeFunctionCallee(clang::CallExpr *expr, std::string newName);
 
-    /// Modify a builtin function call to a generated builtin replacement.
-    /// The replacement function is generated if required.
-    void wrapBuiltinFunction(clang::CallExpr *expr, WebCLKernelHandler &kernelHandler);
+    /// Modify a builtin function call to a generated builtin replacement.  The
+    /// replacement function is generated if required.  if wrapping was
+    /// performed the function returns true. otherwise (ie. an unknown builtin)
+    /// false is returned
+    bool wrapBuiltinFunction(std::string wrapperName, clang::CallExpr *expr, WebCLKernelHandler &kernelHandler);
 
     /// \return A macro call that forces the given address to point to
     /// a safe memory area.
