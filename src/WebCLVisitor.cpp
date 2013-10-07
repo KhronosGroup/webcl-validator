@@ -428,7 +428,7 @@ bool WebCLAnalyser::handleCallExpr(clang::CallExpr *expr)
       error(expr->getLocStart(), "WebCL doesn't support %0.") << name;
       return true;
     } else if (builtins_.isUnsafe(name)) {
-      error(expr->getLocStart(), "Builtin argument check is required.");
+      warning(expr->getLocStart(), "Builtin argument check is still incomplete.");
     } else if (hasUnsafeParameters(callee)) {
       error(expr->getLocStart(), "Unsafe builtin not recognized.");
     }

@@ -275,4 +275,26 @@ private:
     WebCLKernelHandler &kernelHandler_;
 };
 
+/// Generates memory access checks.
+class WebCLBuiltinHandler : public WebCLPass
+{
+public:
+    WebCLBuiltinHandler(
+        clang::CompilerInstance &instance,
+        WebCLAnalyser &analyser,
+	WebCLTransformer &transformer,
+        WebCLKernelHandler &kernelHandler);
+    virtual ~WebCLBuiltinHandler();
+
+    /// - Generates checks for pointer accesses.
+    /// - Generates information about largest memory accesses.
+    ///
+    /// \see WebCLPass
+    virtual void run(clang::ASTContext &context);
+
+private:
+    /// Contains information about address space limits.
+    WebCLKernelHandler &kernelHandler_;
+};
+
 #endif // WEBCLVALIDATOR_WEBCLPASS

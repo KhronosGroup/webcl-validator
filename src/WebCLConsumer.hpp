@@ -73,6 +73,7 @@ private:
     WebCLKernelHandler kernelHandler_;
     WebCLMemoryAccessHandler memoryAccessHandler_;
     WebCLValidatorPrinter printer_;
+    WebCLBuiltinHandler builtinHandler_;
     /// Passes that generate transformations based on analysis.
     typedef std::vector<WebCLPass*> Passes;
     Passes passes_;

@@ -537,3 +537,30 @@ void WebCLMemoryAccessHandler::run(clang::ASTContext &context)
         transformer_.addMinimumRequiredContinuousAreaLimit(i->first, i->second);
     }
 }
+
+WebCLBuiltinHandler::WebCLBuiltinHandler(
+    clang::CompilerInstance &instance,
+    WebCLAnalyser &analyser,
+    WebCLTransformer &transformer,
+    WebCLKernelHandler &kernelHandler)
+    : WebCLPass(instance, analyser, transformer)
+    , kernelHandler_(kernelHandler)
+{
+    // nothing
+}
+
+void WebCLBuiltinHandler::run(clang::ASTContext &context)
+{
+    WebCLAnalyser::CallExprSet builtinCalls = analyser_.getBuiltinCalls();
+
+    for (WebCLAnalyser::CallExprSet::const_iterator builtinCallIt = builtinCalls.begin();
+	 builtinCallIt != builtinCalls.end();
+	 ++builtinCallIt) {
+	transformer_.wrapBuiltinFunction(*builtinCallIt, kernelHandler_);
+    }
+}
+
+WebCLBuiltinHandler::~WebCLBuiltinHandler()
+{
+    // nothing
+}

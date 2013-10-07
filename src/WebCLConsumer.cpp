@@ -41,6 +41,7 @@ WebCLConsumer::WebCLConsumer(
     , kernelHandler_(instance, analyser_, transformer, addressSpaceHandler_)
     , memoryAccessHandler_(instance, analyser_, transformer, kernelHandler_)
     , printer_(instance, rewriter, analyser_, transformer)
+    , builtinHandler_(instance, analyser_, transformer, kernelHandler_)
     , passes_()
 {
     visitors_.push_back(&restrictor_);
@@ -69,6 +70,10 @@ WebCLConsumer::WebCLConsumer(
     // Adds check macros to every potentially harmful memory access.
     // Collects information of biggest memory access of each address space.
     passes_.push_back(&memoryAccessHandler_);
+
+    // Replace calls to builtin functions with versions that check the arguments
+    // before calling them. The functions that perform the check are generated.
+    passes_.push_back(&builtinHandler_);
   
     // Prints out the final result.
     passes_.push_back(&printer_);
