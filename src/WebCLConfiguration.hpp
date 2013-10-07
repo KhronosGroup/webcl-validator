@@ -25,6 +25,7 @@
 */
 
 #include "WebCLRenamer.hpp"
+#include "WebCLCommon.hpp"
 
 #include "clang/AST/Type.h"
 
@@ -185,6 +186,9 @@ public:
 
     /// Name of macro for zeroing local memory areas.
     const std::string localRangeZeroingMacro_;
+
+    // List of data widths: 2, 4, 8, 16
+    const UintList dataWidths_;
 
 private:
 

@@ -28,6 +28,20 @@
 
 #include <sstream>
 
+namespace {
+    UintList generateWidths(unsigned start, unsigned stop)
+    {
+	UintList values;
+	unsigned value = start;
+	while (value != stop) {
+	    values.push_back(value);
+	    value <<= 1;
+	}
+	values.push_back(value);
+	return values;
+    }
+}
+
 WebCLConfiguration::WebCLConfiguration()
     : typePrefix_("_Wcl")
     , variablePrefix_("_wcl")
@@ -75,6 +89,8 @@ WebCLConfiguration::WebCLConfiguration()
     , globalNullField_("gn")
 
     , localRangeZeroingMacro_(macroPrefix_ + "_LOCAL_RANGE_INIT")
+
+    , dataWidths_(generateWidths(2, 16))
 
     , localVariableRenamer_(variablePrefix_ + "_", "_")
     , privateVariableRenamer_(variablePrefix_ + "_", "_")
