@@ -227,7 +227,7 @@ bool WebCLMatcher1Action::checkIdentifiers()
         cfg_.variablePrefix_.c_str(),
         cfg_.macroPrefix_.c_str()
     };
-    const int lengths[numPrefixes] = {
+    const size_t lengths[numPrefixes] = {
         cfg_.typePrefix_.size(),
         cfg_.variablePrefix_.size(),
         cfg_.macroPrefix_.size()
