@@ -1185,7 +1185,7 @@ bool WebCLTransformer::wrapBuiltinFunction(std::string wrapperName, clang::CallE
     std::string name = callee->getNameInfo().getAsString();
 
     BuiltinBaseMap::const_iterator handlerIt = handlers.find(name);
-    if (handlerIt != handlers.end()) {
+    if (handlerIt != handlers.end() && handlerIt->second->getNumArgs() == expr->getNumArgs()) {
 	WrappedFunction result =
 	    handlerIt->second->wrapFunction(
 		*this, instance_,
