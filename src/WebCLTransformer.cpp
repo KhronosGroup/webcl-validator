@@ -1079,7 +1079,7 @@ namespace {
 	WebCLConfiguration cfg;
 
 	FunctionArgumentList newArguments;
-	newArguments.push_back(std::make_pair(cfg.addressSpaceRecordType_, cfg.addressSpaceRecordName_));
+	newArguments.push_back(std::make_pair(cfg.addressSpaceRecordType_ + "*", cfg.addressSpaceRecordName_));
 	for (size_t argIdx = 0; argIdx < callExpr->getNumArgs(); ++argIdx) {
 	    newArguments.push_back(std::make_pair(
 		    WebCLTypes::reduceType(instance, callExpr->getArg(argIdx)->getType()).getAsString(),
