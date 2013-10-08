@@ -566,8 +566,11 @@ void WebCLBuiltinHandler::run(clang::ASTContext &context)
 
 	if (success) {
 	    ++fnCounter;
+	} else if (analyser_.hasUnsafeParameters((*builtinCallIt)->getDirectCallee())) {
+	    // error on unknown builtin functions involving pointer arguments
+	    error((*builtinCallIt)->getLocStart(), "Builtin argument check is required.");
 	} else {
-	    warning((*builtinCallIt)->getLocStart(), ("Builtin " + origName + " is not supported").c_str());
+	    // pass other unknown functions through
 	}
     }
 }

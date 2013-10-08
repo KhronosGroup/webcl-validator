@@ -237,10 +237,10 @@ public:
   /// \return Whether variable has been declared in first for clause.
   bool isInsideForStmt(clang::VarDecl *decl);
 
-private:
-
   /// \return Whether a function takes a pointer parameter.
   bool hasUnsafeParameters(clang::FunctionDecl *decl);
+
+private:
 
   /// \return Whether a variable is stored in private address space.
   bool isPrivate(clang::VarDecl *decl) const;

@@ -23,6 +23,7 @@
 
 #include "WebCLVisitor.hpp"
 #include "WebCLDebug.hpp"
+#include "WebCLTypes.hpp"
 
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
@@ -558,7 +559,8 @@ bool WebCLAnalyser::hasUnsafeParameters(clang::FunctionDecl *decl)
 {
     for (unsigned int i = 0; i < decl->getNumParams(); ++i) {
         const clang::ParmVarDecl *param = decl->getParamDecl(i);
-        if (param->getType().getTypePtr()->isPointerType())
+        if (param->getType().getTypePtr()->isPointerType() &&
+	    WebCLTypes::reduceType(instance_, param->getType()).getAsString() != "image2d_t")
             return true;
     }
     return false;
