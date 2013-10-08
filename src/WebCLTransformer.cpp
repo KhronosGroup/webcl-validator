@@ -553,15 +553,26 @@ void WebCLTransformer::removeRelocated(clang::VarDecl *decl)
   wclRewriter_.removeText(decl->getSourceRange());
 }
 
-std::string WebCLTransformer::getClampMacroCall(std::string addr, std::string type, unsigned size, AddressSpaceLimits &limits)
+std::string WebCLTransformer::getCheckMacroCall(MacroKind kind, std::string addr, std::string type, unsigned size, AddressSpaceLimits &limits)
 {
   std::stringstream retVal;
 
   const unsigned limitCount = limits.count();
   const unsigned addressSpace = limits.getAddressSpace();
 
-  retVal << cfg_.getNameOfLimitClampMacro(addressSpace, limitCount)
-         << "(" << type << ", " << addr << ", " << size;
+  std::string name;
+  switch (kind) {
+  case MACRO_CLAMP:
+      name = cfg_.getNameOfLimitClampMacro(addressSpace, limitCount);
+      break;
+  case MACRO_CHECK:
+      name = cfg_.getNameOfLimitCheckMacro(addressSpace, limitCount);
+      break;
+  default:
+      assert(0);
+  }
+
+  retVal << name << "(" << type << ", " << addr << ", " << size;
 
   if (limits.hasStaticallyAllocatedLimits()) {
     retVal << ", " << cfg_.getStaticLimitRef(addressSpace);
@@ -572,7 +583,9 @@ std::string WebCLTransformer::getClampMacroCall(std::string addr, std::string ty
     retVal << ", " << cfg_.getDynamicLimitRef(*i);
   }
 
-  retVal << ", " << cfg_.getNameOfAddressSpaceNullPtrRef(addressSpace) << ")";
+  if (kind == MACRO_CLAMP) {
+      retVal << ", " << cfg_.getNameOfAddressSpaceNullPtrRef(addressSpace) << ")";
+  }
 
   // add macro implementations afterwards
   usedClampMacros_.insert(ClampMacroKey(limits.getAddressSpace(), limitCount));
@@ -627,7 +640,7 @@ std::string WebCLTransformer::getClampMacroExpression(clang::Expr *access, unsig
     }
   
     // trust limits given in parameter or check against all limits
-    std::string macro = getClampMacroCall(memAddress.str(), bif.base->getType().getAsString(), size, limits);
+    std::string macro = getCheckMacroCall(MACRO_CLAMP, memAddress.str(), bif.base->getType().getAsString(), size, limits);
 
     std::stringstream retVal;
     retVal << "(*(" << macro  << "))";
@@ -891,7 +904,7 @@ std::string WebCLTransformer::getWclAddrCheckMacroDefinition(unsigned aSpaceNum,
     // define clamping macro in terms of the checking macro
     retVal  << "#define " << cfg_.getNameOfLimitClampMacro(aSpaceNum, limitCount)
 	    << "(" << limitCheckArgs.str() << ", asnull) \\\n"
-	    << cfg_.getIndentation(1) << "( \\\n"
+	    << cfg_.getIndentation(1) << "( "
 	    << cfg_.getNameOfLimitCheckMacro(aSpaceNum, limitCount) 
 	    << "(" << limitCheckArgs.str() << ") ? (addr) : (type)(asnull))\n";
   
@@ -1075,7 +1088,7 @@ namespace {
 	std::stringstream body;
 	body
 	    << indent1 << ptrTypeStr << " ptr = arg1 + " << width_ << " * (size_t) arg0;\n"
-	    << indent1 << ptrTypeStr << " clamped = " << transformer.getClampMacroCall("ptr", ptrTypeStr, width_, limits) << ";\n"
+	    << indent1 << ptrTypeStr << " clamped = " << transformer.getCheckMacroCall(WebCLTransformer::MACRO_CLAMP, "ptr", ptrTypeStr, width_, limits) << ";\n"
 	    << indent1 << "return vload" << width_ << "(0, clamped);\n";
 
 	return body.str();
@@ -1112,7 +1125,7 @@ namespace {
 	std::stringstream body;
 	body
 	    << indent1 << ptrTypeStr << " ptr = arg2 + " << width_ << " * (size_t) arg1;\n"
-	    << indent1 << ptrTypeStr << " clamped = " << transformer.getClampMacroCall("ptr", ptrTypeStr, width_, limits) << ";\n"
+	    << indent1 << ptrTypeStr << " clamped = " << transformer.getCheckMacroCall(WebCLTransformer::MACRO_CHECK, "ptr", ptrTypeStr, width_, limits) << ";\n"
 	    << indent1 << "vstore" << width_ << "(arg0, 0, clamped);\n";
 
 	return body.str();

@@ -265,11 +265,15 @@ public:
     /// false is returned
     bool wrapBuiltinFunction(std::string wrapperName, clang::CallExpr *expr, WebCLKernelHandler &kernelHandler);
 
+    enum MacroKind {
+	MACRO_CLAMP,
+	MACRO_CHECK
+    };
     /// \return A macro call that forces the given address to point to
     /// a safe memory area.
     ///
     /// e.g. _WCL_ADDR_global_1(__global int *, addr, _wcl_allocs->gl.array_min, _wcl_allocs->gl.array_max, _wcl_allocs->gn)
-    std::string getClampMacroCall(std::string addr, std::string type, unsigned size, AddressSpaceLimits &limits);
+    std::string getCheckMacroCall(MacroKind kind, std::string addr, std::string type, unsigned size, AddressSpaceLimits &limits);
 
 private:
 
