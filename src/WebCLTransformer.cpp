@@ -961,6 +961,20 @@ namespace {
     typedef std::vector<clang::Expr*> ExprVector;
     typedef std::list<std::pair<std::string, std::string> > FunctionArgumentList;
 
+    struct WrappedFunction {
+	std::string returnTypeStr_;
+	std::string body_;
+
+	WrappedFunction(std::string returnTypeStr, std::string body);
+    };
+
+    WrappedFunction::WrappedFunction(std::string returnTypeStr, std::string body) :
+	returnTypeStr_(returnTypeStr), body_(body)
+    {
+	// nothing
+    }
+
+
     class BuiltinBase {
     public:
 	BuiltinBase();
@@ -970,7 +984,7 @@ namespace {
 	virtual std::string getName() const = 0;
 	virtual unsigned getNumArgs() const = 0;
 	
-	virtual std::string wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, const ExprVector &arguments, WebCLKernelHandler &kernelHandler) const = 0;
+	virtual WrappedFunction wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, const ExprVector &arguments, WebCLKernelHandler &kernelHandler) const = 0;
 
     public:
 	/// cannot be copied, this code doesn't exist
@@ -987,7 +1001,7 @@ namespace {
 	std::string getName() const;
 	unsigned getNumArgs() const;
 
-	std::string wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, const ExprVector &arguments, WebCLKernelHandler &kernelHandler) const;
+	WrappedFunction wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, const ExprVector &arguments, WebCLKernelHandler &kernelHandler) const;
 
     private:
 	unsigned	width_;
@@ -1000,7 +1014,7 @@ namespace {
 	std::string getName() const;
 	unsigned getNumArgs() const;
 
-	std::string wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, const ExprVector &arguments, WebCLKernelHandler &kernelHandler) const;
+	WrappedFunction wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, const ExprVector &arguments, WebCLKernelHandler &kernelHandler) const;
 
     private:
 	unsigned	width_;
@@ -1057,12 +1071,11 @@ namespace {
 
     std::string wrappedDeclaration(
 	clang::CompilerInstance &instance, 
+	std::string returnTypeStr,
 	const clang::CallExpr *callExpr, 
 	std::string name)
     {
 	WebCLConfiguration cfg;
-	clang::QualType reducedReturnType = WebCLTypes::reduceType(instance, callExpr->getCallReturnType());
-        std::string returnTypeStr = reducedReturnType.getAsString();
 
 	FunctionArgumentList newArguments;
 	newArguments.push_back(std::make_pair(cfg.addressSpaceRecordType_, cfg.addressSpaceRecordName_));
@@ -1075,7 +1088,7 @@ namespace {
 	return functionDeclaration(returnTypeStr, name, newArguments);
     }
 
-    std::string VLoad::wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, const ExprVector &arguments, WebCLKernelHandler &kernelHandler) const
+    WrappedFunction VLoad::wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, const ExprVector &arguments, WebCLKernelHandler &kernelHandler) const
     {
 	WebCLConfiguration cfg;
 
@@ -1101,7 +1114,7 @@ namespace {
 	    << indent << "else\n"
 	    << indent__ << "return " << zeroValue << ";\n";
 
-	return body.str();
+	return WrappedFunction(pointeeTypeStr, body.str());
     }
 
     VStore::VStore(unsigned width) :
@@ -1122,12 +1135,13 @@ namespace {
 	return 3;
     }
 
-    std::string VStore::wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, const ExprVector &arguments, WebCLKernelHandler &kernelHandler) const
+    WrappedFunction VStore::wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, const ExprVector &arguments, WebCLKernelHandler &kernelHandler) const
     {
 	WebCLConfiguration cfg;
 
 	clang::Expr *pointerArg = arguments[2];
 	std::string ptrTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType()).getAsString();
+	std::string pointeeTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType().getTypePtr()->getPointeeType()).getAsString();
 	
 	AddressSpaceLimits &limits = kernelHandler.getDerefLimits(pointerArg);
 
@@ -1139,7 +1153,7 @@ namespace {
 	    << indent << "if (" << transformer.getCheckMacroCall(WebCLTransformer::MACRO_CHECK, "ptr", ptrTypeStr, width_, limits) << ")\n"
 	    << indent__ << "vstore" << width_ << "(arg0, 0, ptr);\n";
 
-	return body.str();
+	return WrappedFunction(pointeeTypeStr, body.str());
     }
 }
 
@@ -1165,15 +1179,15 @@ bool WebCLTransformer::wrapBuiltinFunction(std::string wrapperName, clang::CallE
 
     BuiltinBaseMap::const_iterator handlerIt = handlers.find(name);
     if (handlerIt != handlers.end()) {
-	afterLimitMacros_ << wrappedDeclaration(instance_, expr, wrapperName) << "\n";
-
-	std::string body =
+	WrappedFunction result =
 	    handlerIt->second->wrapFunction(
 		*this, instance_,
 		ExprVector(expr->getArgs(), expr->getArgs() + expr->getNumArgs()),
 		kernelHandler);
 
-	afterLimitMacros_ << "{\n" << body << "}\n";
+	afterLimitMacros_ << wrappedDeclaration(instance_, result.returnTypeStr_, expr, wrapperName) << "\n";
+
+	afterLimitMacros_ << "{\n" << result.body_ << "}\n";
 
 	changeFunctionCallee(expr, wrapperName);
 	addRecordArgument(expr);
