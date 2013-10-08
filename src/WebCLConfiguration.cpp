@@ -144,11 +144,19 @@ const std::string WebCLConfiguration::getNameOfAddressSpaceNullPtrRef(unsigned a
     return prefix + privateNullField_;
 }
 
+const std::string WebCLConfiguration::getNameOfLimitClampMacro(
+    unsigned addressSpaceNum, int limitCount) const
+{
+    std::stringstream result;
+    result << macroPrefix_ << "_ADDR_CLAMP_" << getNameOfAddressSpace(addressSpaceNum) << "_" << limitCount;
+    return result.str();
+}
+
 const std::string WebCLConfiguration::getNameOfLimitCheckMacro(
     unsigned addressSpaceNum, int limitCount) const
 {
     std::stringstream result;
-    result << macroPrefix_ << "_ADDR_" << getNameOfAddressSpace(addressSpaceNum) << "_" << limitCount;
+    result << macroPrefix_ << "_ADDR_CHECK_" << getNameOfAddressSpace(addressSpaceNum) << "_" << limitCount;
     return result.str();
 }
 

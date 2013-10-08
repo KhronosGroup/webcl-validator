@@ -560,7 +560,7 @@ std::string WebCLTransformer::getClampMacroCall(std::string addr, std::string ty
   const unsigned limitCount = limits.count();
   const unsigned addressSpace = limits.getAddressSpace();
 
-  retVal << cfg_.getNameOfLimitCheckMacro(addressSpace, limitCount)
+  retVal << cfg_.getNameOfLimitClampMacro(addressSpace, limitCount)
          << "(" << type << ", " << addr;
 
   if (limits.hasStaticallyAllocatedLimits()) {
@@ -865,32 +865,37 @@ void WebCLTransformer::emitLimitMacros(std::ostream &out)
 std::string WebCLTransformer::getWclAddrCheckMacroDefinition(unsigned aSpaceNum,
                                                              unsigned limitCount)
 {
-  std::stringstream retVal;
-  std::stringstream retValPostfix;
-  retVal  << "#define " << cfg_.getNameOfLimitCheckMacro(aSpaceNum, limitCount)
-  << "(type, addr";
-  for (unsigned i = 0; i < limitCount; i++) {
-    retVal << ", min" << i << ", max" << i;
-  }
-  retVal << ", asnull) \\\n";
-  retVal << cfg_.indentation_ << "( \\\n";
+    std::stringstream retVal;
+    std::stringstream retValPostfix;
+    std::stringstream limitCheckArgs;
+    limitCheckArgs << "type, addr";
+    for (unsigned i = 0; i < limitCount; i++) {
+	limitCheckArgs << ", min" << i << ", max" << i;
+    }
+    retVal  << "#define " << cfg_.getNameOfLimitCheckMacro(aSpaceNum, limitCount)
+	    << "(" << limitCheckArgs.str() << ") \\\n"
+	    << cfg_.getIndentation(1) << "( 0\\\n";
   
-  for (unsigned i = 0; i < limitCount; i++) {
-    retVal << cfg_.getIndentation(i + 1) << "( "
-    << "( "
-    << "((addr) >= ((type)min" << i << "))"
-    << " && "
-    << "((addr) <= " << cfg_.getNameOfLimitMacro() << "(type, max" << i << "))"
-    << " )"
-    << " ? (addr) : \\\n";
-    retValPostfix << " )";
-  }
+    // at least one of the limits must match
+    for (unsigned i = 0; i < limitCount; i++) {
+	retVal << cfg_.getIndentation(i + 1) << "|| "
+	       << "( "
+	       << "((addr) >= ((type)min" << i << "))"
+	       << " && "
+	       << "((addr) <= " << cfg_.getNameOfLimitMacro() << "(type, max" << i << "))"
+	       << " ) \\\n";
+    }
   
-  retVal << cfg_.getIndentation(limitCount + 1)
-  << "((type)(asnull))"
-  << retValPostfix.str() << " )";
+    retVal << cfg_.getIndentation(limitCount + 1) << retValPostfix.str() << " )\n";
+
+    // define clamping macro in terms of the checking macro
+    retVal  << "#define " << cfg_.getNameOfLimitClampMacro(aSpaceNum, limitCount)
+	    << "(" << limitCheckArgs.str() << ", asnull) \\\n"
+	    << cfg_.getIndentation(1) << "( \\\n"
+	    << cfg_.getNameOfLimitCheckMacro(aSpaceNum, limitCount) 
+	    << "(" << limitCheckArgs.str() << ") ? (addr) : (type)(asnull))\n";
   
-  return retVal.str();
+    return retVal.str();
 }
 
 void WebCLTransformer::emitPrologue(std::ostream &out)

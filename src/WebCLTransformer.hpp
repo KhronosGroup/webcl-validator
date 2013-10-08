@@ -368,10 +368,13 @@ private:
     /// and writes corresponding _WCL_ADDR_* #defines to the stream.
     void emitLimitMacros(std::ostream &out);
   
-    /// \return A macro definition for clamping addresses in given
+    /// \return Macro definitions for checking and clamping addresses in given
     /// address space with given limit count.
     ///
-    /// e.g. #define _WCL_ADDR_local_2(type, addr, min1, max1, min2, max2, asnull) (<macro code>)
+    /// e.g.
+    /// #define _WCL_ADDR_CHECK_local_2(type, addr, min1, max1, min2, max2) (<macro code>)
+    /// #define _WCL_ADDR_CLAMP_local_2(type, addr, min1, max1, min2, max2, asnull) (<macro code>)
+    /// the clamping macro is defined in terms of the checking macro
     std::string getWclAddrCheckMacroDefinition(unsigned addrSpaceNum, unsigned limitCount);
 
     /// Write generated code at the beginning of module.

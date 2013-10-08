@@ -63,11 +63,24 @@ public:
     /// \see getNameOfAddressSpaceNull
     const std::string getNameOfAddressSpaceNullPtrRef(unsigned addressSpaceNum) const;
 
-    /// \return Name of macro that can be used to validate pointers.
+    /// \return Name of macro that can be used to validate pointers. The
+    /// generated macro with this name returns a valid pointer by making call to
+    /// the macro of name getNameOfLimitCheckMacro.
     ///
     /// \see getStaticLimitRef
     /// \see getDynamicLimitRef
     /// \see getNullLimitRef
+    /// \see getNameOfLimitCheckMacro
+    const std::string getNameOfLimitClampMacro(
+        unsigned addressSpaceNum, int limitCount) const;
+    /// \return Name of macro that can be used to validate pointers. The
+    /// generated macro with this name returns a boolean indicating whether the
+    /// access is permitted or not.
+    ///
+    /// \see getStaticLimitRef
+    /// \see getDynamicLimitRef
+    /// \see getNullLimitRef
+    /// \see getNameOfLimitClampMacro
     const std::string getNameOfLimitCheckMacro(
         unsigned addressSpaceNum, int limitCount) const;
     /// \return Name of macro that describes size of largest memory
