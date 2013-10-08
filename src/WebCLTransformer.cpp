@@ -1121,12 +1121,13 @@ namespace {
 	
 	AddressSpaceLimits &limits = kernelHandler.getDerefLimits(pointerArg);
 
-	std::string indent1 = cfg.getIndentation(1);
+	std::string indent = cfg.getIndentation(1);
+	std::string indent__ = cfg.getIndentation(2);
 	std::stringstream body;
 	body
-	    << indent1 << ptrTypeStr << " ptr = arg2 + " << width_ << " * (size_t) arg1;\n"
-	    << indent1 << ptrTypeStr << " clamped = " << transformer.getCheckMacroCall(WebCLTransformer::MACRO_CHECK, "ptr", ptrTypeStr, width_, limits) << ";\n"
-	    << indent1 << "vstore" << width_ << "(arg0, 0, clamped);\n";
+	    << indent << ptrTypeStr << " ptr = arg2 + " << width_ << " * (size_t) arg1;\n"
+	    << indent << "if (" << transformer.getCheckMacroCall(WebCLTransformer::MACRO_CHECK, "ptr", ptrTypeStr, width_, limits) << ")\n"
+	    << indent__ << "vstore" << width_ << "(arg0, 0, ptr);\n";
 
 	return body.str();
     }
