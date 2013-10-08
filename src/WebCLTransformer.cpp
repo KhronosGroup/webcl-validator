@@ -1115,7 +1115,7 @@ namespace {
 	    << indent << "else\n"
 	    << indent__ << "return " << zeroValue << ";\n";
 
-	return WrappedFunction(pointeeTypeStr, body.str());
+	return WrappedFunction(pointeeTypeStr + stringify(width_), body.str());
     }
 
     VStore::VStore(unsigned width) :
@@ -1154,7 +1154,7 @@ namespace {
 	    << indent << "if (" << transformer.getCheckMacroCall(WebCLTransformer::MACRO_CHECK, "ptr", ptrTypeStr, width_, limits) << ")\n"
 	    << indent__ << "vstore" << width_ << "(arg0, 0, ptr);\n";
 
-	return WrappedFunction(pointeeTypeStr, body.str());
+	return WrappedFunction(pointeeTypeStr + stringify(width_), body.str());
     }
 }
 
