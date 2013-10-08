@@ -30,6 +30,9 @@ namespace WebCLTypes {
     /// Maps OpenCL C types to host types: int -> cl_int.
     typedef std::map<std::string, std::string> HostTypes;
 
+    /// Maps OpenCL C types to their initial zero literals
+    typedef std::map<std::string, std::string> InitialZeroValues;
+
     /// Contains OpenCL C builtin types that can occur as kernel
     /// parameters.
     typedef std::set<std::string> BuiltinTypes;
@@ -42,6 +45,9 @@ namespace WebCLTypes {
 
     /// Returns the static list of unsupported builtin types
     const BuiltinTypes& unsupportedBuiltinTypes();
+
+    /// Returns the static list of unsupported builtin types
+    const InitialZeroValues& initialZeroValues();
 
     /// Reduce the given type to a host mapping type. If the reduction
     /// can't be done, the original type will be returned without

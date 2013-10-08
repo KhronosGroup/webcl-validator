@@ -1081,15 +1081,25 @@ namespace {
 
 	clang::Expr *pointerArg = arguments[1];
 	std::string ptrTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType()).getAsString();
+	std::string pointeeTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType().getTypePtr()->getPointeeType()).getAsString();
 	
 	AddressSpaceLimits &limits = kernelHandler.getDerefLimits(pointerArg);
 
-	std::string indent1 = cfg.getIndentation(1);
+	std::string indent = cfg.getIndentation(1);
+	std::string indent__ = cfg.getIndentation(2);
 	std::stringstream body;
+	std::string zeroValue;
+	if (!WebCLTypes::initialZeroValues().count(pointeeTypeStr)) {
+	    transformer.error(arguments[1]->getLocStart(), ("Cannot find default zero initializer for type " + pointeeTypeStr).c_str());
+	} else {
+	    zeroValue = WebCLTypes::initialZeroValues().find(pointeeTypeStr)->second;
+	}
 	body
-	    << indent1 << ptrTypeStr << " ptr = arg1 + " << width_ << " * (size_t) arg0;\n"
-	    << indent1 << ptrTypeStr << " clamped = " << transformer.getCheckMacroCall(WebCLTransformer::MACRO_CLAMP, "ptr", ptrTypeStr, width_, limits) << ";\n"
-	    << indent1 << "return vload" << width_ << "(0, clamped);\n";
+	    << indent << ptrTypeStr << " ptr = arg1 + " << width_ << " * (size_t) arg0;\n"
+	    << indent << "if (" << transformer.getCheckMacroCall(WebCLTransformer::MACRO_CHECK, "ptr", ptrTypeStr, width_, limits) << ")\n"
+	    << indent__ << "return vload" << width_ << "(0, ptr);\n"
+	    << indent << "else\n"
+	    << indent__ << "return " << zeroValue << ";\n";
 
 	return body.str();
     }

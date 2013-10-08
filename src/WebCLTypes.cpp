@@ -29,6 +29,8 @@
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
 
+#include "WebCLConfiguration.hpp"
+#include "WebCLCommon.hpp"
 #include "WebCLTypes.hpp"
 
 namespace WebCLTypes {
@@ -40,56 +42,99 @@ namespace WebCLTypes {
     /// parameters.
     BuiltinTypes unsupportedBuiltinTypes_;
 
+    InitialZeroValues initialZeroValues_;
+
     namespace {
 	/// Add host mappings for scalar types:
 	/// int -> cl_int
 	void initializeScalarTypes()
 	{
 	    hostTypes_["char"] = "cl_char";
+	    initialZeroValues_["char"] = "(char) 0";
 	    hostTypes_["unsigned char"] = "cl_uchar";
+	    initialZeroValues_["unsigned char"] = "(unsigned char) 0";
 	    hostTypes_["uchar"] = "cl_uchar";
+	    initialZeroValues_["uchar"] = "(uchar) 0";
 
 	    hostTypes_["short"] = "cl_short";
+	    initialZeroValues_["short"] = "(short) 0";
 	    hostTypes_["unsigned short"] = "cl_ushort";
+	    initialZeroValues_["unsigned short"] = "(unsigned short) 0";
 	    hostTypes_["ushort"] = "cl_ushort";
+	    initialZeroValues_["ushort"] = "(ushort) 0";
 
 	    hostTypes_["int"] = "cl_int";
+	    initialZeroValues_["int"] = "(int) 0";
 	    hostTypes_["unsigned int"] = "cl_uint";
+	    initialZeroValues_["unsigned int"] = "(unsigned int) 0";
 	    hostTypes_["uint"] = "cl_uint";
+	    initialZeroValues_["uint"] = "(uint) 0";
 
 	    hostTypes_["long"] = "cl_long";
+	    initialZeroValues_["long"] = "(long) 0";
 	    hostTypes_["unsigned long"] = "cl_ulong";
+	    initialZeroValues_["unsigned long"] = "(unsigned long) 0";
 	    hostTypes_["ulong"] = "cl_ulong";
+	    initialZeroValues_["ulong"] = "(ulong) 0";
 
 	    hostTypes_["double"] = "cl_double";
+	    initialZeroValues_["double"] = "(double) 0";
 	    hostTypes_["float"] = "cl_float";
+	    initialZeroValues_["float"] = "(float) 0";
 	    hostTypes_["half"] = "cl_half";
+	    initialZeroValues_["half"] = "(half) 0";
+	}
+
+	std::string zeroInitializer(std::string type, unsigned length)
+	{
+	    std::stringstream st;
+	    st << "(" << type << length << ") (";
+	    for (unsigned i = 0; i < length; ++i) {
+		if (i) {
+		    st << ", ";
+		}
+		st << "0";
+	    }
+	    st << ")";
+	    return st.str();
 	}
 
 	/// Add host mappings for vector types:
 	/// float4 -> cl_float4
 	void initializeVectorTypes()
 	{
-	    static const char *lengths[] = { "2", "3", "4", "8", "16" };
-	    static const int numLengths = sizeof(lengths) / sizeof(lengths[0]);
+	    WebCLConfiguration cfg;
 
-	    for (int i = 0; i < numLengths; ++i) {
-		const std::string length = lengths[i];
+	    for (UintList::const_iterator it = cfg.dataWidths_.begin();
+		 it != cfg.dataWidths_.end();
+		 ++it) {
+		unsigned length = *it;
+		const std::string lengthStr = stringify(length);
 
-		hostTypes_["char" + length] = "cl_char" + length;
-		hostTypes_["uchar" + length] = "cl_uchar" + length;
+		hostTypes_["char" + lengthStr] = "cl_char" + lengthStr;
+		initialZeroValues_["char" + lengthStr] = zeroInitializer("char", length);
+		hostTypes_["uchar" + lengthStr] = "cl_uchar" + lengthStr;
+		initialZeroValues_["uchar" + lengthStr] = zeroInitializer("uchar", length);
 
-		hostTypes_["short" + length] = "cl_short" + length;
-		hostTypes_["ushort" + length] = "cl_ushort" + length;
+		hostTypes_["short" + lengthStr] = "cl_short" + lengthStr;
+		initialZeroValues_["short" + lengthStr] = zeroInitializer("short", length);
+		hostTypes_["ushort" + lengthStr] = "cl_ushort" + lengthStr;
+		initialZeroValues_["ushort" + lengthStr] = zeroInitializer("ushort", length);
 
-		hostTypes_["int" + length] = "cl_int" + length;
-		hostTypes_["uint" + length] = "cl_uint" + length;
+		hostTypes_["int" + lengthStr] = "cl_int" + lengthStr;
+		initialZeroValues_["int" + lengthStr] = zeroInitializer("int", length);
+		hostTypes_["uint" + lengthStr] = "cl_uint" + lengthStr;
+		initialZeroValues_["uint" + lengthStr] = zeroInitializer("uint", length);
 
-		hostTypes_["long" + length] = "cl_long" + length;
-		hostTypes_["ulong" + length] = "cl_ulong" + length;
+		hostTypes_["long" + lengthStr] = "cl_long" + lengthStr;
+		initialZeroValues_["long" + lengthStr] = zeroInitializer("long", length);
+		hostTypes_["ulong" + lengthStr] = "cl_ulong" + lengthStr;
+		initialZeroValues_["ulong" + lengthStr] = zeroInitializer("ulong", length);
 
-		hostTypes_["double" + length] = "cl_double" + length;
-		hostTypes_["float" + length] = "cl_float" + length;
+		hostTypes_["double" + lengthStr] = "cl_double" + lengthStr;
+		initialZeroValues_["double" + lengthStr] = zeroInitializer("double", length);
+		hostTypes_["float" + lengthStr] = "cl_float" + lengthStr;
+		initialZeroValues_["float" + lengthStr] = zeroInitializer("float", length);
 	    }
 	}
 
@@ -136,6 +181,11 @@ namespace WebCLTypes {
     const BuiltinTypes& unsupportedBuiltinTypes()
     {
 	return unsupportedBuiltinTypes_;
+    }
+
+    const InitialZeroValues& initialZeroValues()
+    {
+	return initialZeroValues_;
     }
     
     clang::QualType reduceType(const clang::CompilerInstance &instance, clang::QualType type)
