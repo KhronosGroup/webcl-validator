@@ -584,8 +584,9 @@ std::string WebCLTransformer::getCheckMacroCall(MacroKind kind, std::string addr
   }
 
   if (kind == MACRO_CLAMP) {
-      retVal << ", " << cfg_.getNameOfAddressSpaceNullPtrRef(addressSpace) << ")";
+      retVal << ", " << cfg_.getNameOfAddressSpaceNullPtrRef(addressSpace);
   }
+  retVal << ")";
 
   // add macro implementations afterwards
   usedClampMacros_.insert(ClampMacroKey(limits.getAddressSpace(), limitCount));
