@@ -561,7 +561,7 @@ std::string WebCLTransformer::getClampMacroCall(std::string addr, std::string ty
   const unsigned addressSpace = limits.getAddressSpace();
 
   retVal << cfg_.getNameOfLimitClampMacro(addressSpace, limitCount)
-         << "(" << type << ", " << addr;
+         << "(" << type << ", " << addr << ", " << size;
 
   if (limits.hasStaticallyAllocatedLimits()) {
     retVal << ", " << cfg_.getStaticLimitRef(addressSpace);
@@ -868,7 +868,7 @@ std::string WebCLTransformer::getWclAddrCheckMacroDefinition(unsigned aSpaceNum,
     std::stringstream retVal;
     std::stringstream retValPostfix;
     std::stringstream limitCheckArgs;
-    limitCheckArgs << "type, addr";
+    limitCheckArgs << "type, addr, size";
     for (unsigned i = 0; i < limitCount; i++) {
 	limitCheckArgs << ", min" << i << ", max" << i;
     }
@@ -882,7 +882,7 @@ std::string WebCLTransformer::getWclAddrCheckMacroDefinition(unsigned aSpaceNum,
 	       << "( "
 	       << "((addr) >= ((type)min" << i << "))"
 	       << " && "
-	       << "((addr) <= " << cfg_.getNameOfLimitMacro() << "(type, max" << i << "))"
+	       << "((addr + size - 1) <= " << cfg_.getNameOfLimitMacro() << "(type, max" << i << "))"
 	       << " ) \\\n";
     }
   
