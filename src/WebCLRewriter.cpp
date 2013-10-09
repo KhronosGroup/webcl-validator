@@ -28,8 +28,10 @@
 #include "clang/Lex/Lexer.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Tooling/Refactoring.h"
+#include "clang/AST/Expr.h"
 
 #include <sstream>
+#include <cctype>
 
 WebCLRewriter::WebCLRewriter(clang::CompilerInstance &instance,
                              clang::Rewriter &rewriter)
@@ -40,6 +42,7 @@ WebCLRewriter::WebCLRewriter(clang::CompilerInstance &instance,
 }
 
 namespace {
+  // Finds the location of a certain character
   class CharacterIteratorBase {
   public:
     CharacterIteratorBase() {}
@@ -52,13 +55,195 @@ namespace {
   public:
     CharacterFinder(char charToFind) : charToFind_(charToFind) {}
 
-    bool operator()(char currentChar) {
+    bool operator()(clang::SourceLocation, char currentChar) {
       return currentChar != charToFind_;
     }
 
   private:
     char charToFind_;
   };
+
+  // Finds function expression and argument expression source locations
+  class ArgumentFinder: public CharacterIteratorBase {
+  private:
+    enum State {
+      STATE_WAIT_FUNC_NAME,	     // waiting function name to begin
+      STATE_INSIDE_FUNC_NAME,	     // inside a function name (not inside parens)
+      STATE_INSIDE_FUNC_NAME_PARENS, // inside a function (an expression with parens)
+      STATE_WAIT_FUNC_ARGS,	     // waiting function arguments to begin
+      STATE_INSIDE_FUNC_ARGS,	     // inside function arguments
+      STATE_INSIDE_FUNC_ARGS_PARENS, // inside a function argument containing parens
+      STATE_ARGS_FINISHED,	     // finished
+
+      STATE_ERROR_MASK                = 0xf0,
+      STATE_ERROR_STRINGS_UNSUPPORTED = 0x10 // strings not supported at this time..
+    };
+
+    enum CommentState {
+      CSTATE_NONE,
+      CSTATE_ENTER_MAYBE,
+      CSTATE_LINE,		// a single-line comment
+      CSTATE_COMMENT,		// a long comment
+      CSTATE_COMMENT_EXIT_MAYBE // we found an asterisk, maybe exit comment
+    };
+
+  public:
+    ArgumentFinder();
+
+    bool operator()(clang::SourceLocation location, char currentChar);
+
+    bool hasError() const;
+    bool hasWorkLeft() const;
+
+    // may contain parens etc, for example (foo)(1, 2)
+    clang::SourceRange functionName_;
+
+    // contains preceding and following whitespace if exists
+    WebCLRewriter::SourceRangeVector arguments_;
+
+  private:
+    // handles a charcater without dealing with comments or strings
+    void handleChar(clang::SourceLocation location, char currentChar);
+
+    State state_;		         /// current state
+    CommentState cstate_;		 /// currently inside a line comment?
+    int openParens_;                     /// number of open parenthesis in current state
+    clang::SourceLocation lastLocation_; /// last interesting location, ie. beginning on an argument
+
+    char previousChar_;			     /// previous char when we notice it wasn't a comment
+    clang::SourceLocation previousLocation_; /// previous location -"-
+  };
+
+  ArgumentFinder::ArgumentFinder()
+    : state_(STATE_WAIT_FUNC_NAME)
+    , cstate_(CSTATE_NONE)
+    , openParens_(0)
+  {
+    // nothing
+  }
+
+  bool ArgumentFinder::hasError() const
+  {
+    return state_ & STATE_ERROR_MASK;
+  }
+
+  bool ArgumentFinder::hasWorkLeft() const
+  {
+    return state_ != STATE_ARGS_FINISHED && !hasError();
+  }
+  
+  void ArgumentFinder::handleChar(clang::SourceLocation currentLocation, char currentChar) {
+    switch (state_) {
+    case STATE_ARGS_FINISHED: 
+    case STATE_ERROR_MASK: 
+    case STATE_ERROR_STRINGS_UNSUPPORTED: {
+      // remove compiler warnings
+    } break;
+    case STATE_WAIT_FUNC_NAME: {
+      switch (currentChar) {
+      case '(': {
+	lastLocation_ = currentLocation;
+	state_ = STATE_INSIDE_FUNC_NAME_PARENS;
+	++openParens_;
+      } break;
+      default:
+	if (isalpha(currentChar)) {
+	  lastLocation_ = currentLocation;
+	  state_ = STATE_INSIDE_FUNC_NAME;
+	}
+      }
+    } break;
+    case STATE_INSIDE_FUNC_NAME: {
+      switch (currentChar) {
+      case '(': {
+	functionName_ = clang::SourceRange(lastLocation_, currentLocation.getLocWithOffset(-1));
+	lastLocation_ = currentLocation.getLocWithOffset(1);
+	state_ = STATE_INSIDE_FUNC_ARGS;
+      } break;
+      }
+    } break;
+    case STATE_INSIDE_FUNC_NAME_PARENS: {
+      switch (currentChar) {
+      case '(': {
+	++openParens_;
+      } break;
+      case ')': {
+	if (--openParens_ == 0) {
+	  functionName_ = clang::SourceRange(lastLocation_, currentLocation.getLocWithOffset(-1));
+	  state_ = STATE_WAIT_FUNC_ARGS;
+	}
+      } break;
+      }
+    } break;
+    case STATE_WAIT_FUNC_ARGS: {
+      switch (currentChar) {
+      case '(': {
+	lastLocation_ = currentLocation.getLocWithOffset(1);
+	state_ = STATE_INSIDE_FUNC_ARGS;
+      } break;
+      }
+    } break;
+    case STATE_INSIDE_FUNC_ARGS: {
+      switch (currentChar) {
+      case '(': {
+	state_ = STATE_INSIDE_FUNC_ARGS_PARENS;
+	++openParens_;
+      } break;
+      case ',': {
+	arguments_.push_back(clang::SourceRange(lastLocation_, currentLocation.getLocWithOffset(-1)));
+	lastLocation_ = currentLocation.getLocWithOffset(1);
+	// stay in the same state_
+      } break;
+      case ')': {
+	arguments_.push_back(clang::SourceRange(lastLocation_, currentLocation.getLocWithOffset(-1)));
+	state_ = STATE_ARGS_FINISHED;
+      } break;
+      }
+    } break;
+    case STATE_INSIDE_FUNC_ARGS_PARENS: {
+      switch (currentChar) {
+      case '(': {
+	++openParens_;
+      } break;
+      case ')': {
+	if (--openParens_ == 0) {
+	  state_ = STATE_INSIDE_FUNC_ARGS;
+	}
+      } break;
+      }
+    } break;
+    }
+  }
+
+  bool ArgumentFinder::operator()(clang::SourceLocation currentLocation, char currentChar) {
+    // the only way to read this is to go through the strings foo(bar, baz) and (foo)(bar, baz)
+    if (currentChar == '"') {
+      state_ = STATE_ERROR_STRINGS_UNSUPPORTED;
+    } else if (cstate_ == CSTATE_NONE && currentChar == '/') {
+      previousLocation_ = currentLocation;
+      previousChar_ = currentChar;
+      cstate_ = CSTATE_ENTER_MAYBE;
+    } else if (cstate_ == CSTATE_ENTER_MAYBE && currentChar == '/') {
+      cstate_ = CSTATE_LINE;
+    } else if (cstate_ == CSTATE_LINE && currentChar == '\n') {
+      cstate_ = CSTATE_NONE;
+    } else if (cstate_ == CSTATE_ENTER_MAYBE && currentChar == '*') {
+      cstate_ = CSTATE_COMMENT;
+    } else if (cstate_ == CSTATE_COMMENT && currentChar == '*') {
+      cstate_ = CSTATE_COMMENT_EXIT_MAYBE;
+    } else if (cstate_ == CSTATE_COMMENT_EXIT_MAYBE && currentChar == '/') {
+      cstate_ = CSTATE_NONE;
+    } else if (cstate_ == CSTATE_COMMENT_EXIT_MAYBE) {
+      cstate_ = CSTATE_COMMENT;
+    } else if (cstate_ == CSTATE_ENTER_MAYBE) {
+      handleChar(previousLocation_, previousChar_);
+      handleChar(currentLocation, currentChar);
+    } else {
+      handleChar(currentLocation, currentChar);
+    }
+    return hasWorkLeft();
+  }
+
 
   // Iterate a source file forward by applying fn on each character until fn
   // returns false. Return the position where false was returned. Fn may
@@ -79,7 +264,7 @@ namespace {
     const char* endOfFile = SM.getCharacterData(SM.getLocForEndOfFile(locInfo.first));
     const char* charPos = SM.getCharacterData(startLoc);
   
-    while (fn(*charPos) && charPos < endOfFile) {
+    while (fn(lexer.getSourceLocation(charPos), *charPos) && charPos < endOfFile) {
       clang::SourceLocation currLoc = lexer.getSourceLocation(charPos);
       int currLength = clang::Lexer::MeasureTokenLength(currLoc, SM, instance.getLangOpts());
       // at least advance one char
@@ -98,6 +283,31 @@ namespace {
 clang::SourceLocation WebCLRewriter::findLocForNext(clang::SourceLocation startLoc, char charToFind) {
   CharacterFinder finder(charToFind);
   return iterateSourceWhile(instance_, startLoc, finder);
+}
+
+WebCLRewriter::SourceRangeVector WebCLRewriter::getArgumentSourceRanges(clang::CallExpr *call)
+{
+  ArgumentFinder finder;
+  iterateSourceWhile(instance_, call->getLocStart(), finder);
+
+  if (finder.hasError()) {
+    DEBUG (std::cerr << "ArgumentFinder failed" << std::endl; );
+    return finder.arguments_;
+  } else {
+    DEBUG (
+      std::cerr << "original text: " << getOriginalText(call->getSourceRange()) << std::endl;;
+
+      SourceRangeVector ranges = finder.arguments_;
+
+      for (SourceRangeVector::const_iterator it = ranges.begin();
+	   it != ranges.end();
+	   ++it) {
+	std::cerr << "argument: " << getOriginalText(*it) << std::endl;
+      }
+    );
+
+    return finder.arguments_;
+  }
 }
 
 void WebCLRewriter::removeText(clang::SourceRange range) {

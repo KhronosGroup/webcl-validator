@@ -29,10 +29,12 @@
 #include <map>
 #include <set>
 #include <utility>
+#include <vector>
 
 namespace clang {
     class CompilerInstance;
     class Rewriter;
+    class CallExpr;
 }
 
 /// Improves rewriter so that we can do a little more complex modifications
@@ -52,6 +54,7 @@ namespace clang {
 /// a1-a2 or d1-d2, however those exact ranges can be still rewritten. 
 class WebCLRewriter {
 public:
+  typedef std::vector<clang::SourceRange> SourceRangeVector;
   
   WebCLRewriter(clang::CompilerInstance &instance, clang::Rewriter &rewriter);
 
@@ -59,6 +62,10 @@ public:
   /// requested character is found from original source.
   clang::SourceLocation findLocForNext(clang::SourceLocation startLoc,
                                        char charToFind);
+
+  // Returns a vector of source ranges of the call arguments. The locations in
+  // the arguments cannot be trusted.
+  SourceRangeVector getArgumentSourceRanges(clang::CallExpr *call);
   
   /// \brief Removes given range.
   void removeText(clang::SourceRange range);
