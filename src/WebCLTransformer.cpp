@@ -1039,12 +1039,15 @@ namespace {
 
     class ReadImage: public BuiltinBase {
     public:
-	ReadImage();
+	ReadImage(std::string suffix);
 
 	std::string getName() const;
 	unsigned getNumArgs() const;
 
 	WrappedFunction wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, clang::CallExpr *callExpr, const ExprVector &arguments, WebCLKernelHandler &kernelHandler, WebCLRewriter &rewriter) const;
+
+    private:
+	std::string suffix_; // "f" or "i"
     };
 
     BuiltinBase::BuiltinBase()
@@ -1183,14 +1186,15 @@ namespace {
 	return WrappedFunction(pointeeTypeStr + stringify(width_), body.str());
     }
 
-    ReadImage::ReadImage()
+    ReadImage::ReadImage(std::string suffix) :
+	suffix_(suffix)
     {
 	// nothing
     }
 
     std::string ReadImage::getName() const
     {
-	return "read_imagef";
+	return "read_image" + suffix_;
     }
 
     unsigned ReadImage::getNumArgs() const
@@ -1276,7 +1280,8 @@ bool WebCLTransformer::wrapBuiltinFunction(std::string wrapperName, clang::CallE
 	handler = new VLoad(*widthIt); handlers[handler->getName()] = handler;
 	handler = new VStore(*widthIt); handlers[handler->getName()] = handler;
     }
-    handler = new ReadImage(); handlers[handler->getName()] = handler;
+    handler = new ReadImage("f"); handlers[handler->getName()] = handler;
+    handler = new ReadImage("i"); handlers[handler->getName()] = handler;
 
     std::string name = callee->getNameInfo().getAsString();
 
