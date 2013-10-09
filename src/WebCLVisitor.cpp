@@ -430,7 +430,7 @@ bool WebCLAnalyser::handleCallExpr(clang::CallExpr *expr)
       return true;
     } else if (builtins_.isUnsafe(name)) {
       warning(expr->getLocStart(), "Builtin argument check is still incomplete.");
-    } else if (hasUnsafeParameters(callee)) {
+    } else if (hasUnsafeParameters(expr)) {
       error(expr->getLocStart(), "Unsafe builtin not recognized.");
     }
 
@@ -555,8 +555,18 @@ bool WebCLAnalyser::isInsideForStmt(clang::VarDecl *decl)
     return declarationsMadeInForStatements_.count(decl) > 0;
 }
 
-bool WebCLAnalyser::hasUnsafeParameters(clang::FunctionDecl *decl)
+bool WebCLAnalyser::hasUnsafeParameters(clang::CallExpr *callExpr)
 {
+    clang::FunctionDecl *decl = callExpr->getDirectCallee();
+
+    for (unsigned i = 0; i < callExpr->getNumArgs(); ++i) {
+	clang::QualType type = callExpr->getArg(i)->getType();
+	if (type.getTypePtr()->isPointerType() &&
+	    WebCLTypes::reduceType(instance_, type).getAsString() != "image2d_t") {
+	    return true;
+	}
+    }
+
     for (unsigned int i = 0; i < decl->getNumParams(); ++i) {
         const clang::ParmVarDecl *param = decl->getParamDecl(i);
         if (param->getType().getTypePtr()->isPointerType() &&

@@ -237,8 +237,9 @@ public:
   /// \return Whether variable has been declared in first for clause.
   bool isInsideForStmt(clang::VarDecl *decl);
 
-  /// \return Whether a function takes a pointer parameter.
-  bool hasUnsafeParameters(clang::FunctionDecl *decl);
+  /// \return Whether a function call passes pointer parameter or if the
+  /// function declaration takes pointer parameters.
+  bool hasUnsafeParameters(clang::CallExpr *expr);
 
 private:
 
