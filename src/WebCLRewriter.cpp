@@ -39,36 +39,65 @@ WebCLRewriter::WebCLRewriter(clang::CompilerInstance &instance,
 {
 }
 
+namespace {
+  class CharacterIteratorBase {
+  public:
+    CharacterIteratorBase() {}
+    virtual ~CharacterIteratorBase() {}
+
+    virtual bool operator()(clang::SourceLocation currentLocation, char currentChar) = 0;
+  };
+
+  class CharacterFinder: public CharacterIteratorBase {
+  public:
+    CharacterFinder(char charToFind) : charToFind_(charToFind) {}
+
+    bool operator()(char currentChar) {
+      return currentChar != charToFind_;
+    }
+
+  private:
+    char charToFind_;
+  };
+
+  // Iterate a source file forward by applying fn on each character until fn
+  // returns false. Return the position where false was returned. Fn may
+  // perform side effects to keep track of its internal state.
+  clang::SourceLocation iterateSourceWhile(clang::CompilerInstance &instance, clang::SourceLocation startLoc, CharacterIteratorBase &fn) {
+    // if we could use matchers to find these locations would be better
+    const clang::SourceManager &SM = instance.getSourceManager();
+    std::pair<clang::FileID, unsigned> locInfo = SM.getDecomposedLoc(startLoc);
+    bool invalidTemp = false;
+    clang::StringRef file = SM.getBufferData(locInfo.first, &invalidTemp);
+    assert(invalidTemp == false);
+    const char *tokenBegin = file.data() + locInfo.second;
+  
+    clang::Lexer lexer(SM.getLocForStartOfFile(locInfo.first), instance.getLangOpts(),
+      file.begin(), tokenBegin, file.end());
+  
+    // just raw find for next semicolon and get SourceLocation
+    const char* endOfFile = SM.getCharacterData(SM.getLocForEndOfFile(locInfo.first));
+    const char* charPos = SM.getCharacterData(startLoc);
+  
+    while (fn(*charPos) && charPos < endOfFile) {
+      clang::SourceLocation currLoc = lexer.getSourceLocation(charPos);
+      int currLength = clang::Lexer::MeasureTokenLength(currLoc, SM, instance.getLangOpts());
+      // at least advance one char
+      if (currLength == 0) {
+	currLength = 1;
+      }
+      charPos += currLength;
+      // std::cerr << "Curr token:" << rewriter_.getRewrittenText(clang::SourceRange(currLoc, currLoc)) << "\n";
+    };
+  
+    return lexer.getSourceLocation(charPos);
+  }
+}
+
 /// \brief Finds source location of next token which starts with given char
 clang::SourceLocation WebCLRewriter::findLocForNext(clang::SourceLocation startLoc, char charToFind) {
-  
-  // if we could use matchers to find these locations would be better
-  const clang::SourceManager &SM = instance_.getSourceManager();
-  std::pair<clang::FileID, unsigned> locInfo = SM.getDecomposedLoc(startLoc);
-  bool invalidTemp = false;
-  clang::StringRef file = SM.getBufferData(locInfo.first, &invalidTemp);
-  assert(invalidTemp == false);
-  const char *tokenBegin = file.data() + locInfo.second;
-  
-  clang::Lexer lexer(SM.getLocForStartOfFile(locInfo.first), instance_.getLangOpts(),
-                     file.begin(), tokenBegin, file.end());
-  
-  // just raw find for next semicolon and get SourceLocation
-  const char* endOfFile = SM.getCharacterData(SM.getLocForEndOfFile(locInfo.first));
-  const char* charPos = SM.getCharacterData(startLoc);
-  
-  while (*charPos != charToFind && charPos < endOfFile) {
-    clang::SourceLocation currLoc = lexer.getSourceLocation(charPos);
-    int currLength = clang::Lexer::MeasureTokenLength(currLoc, SM, instance_.getLangOpts());
-    // at least advance one char
-    if (currLength == 0) {
-      currLength = 1;
-    }
-    charPos += currLength;
-    // std::cerr << "Curr token:" << rewriter_.getRewrittenText(clang::SourceRange(currLoc, currLoc)) << "\n";
-  };
-  
-  return lexer.getSourceLocation(charPos);
+  CharacterFinder finder(charToFind);
+  return iterateSourceWhile(instance_, startLoc, finder);
 }
 
 void WebCLRewriter::removeText(clang::SourceRange range) {
