@@ -3,8 +3,8 @@
 __kernel void safe_image2d(image2d_t image,
                            __constant int *ptr)
 {
-    // CHECK-NOT: error: Builtin argument check is required.
+    // CHECK-NOT: error: Unsafe builtin not recognized.
     nonexisting(image);
-    // CHECK: error: Builtin argument check is required.
+    // CHECK: error: Unsafe builtin not recognized.
     nonexisting2(ptr);
 }
