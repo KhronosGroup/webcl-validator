@@ -1140,7 +1140,7 @@ namespace {
 	body
 	    << indent << ptrTypeStr << " ptr = arg1 + " << width_ << " * (size_t) arg0;\n"
 	    << indent << "if (" << transformer.getCheckMacroCall(WebCLTransformer::MACRO_CHECK, "ptr", ptrTypeStr, width_, limits) << ")\n"
-	    << indent__ << "return vload" << width_ << "(0, ptr);\n"
+	    << indent__ << "return " << getName() << "(0, ptr);\n"
 	    << indent << "else\n"
 	    << indent__ << "return " << zeroValue << ";\n";
 
@@ -1180,7 +1180,7 @@ namespace {
 	body
 	    << indent << ptrTypeStr << " ptr = arg2 + " << width_ << " * (size_t) arg1;\n"
 	    << indent << "if (" << transformer.getCheckMacroCall(WebCLTransformer::MACRO_CHECK, "ptr", ptrTypeStr, width_, limits) << ")\n"
-	    << indent__ << "vstore" << width_ << "(arg0, 0, ptr);\n";
+	    << indent__ << getName() << "(arg0, 0, ptr);\n";
 
 	return WrappedFunction("void", body.str());
     }
