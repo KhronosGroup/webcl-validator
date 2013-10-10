@@ -1013,7 +1013,7 @@ namespace {
 
     class VLoad: public BuiltinBase {
     public:
-	VLoad(unsigned width);
+	VLoad(unsigned width, bool half);
 
 	std::string getName() const;
 	unsigned getNumArgs() const;
@@ -1022,11 +1022,12 @@ namespace {
 
     private:
 	unsigned	width_;
+	bool		half_;
     };
 
     class VStore: public BuiltinBase {
     public:
-	VStore(unsigned width);
+	VStore(unsigned width, bool half);
 
 	std::string getName() const;
 	unsigned getNumArgs() const;
@@ -1035,6 +1036,7 @@ namespace {
 
     private:
 	unsigned	width_;
+	bool		half_;
     };
 
     class ReadImage: public BuiltinBase {
@@ -1060,8 +1062,8 @@ namespace {
 	// nothing    
     }
 
-    VLoad::VLoad(unsigned width) :
-	width_(width)
+    VLoad::VLoad(unsigned width, bool half) :
+	width_(width), half_(half)
     {
 	// nothing
     }
@@ -1069,7 +1071,13 @@ namespace {
     std::string VLoad::getName() const
     {
 	std::stringstream ss;
-	ss << "vload" << width_;
+	ss << "vload";
+	if (half_) {
+	    ss << "_half";
+	}
+	if (width_ != 1) {
+	    ss << width_;
+	}
 	return ss.str();
     }
 
@@ -1124,7 +1132,13 @@ namespace {
 
 	clang::Expr *pointerArg = arguments[1];
 	std::string ptrTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType()).getAsString();
-	std::string pointeeTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType().getTypePtr()->getPointeeType()).getAsString();
+	std::string returnTypeStr;
+
+	if (half_) {
+	    returnTypeStr = "float" + stringify(width_);
+	} else {
+	    returnTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType().getTypePtr()->getPointeeType()).getAsString();
+	}
 	
 	AddressSpaceLimits &limits = kernelHandler.getDerefLimits(pointerArg);
 
@@ -1132,10 +1146,10 @@ namespace {
 	std::string indent__ = cfg.getIndentation(2);
 	std::stringstream body;
 	std::string zeroValue;
-	if (!WebCLTypes::initialZeroValues().count(pointeeTypeStr)) {
-	    transformer.error(arguments[1]->getLocStart(), ("Cannot find default zero initializer for type " + pointeeTypeStr).c_str());
+	if (!WebCLTypes::initialZeroValues().count(returnTypeStr)) {
+	    transformer.error(arguments[1]->getLocStart(), ("Cannot find default zero initializer for type " + returnTypeStr).c_str());
 	} else {
-	    zeroValue = WebCLTypes::initialZeroValues().find(pointeeTypeStr)->second;
+	    zeroValue = WebCLTypes::initialZeroValues().find(returnTypeStr)->second;
 	}
 	body
 	    << indent << ptrTypeStr << " ptr = arg1 + " << width_ << " * (size_t) arg0;\n"
@@ -1144,11 +1158,11 @@ namespace {
 	    << indent << "else\n"
 	    << indent__ << "return " << zeroValue << ";\n";
 
-	return WrappedFunction(pointeeTypeStr + stringify(width_), body.str());
+	return WrappedFunction(returnTypeStr + stringify(width_), body.str());
     }
 
-    VStore::VStore(unsigned width) :
-	width_(width)
+    VStore::VStore(unsigned width, bool half) :
+	width_(width), half_(half)
     {
 	// nothing
     }
@@ -1156,7 +1170,13 @@ namespace {
     std::string VStore::getName() const
     {
 	std::stringstream ss;
-	ss << "vstore" << width_;
+	ss << "vstore";
+	if (half_) {
+	    ss << "_half";
+	}
+	if (width_ != 1) {
+	    ss << width_;
+	}
 	return ss.str();
     }
 
@@ -1276,9 +1296,13 @@ bool WebCLTransformer::wrapBuiltinFunction(std::string wrapperName, clang::CallE
     for (UintList::const_iterator widthIt = cfg_.dataWidths_.begin();
 	 widthIt != cfg_.dataWidths_.end();
 	 ++widthIt) {
-	handler = new VLoad(*widthIt); handlers[handler->getName()] = handler;
-	handler = new VStore(*widthIt); handlers[handler->getName()] = handler;
+	handler = new VLoad(*widthIt, false); handlers[handler->getName()] = handler;
+	handler = new VStore(*widthIt, false); handlers[handler->getName()] = handler;
+	handler = new VLoad(*widthIt, true); handlers[handler->getName()] = handler;
+	handler = new VStore(*widthIt, true); handlers[handler->getName()] = handler;
     }
+    handler = new VLoad(1, true); handlers[handler->getName()] = handler;
+    handler = new VStore(1, true); handlers[handler->getName()] = handler;
     handler = new ReadImage("f"); handlers[handler->getName()] = handler;
     handler = new ReadImage("i"); handlers[handler->getName()] = handler;
 
