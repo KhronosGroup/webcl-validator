@@ -203,6 +203,9 @@ public:
     // List of data widths: 2, 4, 8, 16
     const UintList dataWidths_;
 
+    /// List of rounding modes for vstore_half: rte, rtz, rpt, rtn
+    const StringList roundingModes_;
+
 private:
 
     /// Renamer of variables relocated to local address space

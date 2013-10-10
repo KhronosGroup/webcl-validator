@@ -41,9 +41,10 @@ namespace {
 	return values;
     }
 
-    UintList addValue(const UintList& list, unsigned value)
+    template<typename Container, typename T>
+    Container addValue(const Container& list, T value)
     {
-	UintList l(list);
+	Container l(list);
 	l.push_back(value);
 	return l;
     }
@@ -98,6 +99,8 @@ WebCLConfiguration::WebCLConfiguration()
     , localRangeZeroingMacro_(macroPrefix_ + "_LOCAL_RANGE_INIT")
 
     , dataWidths_(addValue(generateWidths(2, 16), 3))
+    // this may be a little bit ridiculous but at least we get a constant list initialized
+    , roundingModes_(addValue(addValue(addValue(addValue(StringList(), "rte"), "rtz"), "rpt"), "rtn"))
 
     , localVariableRenamer_(variablePrefix_ + "_", "_")
     , privateVariableRenamer_(variablePrefix_ + "_", "_")
