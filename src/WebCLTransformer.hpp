@@ -262,7 +262,16 @@ public:
     /// Modify a builtin function call to a generated builtin replacement.  The
     /// replacement function is generated if required.  if wrapping was
     /// performed the function returns true. otherwise (ie. an unknown builtin)
-    /// false is returned
+    /// false is returned. 
+    /// Functions such as vloadn and vstoren generate a wrapping function that
+    /// performs the check of arguments and do nothing if the limits are
+    /// exceeded.
+    /// Functions such ad read_imagef and read_imagei are only checked for their
+    /// sampler_t argument. For those functions no wrapper function is
+    /// generated: instead, the second argument is deconstructed from the value
+    /// of its integer constant expression and then reconstructed by generating
+    /// an expression that builds the desired value by using the related macro
+    /// definitions and the bitwise or operator.
     bool wrapBuiltinFunction(std::string wrapperName, clang::CallExpr *expr, WebCLKernelHandler &kernelHandler);
 
     enum MacroKind {
