@@ -297,4 +297,23 @@ private:
     WebCLKernelHandler &kernelHandler_;
 };
 
+/// Checks that image parmaeters can only originate from function arguments
+class WebCLImageSafetyHandler : public WebCLPass
+{
+public:
+    WebCLImageSafetyHandler(
+        clang::CompilerInstance &instance,
+        WebCLAnalyser &analyser,
+	WebCLTransformer &transformer);
+    virtual ~WebCLImageSafetyHandler();
+
+    /// - Goes through all function calls and checks that their image2d_t
+    /// arguments refer to function arguments
+    ///
+    /// \see WebCLPass
+    virtual void run(clang::ASTContext &context);
+
+private:
+};
+
 #endif // WEBCLVALIDATOR_WEBCLPASS

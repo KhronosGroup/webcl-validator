@@ -579,3 +579,81 @@ WebCLBuiltinHandler::~WebCLBuiltinHandler()
 {
     // nothing
 }
+
+WebCLImageSafetyHandler::WebCLImageSafetyHandler(
+    clang::CompilerInstance &instance,
+    WebCLAnalyser &analyser,
+    WebCLTransformer &transformer)
+    : WebCLPass(instance, analyser, transformer)
+{
+    // nothing
+}
+
+void WebCLImageSafetyHandler::run(clang::ASTContext &context)
+{
+    WebCLAnalyser::CallExprSet calls = analyser_.getBuiltinCalls();
+    std::set<clang::DeclRefExpr*> usedAsArgument;
+
+    calls.insert(analyser_.getInternalCalls().begin(), analyser_.getInternalCalls().end());
+
+    for (WebCLAnalyser::CallExprSet::const_iterator callExprIt = calls.begin();
+	 callExprIt != calls.end();
+	 ++callExprIt) {
+	clang::CallExpr *callExpr = *callExprIt;
+	for (unsigned argIdx = 0; argIdx < callExpr->getNumArgs(); ++argIdx) {
+	    clang::Expr *expr = callExpr->getArg(argIdx);
+	    clang::QualType type = WebCLTypes::reduceType(instance_, expr->getType());
+	    if (type.getAsString() == "image2d_t") {
+		bool ok = false;
+		bool typeMismatchOnly = false;
+		clang::DeclRefExpr *declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(expr);
+		if (!declRefExpr) {
+		    if (clang::ImplicitCastExpr *implicitCastExpr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)) {
+			declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(*implicitCastExpr->child_begin());
+		    }
+		}
+		
+		if (declRefExpr) {
+		    const clang::ValueDecl *valueDecl = declRefExpr->getDecl();
+		    if (clang::isa<clang::ParmVarDecl>(valueDecl)) {
+			clang::QualType paramType = WebCLTypes::reduceType(instance_, valueDecl->getType());
+			if (paramType == type) {
+			    ok = true;
+			} else {
+			    // can this case ever happen?
+			    typeMismatchOnly = true;
+			}
+		    }
+		}
+
+		if (!ok) {
+		    if (typeMismatchOnly) {
+			error(expr->getLocStart(), "image2d_t must always originate from parameters with its original type");
+		    } else {
+			error(expr->getLocStart(), "image2d_t must always originate from parameters");
+		    }
+		}
+		usedAsArgument.insert(declRefExpr);
+	    }
+	}
+    }
+
+    const WebCLAnalyser::DeclRefExprSet uses = analyser_.getVariableUses();
+    for (WebCLAnalyser::DeclRefExprSet::const_iterator useIt = uses.begin();
+        useIt != uses.end();
+        ++useIt) {
+       clang::DeclRefExpr *expr = *useIt;
+       clang::QualType type = WebCLTypes::reduceType(instance_, expr->getType());
+       if (type.getAsString() == "image2d_t") {
+	   if (!usedAsArgument.count(expr)) {
+               error((expr)->getLocStart(), "image2d_t must always be used as a function argument");
+           }
+       }
+    }
+}
+
+WebCLImageSafetyHandler::~WebCLImageSafetyHandler()
+{
+    // nothing
+}
+

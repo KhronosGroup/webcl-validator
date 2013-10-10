@@ -41,6 +41,7 @@ WebCLConsumer::WebCLConsumer(
     , kernelHandler_(instance, analyser_, transformer, addressSpaceHandler_)
     , memoryAccessHandler_(instance, analyser_, transformer, kernelHandler_)
     , printer_(instance, rewriter, analyser_, transformer)
+    , imageSafetyHandler_(instance, analyser_, transformer)
     , builtinHandler_(instance, analyser_, transformer, kernelHandler_)
     , passes_()
 {
@@ -71,6 +72,10 @@ WebCLConsumer::WebCLConsumer(
     // Collects information of biggest memory access of each address space.
     passes_.push_back(&memoryAccessHandler_);
 
+    // Checks that when image types are being used, they always originate from
+    // function parameters
+    passes_.push_back(&imageSafetyHandler_);
+  
     // Replace calls to builtin functions with versions that check the arguments
     // before calling them. The functions that perform the check are generated.
     passes_.push_back(&builtinHandler_);
