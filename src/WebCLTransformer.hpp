@@ -274,6 +274,9 @@ public:
     /// definitions and the bitwise or operator.
     bool wrapBuiltinFunction(std::string wrapperName, clang::CallExpr *expr, WebCLKernelHandler &kernelHandler);
 
+    /// Used for implementing builtin wrappers
+    class BuiltinBase;
+
     enum MacroKind {
 	MACRO_CLAMP,
 	MACRO_CHECK
@@ -405,6 +408,11 @@ private:
 
     /// Generates recurring names.
     WebCLConfiguration cfg_;
+
+    typedef std::map<std::string, BuiltinBase*> BuiltinBaseMap;
+
+    /// Map from a builtin name to a wrapping handler
+    BuiltinBaseMap builtinHandlers_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLTRANSFORMER
