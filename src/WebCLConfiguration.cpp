@@ -40,6 +40,13 @@ namespace {
 	values.push_back(value);
 	return values;
     }
+
+    UintList addValue(const UintList& list, unsigned value)
+    {
+	UintList l(list);
+	l.push_back(value);
+	return l;
+    }
 }
 
 WebCLConfiguration::WebCLConfiguration()
@@ -90,7 +97,7 @@ WebCLConfiguration::WebCLConfiguration()
 
     , localRangeZeroingMacro_(macroPrefix_ + "_LOCAL_RANGE_INIT")
 
-    , dataWidths_(generateWidths(2, 16))
+    , dataWidths_(addValue(generateWidths(2, 16), 3))
 
     , localVariableRenamer_(variablePrefix_ + "_", "_")
     , privateVariableRenamer_(variablePrefix_ + "_", "_")
