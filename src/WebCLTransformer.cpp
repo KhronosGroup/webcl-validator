@@ -1171,7 +1171,6 @@ namespace {
 
 	clang::Expr *pointerArg = arguments[2];
 	std::string ptrTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType()).getAsString();
-	std::string pointeeTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType().getTypePtr()->getPointeeType()).getAsString();
 	
 	AddressSpaceLimits &limits = kernelHandler.getDerefLimits(pointerArg);
 
@@ -1183,7 +1182,7 @@ namespace {
 	    << indent << "if (" << transformer.getCheckMacroCall(WebCLTransformer::MACRO_CHECK, "ptr", ptrTypeStr, width_, limits) << ")\n"
 	    << indent__ << "vstore" << width_ << "(arg0, 0, ptr);\n";
 
-	return WrappedFunction(pointeeTypeStr + stringify(width_), body.str());
+	return WrappedFunction("void", body.str());
     }
 
     ReadImage::ReadImage(std::string suffix) :
