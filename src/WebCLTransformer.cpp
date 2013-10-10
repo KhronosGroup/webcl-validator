@@ -1027,7 +1027,7 @@ namespace {
 
     class VStore: public BuiltinBase {
     public:
-	VStore(unsigned width, bool half);
+	VStore(unsigned width, bool half, std::string roundingMode);
 
 	std::string getName() const;
 	unsigned getNumArgs() const;
@@ -1037,6 +1037,7 @@ namespace {
     private:
 	unsigned	width_;
 	bool		half_;
+	std::string     roundingMode_;
     };
 
     class ReadImage: public BuiltinBase {
@@ -1161,8 +1162,8 @@ namespace {
 	return WrappedFunction(returnTypeStr + stringify(width_), body.str());
     }
 
-    VStore::VStore(unsigned width, bool half) :
-	width_(width), half_(half)
+    VStore::VStore(unsigned width, bool half, std::string roundingMode) :
+	width_(width), half_(half), roundingMode_(roundingMode)
     {
 	// nothing
     }
@@ -1176,6 +1177,9 @@ namespace {
 	}
 	if (width_ != 1) {
 	    ss << width_;
+	}
+	if (roundingMode_.size()) {
+	    ss << "_" << roundingMode_;
 	}
 	return ss.str();
     }
@@ -1297,12 +1301,22 @@ bool WebCLTransformer::wrapBuiltinFunction(std::string wrapperName, clang::CallE
 	 widthIt != cfg_.dataWidths_.end();
 	 ++widthIt) {
 	handler = new VLoad(*widthIt, false); handlers[handler->getName()] = handler;
-	handler = new VStore(*widthIt, false); handlers[handler->getName()] = handler;
+	handler = new VStore(*widthIt, false, ""); handlers[handler->getName()] = handler;
 	handler = new VLoad(*widthIt, true); handlers[handler->getName()] = handler;
-	handler = new VStore(*widthIt, true); handlers[handler->getName()] = handler;
+	handler = new VStore(*widthIt, true, ""); handlers[handler->getName()] = handler;
+	for (StringList::const_iterator roundingModeIt = cfg_.roundingModes_.begin();
+	     roundingModeIt != cfg_.roundingModes_.end();
+	     ++roundingModeIt) {
+	    handler = new VStore(*widthIt, true, *roundingModeIt); handlers[handler->getName()] = handler;
+	}
     }
     handler = new VLoad(1, true); handlers[handler->getName()] = handler;
-    handler = new VStore(1, true); handlers[handler->getName()] = handler;
+    handler = new VStore(1, true, ""); handlers[handler->getName()] = handler;
+    for (StringList::const_iterator roundingModeIt = cfg_.roundingModes_.begin();
+	 roundingModeIt != cfg_.roundingModes_.end();
+	 ++roundingModeIt) {
+	handler = new VStore(1, true, *roundingModeIt); handlers[handler->getName()] = handler;
+    }
     handler = new ReadImage("f"); handlers[handler->getName()] = handler;
     handler = new ReadImage("i"); handlers[handler->getName()] = handler;
 
