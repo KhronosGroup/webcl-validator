@@ -102,7 +102,7 @@ WebCLTransformer::BuiltinBase::~BuiltinBase()
 namespace {
     class VLoad: public WebCLTransformer::BuiltinBase {
     public:
-	VLoad(unsigned width, bool half);
+        VLoad(unsigned width, bool half, bool aligned);
 
 	std::string getName() const;
 	unsigned getNumArgs() const;
@@ -112,11 +112,12 @@ namespace {
     private:
 	unsigned	width_;
 	bool		half_;
+        bool            aligned_;
     };
 
     class VStore: public WebCLTransformer::BuiltinBase {
     public:
-	VStore(unsigned width, bool half, std::string roundingMode);
+	VStore(unsigned width, bool half, bool aligned, std::string roundingMode);
 
 	std::string getName() const;
 	unsigned getNumArgs() const;
@@ -126,6 +127,7 @@ namespace {
     private:
 	unsigned	width_;
 	bool		half_;
+        bool            aligned_;
 	std::string     roundingMode_;
     };
 
@@ -142,8 +144,8 @@ namespace {
 	std::string suffix_; // "f" or "i"
     };
 
-    VLoad::VLoad(unsigned width, bool half) :
-	width_(width), half_(half)
+    VLoad::VLoad(unsigned width, bool half, bool aligned) :
+	width_(width), half_(half), aligned_(aligned)
     {
 	// nothing
     }
@@ -152,6 +154,9 @@ namespace {
     {
 	std::stringstream ss;
 	ss << "vload";
+        if (aligned_) {
+            ss << "a";
+        }
 	if (half_) {
 	    ss << "_half";
 	}
@@ -213,6 +218,7 @@ namespace {
 	clang::Expr *pointerArg = arguments[1];
 	std::string ptrTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType()).getAsString();
 	std::string returnTypeStr;
+	unsigned origDataWidth = (aligned_ && width_ == 3) ? 4 : width_;
 
 	if (half_) {
 	    returnTypeStr = "float" + stringify(width_);
@@ -232,8 +238,8 @@ namespace {
 	    zeroValue = WebCLTypes::initialZeroValues().find(returnTypeStr)->second;
 	}
 	body
-	    << indent << ptrTypeStr << " ptr = arg1 + " << width_ << " * (size_t) arg0;\n"
-	    << indent << "if (" << transformer.getCheckMacroCall(WebCLTransformer::MACRO_CHECK, "ptr", ptrTypeStr, width_, limits) << ")\n"
+	    << indent << ptrTypeStr << " ptr = arg1 + " << origDataWidth << " * (size_t) arg0;\n"
+	    << indent << "if (" << transformer.getCheckMacroCall(WebCLTransformer::MACRO_CHECK, "ptr", ptrTypeStr, origDataWidth, limits) << ")\n"
 	    << indent__ << "return " << getName() << "(0, ptr);\n"
 	    << indent << "else\n"
 	    << indent__ << "return " << zeroValue << ";\n";
@@ -241,8 +247,8 @@ namespace {
 	return WrappedFunction(returnTypeStr + stringify(width_), body.str());
     }
 
-    VStore::VStore(unsigned width, bool half, std::string roundingMode) :
-	width_(width), half_(half), roundingMode_(roundingMode)
+    VStore::VStore(unsigned width, bool half, bool aligned, std::string roundingMode) :
+	width_(width), half_(half), aligned_(aligned), roundingMode_(roundingMode)
     {
 	// nothing
     }
@@ -251,6 +257,9 @@ namespace {
     {
 	std::stringstream ss;
 	ss << "vstore";
+        if (aligned_) {
+            ss << "a";
+        }
 	if (half_) {
 	    ss << "_half";
 	}
@@ -274,6 +283,7 @@ namespace {
 
 	clang::Expr *pointerArg = arguments[2];
 	std::string ptrTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType()).getAsString();
+	unsigned origDataWidth = (aligned_ && width_ == 3) ? 4 : width_;
 	
 	AddressSpaceLimits &limits = kernelHandler.getDerefLimits(pointerArg);
 
@@ -281,8 +291,8 @@ namespace {
 	std::string indent__ = cfg.getIndentation(2);
 	std::stringstream body;
 	body
-	    << indent << ptrTypeStr << " ptr = arg2 + " << width_ << " * (size_t) arg1;\n"
-	    << indent << "if (" << transformer.getCheckMacroCall(WebCLTransformer::MACRO_CHECK, "ptr", ptrTypeStr, width_, limits) << ")\n"
+	    << indent << ptrTypeStr << " ptr = arg2 + " << origDataWidth << " * (size_t) arg1;\n"
+	    << indent << "if (" << transformer.getCheckMacroCall(WebCLTransformer::MACRO_CHECK, "ptr", ptrTypeStr, origDataWidth, limits) << ")\n"
 	    << indent__ << getName() << "(arg0, 0, ptr);\n";
 
 	return WrappedFunction("void", body.str());
@@ -379,22 +389,28 @@ WebCLTransformer::WebCLTransformer(
     for (UintList::const_iterator widthIt = cfg_.dataWidths_.begin();
 	 widthIt != cfg_.dataWidths_.end();
 	 ++widthIt) {
-	handler = new VLoad(*widthIt, false); builtinHandlers_[handler->getName()] = handler;
-	handler = new VStore(*widthIt, false, ""); builtinHandlers_[handler->getName()] = handler;
-	handler = new VLoad(*widthIt, true); builtinHandlers_[handler->getName()] = handler;
-	handler = new VStore(*widthIt, true, ""); builtinHandlers_[handler->getName()] = handler;
+	handler = new VLoad(*widthIt, false, false); builtinHandlers_[handler->getName()] = handler;
+	handler = new VStore(*widthIt, false, false, ""); builtinHandlers_[handler->getName()] = handler;
+	handler = new VLoad(*widthIt, true, false); builtinHandlers_[handler->getName()] = handler;
+	handler = new VStore(*widthIt, true, false, ""); builtinHandlers_[handler->getName()] = handler;
+	handler = new VLoad(*widthIt, true, true); builtinHandlers_[handler->getName()] = handler;
+	handler = new VStore(*widthIt, true, true, ""); builtinHandlers_[handler->getName()] = handler;
 	for (StringList::const_iterator roundingModeIt = cfg_.roundingModes_.begin();
 	     roundingModeIt != cfg_.roundingModes_.end();
 	     ++roundingModeIt) {
-	    handler = new VStore(*widthIt, true, *roundingModeIt); builtinHandlers_[handler->getName()] = handler;
+	    handler = new VStore(*widthIt, true, false, *roundingModeIt); builtinHandlers_[handler->getName()] = handler;
+	    handler = new VStore(*widthIt, true, true, *roundingModeIt); builtinHandlers_[handler->getName()] = handler;
 	}
     }
-    handler = new VLoad(1, true); builtinHandlers_[handler->getName()] = handler;
-    handler = new VStore(1, true, ""); builtinHandlers_[handler->getName()] = handler;
+    handler = new VLoad(1, true, false); builtinHandlers_[handler->getName()] = handler;
+    handler = new VStore(1, true, false, ""); builtinHandlers_[handler->getName()] = handler;
+    handler = new VLoad(1, true, true); builtinHandlers_[handler->getName()] = handler;
+    handler = new VStore(1, true, true, ""); builtinHandlers_[handler->getName()] = handler;
     for (StringList::const_iterator roundingModeIt = cfg_.roundingModes_.begin();
 	 roundingModeIt != cfg_.roundingModes_.end();
 	 ++roundingModeIt) {
-	handler = new VStore(1, true, *roundingModeIt); builtinHandlers_[handler->getName()] = handler;
+	handler = new VStore(1, true, false, *roundingModeIt); builtinHandlers_[handler->getName()] = handler;
+	handler = new VStore(1, true, true, *roundingModeIt); builtinHandlers_[handler->getName()] = handler;
     }
     handler = new ReadImage("f"); builtinHandlers_[handler->getName()] = handler;
     handler = new ReadImage("i"); builtinHandlers_[handler->getName()] = handler;
