@@ -94,6 +94,7 @@ WebCLArguments::WebCLArguments(int argc, char const *argv[])
         sizeof(validatorInvocation) / sizeof(validatorInvocation[0]);
     char const *validatorOptions[] = {
         "-x", "cl",
+        "-Wno-implicit-function-declaration",
         "-include", headerFilename
     };
     const int numValidatorOptions =
