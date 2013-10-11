@@ -446,6 +446,70 @@ void bar(int parameter)
     foo(&parameter);
 }
 
+Safe wrappers for vload and vstore
+----------------------------------
+
+All variants of vload are wrapped by the following algorithm:
+- For all calls to vload/vstore:
+  - Generate a function that
+    - Checks that the pointer argument is within bounds
+      (using similar mechanism as for clamping pointers)
+    - If so, execute the original call, otherwise do nothing
+
+The wrappers themselves care very little of the types and the
+generated wrapping functions just use the same types as the original
+call (some checks are made, for example the pointer argument must be
+of pointer type). The burden of checking if a certain vload variant
+for certain types exists is left to the OpenCL implementation,
+although all the list of valid vload and vstore variants are listed.
+
+Safety checking for read_imagef, read_imagei
+--------------------------------------------
+
+The image2d_t argument of read_imagef and read_imagei is checked to be
+the right type. The sampler_t argument is required to be an integer
+constant expression, an error is reported if it is not. The argument
+is decoded and then re-encoded by building a binary or expression
+using the constants related to sampler_t, ie. CLK_ADDRESS_CLAMP |
+CLK_FILTER_LINEAR. This handles the case of the original code
+containing an integer literal, thus always producing an expression
+that the OpenCL implementation can understand. While using integer
+literals may not be the sane thing to do, it will still result in safe
+code.
+
+Safety checking for image2d_t
+-----------------------------
+
+The following restrictions are placed to image2d_t, which prevents the
+user from mutating image2d_t handles or creating his own:
+
+* All function call arguments of type image2d_t must originate
+  directly from the functions parameters
+
+* All references to values of type image2d_t must be arguments to a
+  function call
+
+* image2d_t values that originate from kernel parameters are not
+  relocated
+
+This allows normal usage (image2d_t flows from kernel arguments to a
+function that makes use of it) while preventing attacks:
+
+* While the user may be able to craft an instance of image2d_t, he
+  will not be able to pass it to a function (because in such cases it
+  must originate directly from a function parameter and a cast of a
+  local variable is not such a parameter).
+
+* While the user is able to declare a variable of type image2d_t* he
+  will not be able to take an address of an existing image2d_t because
+  it would not then be a direct function argument. He will also not be
+  able to pass its dereferenced version to a function as an argument
+  as that would not be directly from a function parameter.
+
+* While the user may be able to clear all the memory accessible to the
+  kernel, the image2d_t parameters for the kernel are not relocated to
+  the memory the user is able to access. Therefore they cannot be
+  altered.
 
 Future improvements
 -------------------
@@ -456,7 +520,8 @@ Here is a list of improvements that could be done in the future:
   between function calls.
 
 * Inject safe builtin implementations for the builtin functions which
-  take pointers as arguments.
+  take pointers as arguments for the builtins that are not yet
+  wrapped.
 
 * Add separate version of helper functions for each kernel and create
   different limit structures for each kernel.
