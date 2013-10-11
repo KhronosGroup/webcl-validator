@@ -100,7 +100,7 @@ WebCLConfiguration::WebCLConfiguration()
 
     , dataWidths_(addValue(generateWidths(2, 16), 3))
     // this may be a little bit ridiculous but at least we get a constant list initialized
-    , roundingModes_(addValue(addValue(addValue(addValue(StringList(), "rte"), "rtz"), "rpt"), "rtn"))
+    , roundingModes_(addValue(addValue(addValue(addValue(StringList(), "rte"), "rtz"), "rtp"), "rtn"))
 
     , localVariableRenamer_(variablePrefix_ + "_", "_")
     , privateVariableRenamer_(variablePrefix_ + "_", "_")
