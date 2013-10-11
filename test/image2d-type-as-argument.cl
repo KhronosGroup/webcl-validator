@@ -8,6 +8,13 @@ void foo(image2d_t image, int i)
     nonexisting((image2d_t) i); // 2
 }
 
+void bar(image2d_t *image)
+{
+    // this code involved image2d_t*
+    // CHECK-NOT: error: image2d_t must always originate from parameters
+    *(int*) image = 42;
+}
+
 __kernel void image2d_type_as_argument(image2d_t image, __constant int *ptr)
 {
     image2d_t image2;
@@ -25,4 +32,8 @@ __kernel void image2d_type_as_argument(image2d_t image, __constant int *ptr)
     *(int*) image = 42; // 8
     // CHECK: image2d_t must always be used as a function argument
     image; // 9
+    // CHECK: image2d_t must always be used as a function argument
+    bar(&image); // 11
+    // CHECK: image2d_t must always be used as a function argument
+    (int) image; // 12
 }
