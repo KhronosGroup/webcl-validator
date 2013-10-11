@@ -216,6 +216,12 @@ namespace {
 	WebCLConfiguration cfg;
 
 	clang::Expr *pointerArg = arguments[1];
+
+	if (!pointerArg->getType()->isPointerType()) {
+	    transformer.error(arguments[1]->getLocStart(), "%0 argument number 2 must be a pointer") << getName().c_str();
+	    return WrappedFunction();
+	}
+
 	std::string ptrTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType()).getAsString();
 	std::string returnTypeStr;
 	unsigned origDataWidth = (aligned_ && width_ == 3) ? 4 : width_;
@@ -282,6 +288,12 @@ namespace {
 	WebCLConfiguration cfg;
 
 	clang::Expr *pointerArg = arguments[2];
+
+	if (!pointerArg->getType()->isPointerType()) {
+	    transformer.error(arguments[1]->getLocStart(), "%0 argument number 2 must be a pointer") << getName().c_str();
+	    return WrappedFunction();
+	}
+
 	std::string ptrTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType()).getAsString();
 	unsigned origDataWidth = (aligned_ && width_ == 3) ? 4 : width_;
 	
@@ -317,7 +329,12 @@ namespace {
     WrappedFunction ReadImage::wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, clang::CallExpr *callExpr, const ExprVector &arguments, WebCLKernelHandler &kernelHandler, WebCLRewriter &rewriter) const
     {
 	llvm::APSInt apsValue;
+	clang::Expr *imageArg = arguments[0];
 	clang::Expr *samplerArg = arguments[1];
+	if (WebCLTypes::reduceType(instance, imageArg->getType()).getAsString() != "image2d_t") {
+	    transformer.error(arguments[1]->getLocStart(), "%0 argument number 1 must be image2d_t") << getName().c_str();
+	    return WrappedFunction();
+	}
 	if (samplerArg->isIntegerConstantExpr(apsValue, instance.getASTContext())) {
 	    uint64_t value = apsValue.getLimitedValue();
 	    // #define CLK_ADDRESS_NONE                            0x00
