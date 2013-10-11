@@ -268,6 +268,13 @@ void WebCLHeader::emitKernel(std::ostream &out, const clang::FunctionDecl *kerne
     --level_;
 }
 
+namespace {
+    bool functionDeclCompareByName(clang::FunctionDecl* a, clang::FunctionDecl* b)
+    {
+	return a->getNameInfo().getAsString() < b->getNameInfo().getAsString();
+    }
+}
+
 void WebCLHeader::emitKernels(std::ostream &out, Kernels &kernels)
 {
     emitIndentation(out);
@@ -277,10 +284,16 @@ void WebCLHeader::emitKernels(std::ostream &out, Kernels &kernels)
     out << "{\n";
     ++level_;
 
-    for (Kernels::iterator i = kernels.begin(); i != kernels.end(); ++i) {
+    // why sort the list? because it makes the test case of valid-json-header.cl
+    // simpler to implement in a robust fashion
+    typedef std::list<clang::FunctionDecl*> KernelList;
+    KernelList sortedKernels(kernels.begin(), kernels.end());
+    sortedKernels.sort(functionDeclCompareByName);
+
+    for (KernelList::iterator i = sortedKernels.begin(); i != sortedKernels.end(); ++i) {
         const clang::FunctionDecl *kernel = *i;
 
-        if (i != kernels.begin())
+        if (i != sortedKernels.begin())
             out << ",\n";
         emitKernel(out, kernel);
     }

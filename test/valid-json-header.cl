@@ -115,72 +115,42 @@ __kernel void json_builtins(
 // CHECK:    "version" : "1.0",
 // CHECK:    "kernels" :
 // CHECK:        {
-// CHECK:            "json_scalars" :
+// CHECK:            "json_builtins" :
 // CHECK:                {
-// CHECK:                    "char_arg" :
+// CHECK:                    "image_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 0,
-// CHECK:                            "host-type" : "cl_char"
+// CHECK:                            "host-type" : "image2d_t",
+// CHECK:                            "access" : "read_only"
 // CHECK:                        },
-// CHECK:                    "unsigned_char_arg" :
+// CHECK:                    "read_image_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 1,
-// CHECK:                            "host-type" : "cl_uchar"
+// CHECK:                            "host-type" : "image2d_t",
+// CHECK:                            "access" : "read_only"
 // CHECK:                        },
-// CHECK:                    "uchar_arg" :
+// CHECK:                    "write_image_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 2,
-// CHECK:                            "host-type" : "cl_uchar"
+// CHECK:                            "host-type" : "image2d_t",
+// CHECK:                            "access" : "write_only"
 // CHECK:                        },
-// CHECK:                    "short_arg" :
+// CHECK:                    "sampler_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 3,
-// CHECK:                            "host-type" : "cl_short"
+// CHECK:                            "host-type" : "sampler_t"
 // CHECK:                        },
-// CHECK:                    "wcl_unsigned_short_arg" :
+// CHECK:                    "read_image_arg2" :
 // CHECK:                        {
 // CHECK:                            "index" : 4,
-// CHECK:                            "host-type" : "cl_ushort"
+// CHECK:                            "host-type" : "image2d_t",
+// CHECK:                            "access" : "read_only"
 // CHECK:                        },
-// CHECK:                    "ushort_arg" :
+// CHECK:                    "write_image_arg2" :
 // CHECK:                        {
 // CHECK:                            "index" : 5,
-// CHECK:                            "host-type" : "cl_ushort"
-// CHECK:                        },
-// CHECK:                    "int_arg" :
-// CHECK:                        {
-// CHECK:                            "index" : 6,
-// CHECK:                            "host-type" : "cl_int"
-// CHECK:                        },
-// CHECK:                    "unsigned_int_arg" :
-// CHECK:                        {
-// CHECK:                            "index" : 7,
-// CHECK:                            "host-type" : "cl_uint"
-// CHECK:                        },
-// CHECK:                    "uint_arg" :
-// CHECK:                        {
-// CHECK:                            "index" : 8,
-// CHECK:                            "host-type" : "cl_uint"
-// CHECK:                        },
-// CHECK:                    "long_arg" :
-// CHECK:                        {
-// CHECK:                            "index" : 9,
-// CHECK:                            "host-type" : "cl_long"
-// CHECK:                        },
-// CHECK:                    "unsiged_long_arg" :
-// CHECK:                        {
-// CHECK:                            "index" : 10,
-// CHECK:                            "host-type" : "cl_ulong"
-// CHECK:                        },
-// CHECK:                    "ulong_arg" :
-// CHECK:                        {
-// CHECK:                            "index" : 11,
-// CHECK:                            "host-type" : "cl_ulong"
-// CHECK:                        },
-// CHECK:                    "float_arg" :
-// CHECK:                        {
-// CHECK:                            "index" : 12,
-// CHECK:                            "host-type" : "cl_float"
+// CHECK:                            "host-type" : "image2d_t",
+// CHECK:                            "access" : "write_only"
 // CHECK:                        }
 // CHECK:                },
 // CHECK:            "json_scalar_arrays" :
@@ -355,52 +325,72 @@ __kernel void json_builtins(
 // CHECK:                            "host-type" : "cl_ulong"
 // CHECK:                        }
 // CHECK:                },
-// CHECK:            "json_vectors" :
+// CHECK:            "json_scalars" :
 // CHECK:                {
-// CHECK:                    "char4_arg" :
+// CHECK:                    "char_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 0,
-// CHECK:                            "host-type" : "cl_char4"
+// CHECK:                            "host-type" : "cl_char"
 // CHECK:                        },
-// CHECK:                    "uchar4_arg" :
+// CHECK:                    "unsigned_char_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 1,
-// CHECK:                            "host-type" : "cl_uchar4"
+// CHECK:                            "host-type" : "cl_uchar"
 // CHECK:                        },
-// CHECK:                    "short4_arg" :
+// CHECK:                    "uchar_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 2,
-// CHECK:                            "host-type" : "cl_short4"
+// CHECK:                            "host-type" : "cl_uchar"
 // CHECK:                        },
-// CHECK:                    "ushort4_arg" :
+// CHECK:                    "short_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 3,
-// CHECK:                            "host-type" : "cl_ushort4"
+// CHECK:                            "host-type" : "cl_short"
 // CHECK:                        },
-// CHECK:                    "int4_arg" :
+// CHECK:                    "wcl_unsigned_short_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 4,
-// CHECK:                            "host-type" : "cl_int4"
+// CHECK:                            "host-type" : "cl_ushort"
 // CHECK:                        },
-// CHECK:                    "uint4_arg" :
+// CHECK:                    "ushort_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 5,
-// CHECK:                            "host-type" : "cl_uint4"
+// CHECK:                            "host-type" : "cl_ushort"
 // CHECK:                        },
-// CHECK:                    "long4_arg" :
+// CHECK:                    "int_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 6,
-// CHECK:                            "host-type" : "cl_long4"
+// CHECK:                            "host-type" : "cl_int"
 // CHECK:                        },
-// CHECK:                    "ulong4_arg" :
+// CHECK:                    "unsigned_int_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 7,
-// CHECK:                            "host-type" : "cl_ulong4"
+// CHECK:                            "host-type" : "cl_uint"
 // CHECK:                        },
-// CHECK:                    "float4_arg" :
+// CHECK:                    "uint_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 8,
-// CHECK:                            "host-type" : "cl_float4"
+// CHECK:                            "host-type" : "cl_uint"
+// CHECK:                        },
+// CHECK:                    "long_arg" :
+// CHECK:                        {
+// CHECK:                            "index" : 9,
+// CHECK:                            "host-type" : "cl_long"
+// CHECK:                        },
+// CHECK:                    "unsiged_long_arg" :
+// CHECK:                        {
+// CHECK:                            "index" : 10,
+// CHECK:                            "host-type" : "cl_ulong"
+// CHECK:                        },
+// CHECK:                    "ulong_arg" :
+// CHECK:                        {
+// CHECK:                            "index" : 11,
+// CHECK:                            "host-type" : "cl_ulong"
+// CHECK:                        },
+// CHECK:                    "float_arg" :
+// CHECK:                        {
+// CHECK:                            "index" : 12,
+// CHECK:                            "host-type" : "cl_float"
 // CHECK:                        }
 // CHECK:                },
 // CHECK:            "json_vector_arrays" :
@@ -523,42 +513,52 @@ __kernel void json_builtins(
 // CHECK:                            "host-type" : "cl_ulong"
 // CHECK:                        }
 // CHECK:                },
-// CHECK:            "json_builtins" :
+// CHECK:            "json_vectors" :
 // CHECK:                {
-// CHECK:                    "image_arg" :
+// CHECK:                    "char4_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 0,
-// CHECK:                            "host-type" : "image2d_t",
-// CHECK:                            "access" : "read_only"
+// CHECK:                            "host-type" : "cl_char4"
 // CHECK:                        },
-// CHECK:                    "read_image_arg" :
+// CHECK:                    "uchar4_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 1,
-// CHECK:                            "host-type" : "image2d_t",
-// CHECK:                            "access" : "read_only"
+// CHECK:                            "host-type" : "cl_uchar4"
 // CHECK:                        },
-// CHECK:                    "write_image_arg" :
+// CHECK:                    "short4_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 2,
-// CHECK:                            "host-type" : "image2d_t",
-// CHECK:                            "access" : "write_only"
+// CHECK:                            "host-type" : "cl_short4"
 // CHECK:                        },
-// CHECK:                    "sampler_arg" :
+// CHECK:                    "ushort4_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 3,
-// CHECK:                            "host-type" : "sampler_t"
-// CHECK:                        }
-// CHECK:                    "read_image_arg2" :
+// CHECK:                            "host-type" : "cl_ushort4"
+// CHECK:                        },
+// CHECK:                    "int4_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 4,
-// CHECK:                            "host-type" : "image2d_t",
-// CHECK:                            "access" : "read_only"
-// CHECK:                        }
-// CHECK:                    "write_image_arg2" :
+// CHECK:                            "host-type" : "cl_int4"
+// CHECK:                        },
+// CHECK:                    "uint4_arg" :
 // CHECK:                        {
 // CHECK:                            "index" : 5,
-// CHECK:                            "host-type" : "image2d_t",
-// CHECK:                            "access" : "write_only"
+// CHECK:                            "host-type" : "cl_uint4"
+// CHECK:                        },
+// CHECK:                    "long4_arg" :
+// CHECK:                        {
+// CHECK:                            "index" : 6,
+// CHECK:                            "host-type" : "cl_long4"
+// CHECK:                        },
+// CHECK:                    "ulong4_arg" :
+// CHECK:                        {
+// CHECK:                            "index" : 7,
+// CHECK:                            "host-type" : "cl_ulong4"
+// CHECK:                        },
+// CHECK:                    "float4_arg" :
+// CHECK:                        {
+// CHECK:                            "index" : 8,
+// CHECK:                            "host-type" : "cl_float4"
 // CHECK:                        }
 // CHECK:                }
 // CHECK:        }
