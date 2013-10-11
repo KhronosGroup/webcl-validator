@@ -37,7 +37,7 @@ static const int numUnsafeMathBuiltins =
 
 static const char *unsafeVectorBuiltins[] = {
     "vload#", "vload_half", "vload_half#", "vloada_half#",
-    "vstore#", "vstore_half", "vstore_half#", "vstorea_#",
+    "vstore#", "vstore_half", "vstore_half#", "vstorea_#", "vstorea_half#",
     "vstore_half_rte", "vstore_half_rtz", "vstore_half_rtp", "vstore_half_rtn",
     "vstore_half#_rte", "vstore_half#_rtz", "vstore_half#_rtp", "vstore_half#_rtn",
     "vstorea_half_rte", "vstorea_half_rtz", "vstorea_half_rtp", "vstorea_half_rtn",
