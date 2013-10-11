@@ -75,6 +75,9 @@ private:
     /// tool to use '-include' option to include contents that have
     /// been embedded into main executable.
     char const *createFullTemporaryFile(int &fd, char const *buffer, size_t length) const;
+    /// \return File that has been initialized from the contents
+    /// of srcFd (typically standard input)
+    char const *createCopiedTemporaryFile(int srcFd) const;
 
     /// Preprocessor argument count.
     int preprocessorArgc_;

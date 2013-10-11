@@ -62,10 +62,17 @@ WebCLArguments::WebCLArguments(int argc, char const *argv[])
 {
     char const *commandName = argv[0];
     char const *inputFilename = argv[1];
+    char const *temporaryStdinCopy = NULL;
     const int userOptionOffset = 2;
     const int numUserOptions = argc - userOptionOffset;
     assert((argc >= userOptionOffset) &&
            "Expected at least executable name and input file in argv.");
+
+    if (strcmp(inputFilename, "-") == 0) {
+	temporaryStdinCopy = createCopiedTemporaryFile(0);
+	inputFilename = temporaryStdinCopy;
+	files_.push_back(TemporaryFile(-1, temporaryStdinCopy));
+    }
 
     char const *buffer = reinterpret_cast<char const*>(kernel_endlfix_cl);
     size_t length = kernel_endlfix_cl_len;
@@ -278,6 +285,28 @@ char const *WebCLArguments::createEmptyTemporaryFile(int &fd) const
     }
 
     return result;
+}
+
+char const *WebCLArguments::createCopiedTemporaryFile(int srcFd) const
+{
+    int dstFd;
+    char const *filename = createEmptyTemporaryFile(dstFd);
+    if (!filename)
+        return NULL;
+
+    char buffer[1024];
+    ssize_t rdBytes;
+    while ((rdBytes = read(srcFd, buffer, sizeof(buffer))) > 0) {
+	const size_t wrBytes = write(dstFd, buffer, rdBytes);
+	if (wrBytes != size_t(rdBytes)) {
+	    std::cerr << "Internal error. Can't populate temporary file." << std::endl;
+	    delete[] filename;
+	    close(dstFd);
+	    return NULL;
+	}
+    }
+    close(dstFd);
+    return filename;
 }
 
 char const *WebCLArguments::createFullTemporaryFile(int &fd, char const *buffer, size_t length) const
