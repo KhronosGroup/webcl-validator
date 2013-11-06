@@ -495,10 +495,10 @@ user from mutating image2d_t handles or creating his own:
 This allows normal usage (image2d_t flows from kernel arguments to a
 function that makes use of it) while preventing attacks:
 
-* While the user may be able to craft an instance of image2d_t, he
-  will not be able to pass it to a function (because in such cases it
-  must originate directly from a function parameter and a cast of a
-  local variable is not such a parameter).
+* While the user is able to craft an instance of image2d_t, he will
+  not be able to pass it to a function (because in such cases it must
+  originate directly from a function parameter and a cast of a local
+  variable is not such a parameter).
 
 * While the user is able to declare a variable of type image2d_t* he
   will not be able to take an address of an existing image2d_t because
