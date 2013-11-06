@@ -34,6 +34,13 @@
 
 #define SCALAR 0
 
+#define DEVICE_TYPE CL_DEVICE_TYPE_ALL
+#ifdef __APPLE__
+// Maverics HD4000 driver crashes OS
+#define DEVICE_TYPE CL_DEVICE_TYPE_CPU
+#endif
+
+
 namespace
 {
     typedef std::vector<cl_platform_id> platform_vector;
@@ -59,14 +66,14 @@ platform_vector getPlatformsIDs()
 device_vector getDevices(cl_platform_id const& platformId)
 {
     cl_uint num_devices = 0;
-    if (CL_SUCCESS != clGetDeviceIDs(platformId, CL_DEVICE_TYPE_ALL, 0, NULL, &num_devices))
+    if (CL_SUCCESS != clGetDeviceIDs(platformId, DEVICE_TYPE, 0, NULL, &num_devices))
     {
         std::cerr << "Failed to get number of devices." << std::endl;
         return device_vector();
     }
 
     device_vector devices(num_devices);
-    if (CL_SUCCESS != clGetDeviceIDs(platformId, CL_DEVICE_TYPE_ALL, num_devices, devices.data(), NULL))
+    if (CL_SUCCESS != clGetDeviceIDs(platformId, DEVICE_TYPE, num_devices, devices.data(), NULL))
     {
         std::cerr << "clGetDeviceIDs failed." << std::endl;
         num_devices = 0;

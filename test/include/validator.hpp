@@ -26,8 +26,11 @@
 
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
+// Maverics HD4000 driver crashes OS
+#define DEVICE_TYPE CL_DEVICE_TYPE_CPU
 #else
 #include <CL/cl.h>
+#define DEVICE_TYPE CL_DEVICE_TYPE_ALL
 #endif
 
 #include <iostream>
@@ -85,7 +88,7 @@ public:
     }
 
     virtual unsigned int getNumDevices() {
-        if (clGetDeviceIDs(platform_, CL_DEVICE_TYPE_ALL,
+        if (clGetDeviceIDs(platform_, DEVICE_TYPE,
                            0, NULL, &numDevices_) != CL_SUCCESS) {
             return 0;
         }
@@ -101,7 +104,7 @@ public:
             return false;
 
         cl_device_id devices[maxDevices];
-        if (clGetDeviceIDs(platform_, CL_DEVICE_TYPE_ALL,
+        if (clGetDeviceIDs(platform_, DEVICE_TYPE,
                            numDevices_, devices, NULL) != CL_SUCCESS) {
             return false;
         }
