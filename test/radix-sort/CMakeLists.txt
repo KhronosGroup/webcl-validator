@@ -1,4 +1,4 @@
-add_executable(
+add_wclv_test(
   radix-sort
   main.cpp
   sorter.cpp

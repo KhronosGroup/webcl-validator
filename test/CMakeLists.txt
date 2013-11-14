@@ -28,6 +28,11 @@ if (LINK_DIRECTLY_WITH_POCL)
 
 endif (LINK_DIRECTLY_WITH_POCL)
 
+function(add_wclv_test test_name)
+  add_llvm_executable(${test_name} ${ARGN})
+  set_target_properties(${test_name} PROPERTIES FOLDER "WebCL Validator tests")
+endfunction()
+
 # note that add subdirectory must be after variable declarations 
 # to make sure that options are passed to subdirectories
 add_subdirectory( kernel-runner )

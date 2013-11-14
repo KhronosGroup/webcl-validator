@@ -1,4 +1,4 @@
-add_executable(
+add_wclv_test(
   opencl-validator
   main.cpp
 )
