@@ -24,6 +24,7 @@
 #include "kernelargs.hpp"
 
 #include <set>
+#include <string>
 #include <vector>
 #include <iostream>
 #include <iterator>
