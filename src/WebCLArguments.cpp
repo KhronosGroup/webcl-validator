@@ -45,6 +45,12 @@
 #define TEMP_DIR P_tmpdir
 #endif
 
+// Windows/MSVC++ doesn't have ssize_t
+#ifdef _MSC_VER
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 int mingwcompatible_mkstemp(char* tmplt) {
   char *filename = mktemp(tmplt);
   if (filename == NULL) return -1;
