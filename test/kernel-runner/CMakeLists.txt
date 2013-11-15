@@ -1,3 +1,7 @@
+SET(LLVM_LINK_COMPONENTS
+  Support
+  )
+
 add_wclv_test(
   kernel-runner
   main.cpp

@@ -1,3 +1,7 @@
+SET(LLVM_LINK_COMPONENTS
+  Support
+  )
+
 add_wclv_test(
   radix-sort
   main.cpp

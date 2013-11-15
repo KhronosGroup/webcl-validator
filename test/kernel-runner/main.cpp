@@ -30,7 +30,8 @@
 #include <iterator>
 
 #include <cstring>
-#include <sys/time.h>
+
+#include "llvm/support/TimeValue.h"
 
 #define SCALAR 0
 
@@ -82,11 +83,6 @@ device_vector getDevices(cl_platform_id const& platformId)
     return devices;
 }
 
-int diff_ms_helper(timeval t1, timeval t2){
-  return (((t1.tv_sec - t2.tv_sec)* 1000000) + 
-           (t1.tv_usec - t2.tv_usec))/1000;
-}
-
 void printDevInfo(cl_device_id device)
 {
     char devbuf[128];
@@ -118,6 +114,8 @@ bool testSource(int id, cl_device_id device, std::string const& source,
     std::string &kernelName, int globalWorkSize, int loopCount, std::vector<BufferArg> &buffers, bool isTransformed, 
     char* programOutput, bool debug, bool hasOutput)
 {
+    using llvm::sys::TimeValue;
+
     cl_int ret = CL_SUCCESS;
 
     // Create an OpenCL context
@@ -171,8 +169,7 @@ bool testSource(int id, cl_device_id device, std::string const& source,
         ucharInit[i] = i;
     }
 
-    timeval allocate_buffers_begin;
-    gettimeofday(&allocate_buffers_begin, NULL);
+    TimeValue allocate_buffers_begin = TimeValue::now();
 
     for (unsigned i = 0; i < buffers.size(); i++) {        
         if (buffers[i].size == SCALAR) {
@@ -216,8 +213,8 @@ bool testSource(int id, cl_device_id device, std::string const& source,
     }
 
     ret = clFinish(command_queue);
-    timeval enqueue_kernel_begin;
-    gettimeofday(&enqueue_kernel_begin, NULL);
+
+    TimeValue enqueue_kernel_begin = TimeValue::now();
 
     // Execute the OpenCL kernel on the list
     size_t global_item_size = globalWorkSize; // Process the entire lists
@@ -235,11 +232,11 @@ bool testSource(int id, cl_device_id device, std::string const& source,
     }
     
     ret = clFinish(command_queue);
-    timeval enqueue_kernel_end;
-    gettimeofday(&enqueue_kernel_end, NULL);
 
-    double allocate_buffers_ms = diff_ms_helper(enqueue_kernel_begin, allocate_buffers_begin);
-    double enqueue_kernel_ms = diff_ms_helper(enqueue_kernel_end, enqueue_kernel_begin);
+    TimeValue enqueue_kernel_end = TimeValue::now();
+
+    double allocate_buffers_ms = (enqueue_kernel_begin - allocate_buffers_begin).msec();
+    double enqueue_kernel_ms = (enqueue_kernel_end - enqueue_kernel_begin).msec();
 
     double elapsed_ms = allocate_buffers_ms + enqueue_kernel_ms;
     std::cerr << "allocate_buffers: " << allocate_buffers_ms << "ms\n"
