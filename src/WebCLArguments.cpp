@@ -37,7 +37,7 @@
 //              in windows runtime, since it depends if we are running from msys / cygwin shell
 //              or from windows commandline?
 
-#ifdef __MINGW32__
+#if (defined(__MINGW32__) || defined(_MSC_VER))
 #define DIR_SEPARATOR "\\"
 #define TEMP_DIR "."
 #else
