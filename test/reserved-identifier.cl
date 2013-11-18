@@ -1,5 +1,5 @@
 // RUN: %opencl-validator < %s
-// RUN: %webcl-validator %s -ferror-limit=0 2>&1 | grep "error: " | LC_ALL=C sort | %FileCheck %s
+// RUN: %webcl-validator %s -ferror-limit=0 2>&1 | grep "error: " | %FileCheck %s
 
 struct _wcl_struct { int _wcl_field; };
 struct _WclStruct { int _WclField; };
@@ -43,24 +43,24 @@ __kernel void _wcl_reserved_identifier(__global int *_wcl_array)
         _WCL_FUNCTION(_WCL_VARIABLE._WCL_FIELD);
 }
 
-// CHECK: error: Identifier '_WCL_FIELD' uses reserved prefix '_WCL'.
-// CHECK: error: Identifier '_WCL_FUNCTION' uses reserved prefix '_WCL'.
-// CHECK: error: Identifier '_WCL_PARAMETER' uses reserved prefix '_WCL'.
-// CHECK: error: Identifier '_WCL_STRUCT' uses reserved prefix '_WCL'.
-// CHECK: error: Identifier '_WCL_TYPEDEF' uses reserved prefix '_WCL'.
-// CHECK: error: Identifier '_WCL_VARIABLE' uses reserved prefix '_WCL'.
-// CHECK: error: Identifier '_WclField' uses reserved prefix '_Wcl'.
-// CHECK: error: Identifier '_WclFunction' uses reserved prefix '_Wcl'.
-// CHECK: error: Identifier '_WclParameter' uses reserved prefix '_Wcl'.
-// CHECK: error: Identifier '_WclStruct' uses reserved prefix '_Wcl'.
-// CHECK: error: Identifier '_WclTypedef' uses reserved prefix '_Wcl'.
-// CHECK: error: Identifier '_WclVariable' uses reserved prefix '_Wcl'.
-// CHECK: error: Identifier '_wcl_array' uses reserved prefix '_wcl'.
-// CHECK: error: Identifier '_wcl_field' uses reserved prefix '_wcl'.
-// CHECK: error: Identifier '_wcl_function' uses reserved prefix '_wcl'.
-// CHECK: error: Identifier '_wcl_parameter' uses reserved prefix '_wcl'.
-// CHECK: error: Identifier '_wcl_reserved_identifier' uses reserved prefix '_wcl'.
-// CHECK: error: Identifier '_wcl_struct' uses reserved prefix '_wcl'.
-// CHECK: error: Identifier '_wcl_typedef' uses reserved prefix '_wcl'.
-// CHECK: error: Identifier '_wcl_variable' uses reserved prefix '_wcl'.
+// CHECK-DAG: error: Identifier '_WCL_FIELD' uses reserved prefix '_WCL'.
+// CHECK-DAG: error: Identifier '_WCL_FUNCTION' uses reserved prefix '_WCL'.
+// CHECK-DAG: error: Identifier '_WCL_PARAMETER' uses reserved prefix '_WCL'.
+// CHECK-DAG: error: Identifier '_WCL_STRUCT' uses reserved prefix '_WCL'.
+// CHECK-DAG: error: Identifier '_WCL_TYPEDEF' uses reserved prefix '_WCL'.
+// CHECK-DAG: error: Identifier '_WCL_VARIABLE' uses reserved prefix '_WCL'.
+// CHECK-DAG: error: Identifier '_WclField' uses reserved prefix '_Wcl'.
+// CHECK-DAG: error: Identifier '_WclFunction' uses reserved prefix '_Wcl'.
+// CHECK-DAG: error: Identifier '_WclParameter' uses reserved prefix '_Wcl'.
+// CHECK-DAG: error: Identifier '_WclStruct' uses reserved prefix '_Wcl'.
+// CHECK-DAG: error: Identifier '_WclTypedef' uses reserved prefix '_Wcl'.
+// CHECK-DAG: error: Identifier '_WclVariable' uses reserved prefix '_Wcl'.
+// CHECK-DAG: error: Identifier '_wcl_array' uses reserved prefix '_wcl'.
+// CHECK-DAG: error: Identifier '_wcl_field' uses reserved prefix '_wcl'.
+// CHECK-DAG: error: Identifier '_wcl_function' uses reserved prefix '_wcl'.
+// CHECK-DAG: error: Identifier '_wcl_parameter' uses reserved prefix '_wcl'.
+// CHECK-DAG: error: Identifier '_wcl_reserved_identifier' uses reserved prefix '_wcl'.
+// CHECK-DAG: error: Identifier '_wcl_struct' uses reserved prefix '_wcl'.
+// CHECK-DAG: error: Identifier '_wcl_typedef' uses reserved prefix '_wcl'.
+// CHECK-DAG: error: Identifier '_wcl_variable' uses reserved prefix '_wcl'.
 // CHECK-NOT: fatal error: too many errors emitted

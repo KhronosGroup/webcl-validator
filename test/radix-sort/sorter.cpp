@@ -149,9 +149,12 @@ bool RadixSorter::populateBuffers()
 
 bool RadixSorter::createStreamCountKernel()
 {
-    streamCountKernel_ = clCreateKernel(program_, "stream_count_kernel", NULL);
-    if (!streamCountKernel_)
+    cl_int err = CL_SUCCESS;
+    streamCountKernel_ = clCreateKernel(program_, "stream_count_kernel", &err);
+    if (!streamCountKernel_) {
+        std::cerr << "clCreateKernel(stream_count_kernel): " << err << std::endl;
         return false;
+    }
 
     unsigned int index = 0;
 
