@@ -160,9 +160,9 @@ bool testSource(int id, cl_device_id device, std::string const& source,
     }
 
     // init data for float / int types
-    cl_float floatInit[128000];
-    cl_int   intInit[128000];
-    cl_uchar ucharInit[128000];
+    std::vector<cl_float> floatInit(128000);
+    std::vector<cl_int> intInit(128000);
+    std::vector<cl_uchar> ucharInit(128000);
     for (int i = 0; i < 128000; i++) { 
         intInit[i] = i;
         floatInit[i] = i;
@@ -191,13 +191,13 @@ bool testSource(int id, cl_device_id device, std::string const& source,
                 void *initBuffer = NULL;
                 switch(buffers[i].initType) {
                 case 0:
-                    initBuffer = intInit;
+                    initBuffer = &intInit[0];
                     break;
                 case 1:
-                    initBuffer = floatInit;
+                    initBuffer = &floatInit[0];
                     break;
                 case 2:
-                    initBuffer = ucharInit;
+                    initBuffer = &ucharInit[0];
                     break;
                 default:
                     std::cerr << "Unhandled buffer type: " << buffers[i].initType << std::endl;
@@ -439,22 +439,24 @@ int main(int argc, char const* argv[])
         }
     }
 
-    char retVal[1024] = {0};
+    std::string retVal(1024, '\0');
     platform_vector const& platforms = getPlatformsIDs();
     int id = 0;
     for (platform_vector::const_iterator platform = platforms.begin();
          platform != platforms.end(); ++platform)
     {
-        char platname[1024];
-        clGetPlatformInfo(*platform, CL_PLATFORM_NAME, 1024, &platname, NULL);
-        std::cerr << "Platform: " << platname << std::endl;
+        std::string platName(1024, '\0');
+        std::size_t platNameLen = 0U;
+        clGetPlatformInfo(*platform, CL_PLATFORM_NAME, 1024, &platName[0], &platNameLen);
+        platName.resize(platNameLen);
+        std::cerr << "Platform: " << platName << std::endl;
 
         device_vector devices = getDevices(*platform);
         for (device_vector::const_iterator device = devices.begin();
              device != devices.end(); ++device)
         {        
             printDevInfo(*device);
-            if (!testSource(id, *device, source, kernel, globalWorkItemCount, loopCount, buffers, useWebCL, retVal, printDebug, addOutput))
+            if (!testSource(id, *device, source, kernel, globalWorkItemCount, loopCount, buffers, useWebCL, &retVal[0], printDebug, addOutput))
             {
                 return EXIT_FAILURE;
             }
