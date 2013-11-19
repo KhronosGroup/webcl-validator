@@ -1,15 +1,30 @@
+config.llvm_tools_dir = "@LLVM_TOOLS_DIR@"
+config.llvm_libs_dir = "@LLVM_LIBS_DIR@"
+config.lit_tools_dir = "@LLVM_LIT_TOOLS_DIR@"
+config.wclv_obj_root = "@WCLV_BINARY_DIR@"
+
+# Support substitution of the tools and libs dirs with user parameters. This is
+# used when we can't determine the tool dir at configuration time.
+# e.g. on Windows the tools dir includes a configuration specific component
+try:
+    config.llvm_tools_dir = config.llvm_tools_dir % lit.params
+    config.llvm_libs_dir = config.llvm_libs_dir % lit.params
+except KeyError,e:
+    key, = e.args
+    lit.fatal("unable to find %r parameter, use '--param=%s=VALUE'" % (key,key))
+
 config.substitutions.append(
-    ('%webcl-validator', "@LLVM_BINARY_DIR@/bin/webcl-validator"))
+    ('%webcl-validator', config.llvm_tools_dir + "/webcl-validator"))
 config.substitutions.append(
-    ('%kernel-runner', "@LLVM_BINARY_DIR@/bin/kernel-runner"))
+    ('%kernel-runner', config.llvm_tools_dir + "/kernel-runner"))
 config.substitutions.append(
-    ('%opencl-validator', "@LLVM_BINARY_DIR@/bin/opencl-validator"))
+    ('%opencl-validator', config.llvm_tools_dir + "/opencl-validator"))
 config.substitutions.append(
-    ('%radix-sort', "@LLVM_BINARY_DIR@/bin/radix-sort"))
+    ('%radix-sort', config.llvm_tools_dir + "/radix-sort"))
 config.substitutions.append(
-    ('%check-empty-memory', "@LLVM_BINARY_DIR@/bin/check-empty-memory"))
+    ('%check-empty-memory', config.llvm_tools_dir + "/check-empty-memory"))
 config.substitutions.append(
-    ('%FileCheck', "@LLVM_BINARY_DIR@/bin/FileCheck"))
+    ('%FileCheck', config.llvm_tools_dir + "/FileCheck"))
 config.substitutions.append(
     ('%include', "@WEBCL_VALIDATOR_TEST_DIR@/include"))
 lit.load_config(config, "@WEBCL_VALIDATOR_TEST_DIR@/lit.cfg")

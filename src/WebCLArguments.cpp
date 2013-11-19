@@ -37,12 +37,18 @@
 //              in windows runtime, since it depends if we are running from msys / cygwin shell
 //              or from windows commandline?
 
-#ifdef __MINGW32__
+#if (defined(__MINGW32__) || defined(_MSC_VER))
 #define DIR_SEPARATOR "\\"
 #define TEMP_DIR "."
 #else
 #define DIR_SEPARATOR "/"
 #define TEMP_DIR P_tmpdir
+#endif
+
+// Windows/MSVC++ doesn't have ssize_t
+#ifdef _MSC_VER
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
 #endif
 
 int mingwcompatible_mkstemp(char* tmplt) {

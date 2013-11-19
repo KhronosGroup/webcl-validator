@@ -149,9 +149,12 @@ bool RadixSorter::populateBuffers()
 
 bool RadixSorter::createStreamCountKernel()
 {
-    streamCountKernel_ = clCreateKernel(program_, "stream_count_kernel", NULL);
-    if (!streamCountKernel_)
+    cl_int err = CL_SUCCESS;
+    streamCountKernel_ = clCreateKernel(program_, "stream_count_kernel", &err);
+    if (!streamCountKernel_) {
+        std::cerr << "clCreateKernel(stream_count_kernel): " << err << std::endl;
         return false;
+    }
 
     unsigned int index = 0;
 
@@ -163,16 +166,16 @@ bool RadixSorter::createStreamCountKernel()
         return false;
     if (transform_ && (clSetKernelArg(streamCountKernel_, index++, sizeof(numHistogramElements_), &numHistogramElements_) != CL_SUCCESS))
         return false;
-    const int bitOffset = 0;
+    const cl_int bitOffset = 0;
     if (clSetKernelArg(streamCountKernel_, index++, sizeof(bitOffset), &bitOffset) != CL_SUCCESS)
         return false;
-    const int numElements = numUnsortedElements_;
+    const cl_int numElements = numUnsortedElements_;
     if (clSetKernelArg(streamCountKernel_, index++, sizeof(numElements), &numElements) != CL_SUCCESS)
         return false;
-    const int numWorkGroups = numStreamCountGroups_;
+    const cl_int numWorkGroups = numStreamCountGroups_;
     if (clSetKernelArg(streamCountKernel_, index++, sizeof(numWorkGroups), &numWorkGroups) != CL_SUCCESS)
         return false;
-    const int numBlocksInWorkGroup = numStreamCountBlocksPerGroup_;
+    const cl_int numBlocksInWorkGroup = numStreamCountBlocksPerGroup_;
     if (clSetKernelArg(streamCountKernel_, index++, sizeof(numBlocksInWorkGroup), &numBlocksInWorkGroup) != CL_SUCCESS)
         return false;
 
@@ -191,7 +194,7 @@ bool RadixSorter::createPrefixScanKernel()
         return false;
     if (transform_ && (clSetKernelArg(prefixScanKernel_, index++, sizeof(numHistogramElements_), &numHistogramElements_) != CL_SUCCESS))
         return false;
-    const int numWorkGroups = numStreamCountGroups_;
+    const cl_int numWorkGroups = numStreamCountGroups_;
     if (clSetKernelArg(prefixScanKernel_, index++, sizeof(numWorkGroups), &numWorkGroups) != CL_SUCCESS)
         return false;
 

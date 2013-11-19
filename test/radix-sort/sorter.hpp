@@ -66,10 +66,10 @@ private:
     const size_t numPrefixScanGroups_;
 
     unsigned int *unsortedValues_;
-    const unsigned long numUnsortedElements_; // size_t can't be passed to AMD
+    const cl_ulong numUnsortedElements_; // size_t can't be passed to AMD
     const size_t numUnsortedBytes_;
     unsigned int *histogram_;
-    const unsigned long numHistogramElements_; // size_t can't be passed to AMD
+    const cl_ulong numHistogramElements_; // size_t can't be passed to AMD
     const size_t numHistogramBytes_;
 
     cl_mem unsortedValuesBuffer_;
