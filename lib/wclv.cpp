@@ -21,7 +21,8 @@
 ** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 */
 
-#include "WebCLArguments.hpp"
+#include <wclv/wclv.h>
+
 #include "WebCLTool.hpp"
 
 #include <cstdlib>
@@ -29,20 +30,13 @@
 #include <set>
 #include <string>
 
-int main(int argc, char const* argv[])
+WebCLValidator::WebCLValidator(int argc, char const* argv[])
+    : arguments(argc, argv)
 {
-    std::set<std::string> help;
-    help.insert("-h");
-    help.insert("-help");
-    help.insert("--help");
+}
 
-    if ((argc == 1) || ((argc == 2) && help.count(argv[1]))) {
-        std::cerr << "Usage: " << argv[0] << " input.cl [clang-options]" << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    WebCLArguments arguments(argc, argv);
-
+int WebCLValidator::run()
+{
     // Create only one preprocessor.
     int preprocessorArgc = arguments.getPreprocessorArgc();
     char const **preprocessorArgv = arguments.getPreprocessorArgv();
