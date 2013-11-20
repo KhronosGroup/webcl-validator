@@ -31,7 +31,7 @@ class WebCLValidator
 {
 public:
 
-    WebCLValidator(int argc, char const* argv[]);
+    WebCLValidator(const std::string &inputSource, int argc, char const* argv[]);
     int run();
 
 private:

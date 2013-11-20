@@ -30,8 +30,8 @@
 #include <set>
 #include <string>
 
-WebCLValidator::WebCLValidator(int argc, char const* argv[])
-    : arguments(argc, argv)
+WebCLValidator::WebCLValidator(const std::string &inputSource, int argc, char const* argv[])
+    : arguments(inputSource, argc, argv)
 {
 }
 

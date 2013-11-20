@@ -23,7 +23,10 @@
 
 #include <wclv/wclv.h>
 
+#include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <iterator>
 #include <set>
 #include <string>
 
@@ -39,7 +42,33 @@ int main(int argc, char const* argv[])
         return EXIT_FAILURE;
     }
 
-    WebCLValidator validator(argc, argv);
+    std::string inputSource;
+    const std::string inputFilename(argv[1]);
+
+    if (inputFilename == "-") {
+        // input is stdin
+
+        std::cin >> std::noskipws;
+
+        std::istreambuf_iterator<char> begin(std::cin.rdbuf());
+        std::istreambuf_iterator<char> end;
+        inputSource = std::string(begin, end);
+    } else {
+        // input is a file
+        std::ifstream ifs(inputFilename.c_str(), std::ios::binary);
+
+        if (!ifs.good()) {
+            std::cerr << "Failed to open input file \"" << inputFilename << "\", exiting" << std::endl;
+            return EXIT_FAILURE;
+        }
+
+        ifs.seekg(0, std::ios::end);
+        inputSource.resize(ifs.tellg());
+        ifs.seekg(0, std::ios::beg);
+        ifs.read(&inputSource[0], inputSource.size());
+    }
+
+    WebCLValidator validator(inputSource, argc, argv);
 
     return validator.run();
 }
