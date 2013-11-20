@@ -1,18 +1,21 @@
-add_custom_command(
-  OUTPUT general.h
-  DEPENDS general.cl
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMAND ${PYTHON_EXECUTABLE} stripcr.py general.cl general-endlfix.cl
-  COMMAND xxd -i general-endlfix.cl general.h
-)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-add_custom_command(
-  OUTPUT kernel.h
-  DEPENDS kernel.cl
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMAND ${PYTHON_EXECUTABLE} stripcr.py kernel.cl kernel-endlfix.cl
-  COMMAND xxd -i kernel-endlfix.cl kernel.h
-)
+macro(generate_hex_header name)
+  add_custom_command(
+    OUTPUT ${name}.h
+    DEPENDS ${name}.cl
+    COMMAND ${PYTHON_EXECUTABLE}
+              ${CMAKE_CURRENT_SOURCE_DIR}/stripcr.py
+			  ${CMAKE_CURRENT_SOURCE_DIR}/${name}.cl
+			  ${name}-endlfix.cl
+    COMMAND xxd
+              -i ${name}-endlfix.cl
+			  ${name}.h
+  )
+endmacro(generate_hex_header name)
+
+generate_hex_header(general)
+generate_hex_header(kernel)
 
 # Sources for validator library
 llvm_process_sources(libwclv_srcs
