@@ -545,6 +545,56 @@ WebCLAnalyser::TypeDeclList &WebCLAnalyser::getTypeDecls()
     return typeDeclList_;
 }
 
+const WebCLAnalyser::FunctionDeclSet &WebCLAnalyser::getKernelFunctions() const
+{
+    return kernelFunctions_;
+}
+
+const WebCLAnalyser::FunctionDeclSet &WebCLAnalyser::getHelperFunctions() const
+{
+    return helperFunctions_;
+}
+
+const WebCLAnalyser::CallExprSet &WebCLAnalyser::getInternalCalls() const
+{
+    return internalCalls_;
+}
+
+const WebCLAnalyser::CallExprSet &WebCLAnalyser::getBuiltinCalls() const
+{
+    return builtinCalls_;
+}
+
+const WebCLAnalyser::VarDeclSet &WebCLAnalyser::getConstantVariables() const
+{
+    return constantVariables_;
+}
+
+const WebCLAnalyser::VarDeclSet &WebCLAnalyser::getLocalVariables() const
+{
+    return localVariables_;
+}
+
+const WebCLAnalyser::VarDeclSet &WebCLAnalyser::getPrivateVariables() const
+{
+    return privateVariables_;
+}
+
+const WebCLAnalyser::DeclRefExprSet &WebCLAnalyser::getVariableUses() const
+{
+    return variableUses_;
+}
+
+const WebCLAnalyser::MemoryAccessMap &WebCLAnalyser::getPointerAceesses() const
+{
+    return pointerAccesses_;
+}
+
+const WebCLAnalyser::TypeDeclList &WebCLAnalyser::getTypeDecls() const
+{
+    return typeDeclList_;
+}
+
 bool WebCLAnalyser::hasAddressReferences(clang::VarDecl *decl)
 {
     return declarationsWithAddressOfAccess_.count(decl) > 0;

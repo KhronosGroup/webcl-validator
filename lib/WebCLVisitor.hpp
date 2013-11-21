@@ -231,6 +231,18 @@ public:
   MemoryAccessMap &getPointerAceesses();
   TypeDeclList &getTypeDecls();
 
+  /// Const versions of the above
+  const FunctionDeclSet &getKernelFunctions() const;
+  const FunctionDeclSet &getHelperFunctions() const;
+  const CallExprSet &getInternalCalls() const;
+  const CallExprSet &getBuiltinCalls() const;
+  const VarDeclSet &getConstantVariables() const;
+  const VarDeclSet &getLocalVariables() const;
+  const VarDeclSet &getPrivateVariables() const;
+  const DeclRefExprSet &getVariableUses() const;
+  const MemoryAccessMap &getPointerAceesses() const;
+  const TypeDeclList &getTypeDecls() const;
+
   /// \return Whether address of variable is taken.
   bool hasAddressReferences(clang::VarDecl *decl);
 
