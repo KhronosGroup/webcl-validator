@@ -66,12 +66,6 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
     , files_()
     , outputs_()
 {
-    char const *commandName = argv[0];
-    const int userOptionOffset = 2;
-    const int numUserOptions = argc - userOptionOffset;
-    assert((argc >= userOptionOffset) &&
-           "Expected at least executable name and input file in argv.");
-
     int inputDescriptor = -1;
     char const *inputFilename = createFullTemporaryFile(inputDescriptor, &inputSource[0], inputSource.size());
     if (!inputFilename)
@@ -89,7 +83,7 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
     close(headerDescriptor);
   
     char const *preprocessorInvocation[] = {
-        commandName, inputFilename, "--"
+        "wclv", inputFilename, "--"
     };
     const int preprocessorInvocationSize =
         sizeof(preprocessorInvocation) / sizeof(preprocessorInvocation[0]);
@@ -100,7 +94,7 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
         sizeof(preprocessorOptions) / sizeof(preprocessorOptions[0]);
 
     char const *validatorInvocation[] = {
-        commandName, NULL, "--"
+        "wclv", NULL, "--"
     };
     const int validatorInvocationSize =
         sizeof(validatorInvocation) / sizeof(validatorInvocation[0]);
@@ -113,8 +107,8 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
         sizeof(validatorOptions) / sizeof(validatorOptions[0]);
 
     std::set<char const *> userDefines;
-    for (int i = 0; i < numUserOptions; ++i) {
-        char const *option = argv[userOptionOffset + i];
+    for (int i = 0; i < argc; ++i) {
+        char const *option = argv[i];
         if (!std::string(option).substr(0, 2).compare("-D"))
             userDefines.insert(option);
     }
@@ -122,7 +116,7 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
     preprocessorArgc_ =
         preprocessorInvocationSize + userDefines.size() + numPreprocessorOptions;
     validatorArgc_ =
-        validatorInvocationSize + numUserOptions + numValidatorOptions;
+        validatorInvocationSize + argc + numValidatorOptions;
 
     preprocessorArgv_ = new char const *[preprocessorArgc_];
     if (!preprocessorArgv_) {
@@ -152,12 +146,12 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
     std::copy(validatorInvocation,
               validatorInvocation + validatorInvocationSize,
               validatorArgv_);
-    std::copy(argv + userOptionOffset,
-              argv + userOptionOffset + numUserOptions,
+    std::copy(argv,
+              argv + argc,
               validatorArgv_ + validatorInvocationSize);
     std::copy(validatorOptions,
               validatorOptions + numValidatorOptions,
-              validatorArgv_ + validatorInvocationSize + numUserOptions);
+              validatorArgv_ + validatorInvocationSize + argc);
 }
 
 WebCLArguments::~WebCLArguments()

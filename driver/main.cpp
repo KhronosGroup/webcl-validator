@@ -68,7 +68,8 @@ int main(int argc, char const* argv[])
         ifs.read(&inputSource[0], inputSource.size());
     }
 
-    WebCLValidator validator(inputSource, argc, argv);
+    // Only pass the rest of the arguments to the lib
+    WebCLValidator validator(inputSource, argc - 2, argv + 2);
 
     return validator.run();
 }
