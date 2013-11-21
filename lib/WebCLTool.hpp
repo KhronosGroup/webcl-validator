@@ -136,6 +136,14 @@ public:
 
     /// \see clang::tooling::FrontendActionFactory
     virtual clang::FrontendAction *create();
+
+    /// Returns validated source after a successful run
+    const std::string &getValidatedSource() const { return validatedSource_; }
+
+private:
+
+    // Stores validated source after validation is complete.
+    std::string validatedSource_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLTOOL

@@ -294,12 +294,13 @@ void WebCLMatcher2Action::ExecuteAction()
     }
 }
 
-WebCLValidatorAction::WebCLValidatorAction()
+WebCLValidatorAction::WebCLValidatorAction(std::string &validatedSource)
     : WebCLAction()
     , consumer_(0)
     , transformer_(0)
     , rewriter_(0)
     , sema_(0)
+    , validatedSource_(validatedSource)
 {
 }
 
@@ -326,6 +327,7 @@ void WebCLValidatorAction::ExecuteAction()
     // We will get assertions if sema_ isn't wrapped here.
     llvm::OwningPtr<clang::Sema> sema(sema_);
     ParseAST(*sema.get());
+    validatedSource_ = consumer_->getTransformedSource();
 }
 
 bool WebCLValidatorAction::usesPreprocessorOnly() const

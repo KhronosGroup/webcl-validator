@@ -48,6 +48,9 @@ public:
     /// \see ASTConsumer::HandleTranslationUnit
     virtual void HandleTranslationUnit(clang::ASTContext &context);
 
+    /// Get transformed source
+    const std::string &getTransformedSource() const;
+
 private:
 
     /// Runs all error checking and analysis passes.

@@ -41,10 +41,16 @@ public:
         char const* argv[]);
     int run();
 
+    /// Returns validated source after a successful run
+    const std::string &getValidatedSource() const { return validatedSource_; }
+
 private:
 
     WebCLArguments arguments;
     std::set<std::string> extensions;
+
+    // Stores validated source after validation is complete.
+    std::string validatedSource_;
 };
 
 #endif

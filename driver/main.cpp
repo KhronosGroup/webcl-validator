@@ -76,5 +76,12 @@ int main(int argc, char const* argv[])
     // Only pass the rest of the arguments to the lib
     WebCLValidator validator(inputSource, extensions, argc - 2, argv + 2);
 
-    return validator.run();
+    int exitStatus = validator.run();
+
+    if (exitStatus == 0) {
+        // success, print output
+        std::cout << validator.getValidatedSource();
+    }
+
+    return exitStatus;
 }

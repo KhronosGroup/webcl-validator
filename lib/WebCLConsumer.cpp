@@ -109,6 +109,11 @@ void WebCLConsumer::HandleTranslationUnit(clang::ASTContext &context)
     //         to source.
 }
 
+const std::string &WebCLConsumer::getTransformedSource() const
+{
+    return printer_.getOutput();
+}
+
 void WebCLConsumer::checkAndAnalyze(clang::ASTContext &context)
 {
     clang::TranslationUnitDecl *decl = context.getTranslationUnitDecl();

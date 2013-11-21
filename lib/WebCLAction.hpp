@@ -168,7 +168,7 @@ class WebCLValidatorAction : public WebCLAction
 {
 public:
 
-    WebCLValidatorAction();
+    WebCLValidatorAction(std::string &validatedSource);
     virtual ~WebCLValidatorAction();
 
     /// \see clang::FrontendAction
@@ -197,6 +197,8 @@ private:
     /// we do, using internal clang components, e.g. in order to
     /// manipulate AST nodes, becomes easier.
     clang::Sema *sema_;
+    /// Where to store transformed source after validation is complete.
+    std::string &validatedSource_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLACTION

@@ -91,5 +91,6 @@ int WebCLValidator::run()
                                      validatorInput);
     validatorTool.setExtensions(extensions);
     const int validatorStatus = validatorTool.run();
+    validatedSource_ = validatorTool.getValidatedSource();
     return validatorStatus;
 }
