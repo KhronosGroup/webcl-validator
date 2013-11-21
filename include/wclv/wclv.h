@@ -26,17 +26,25 @@
 
 #include "../lib/WebCLArguments.hpp"
 
+#include <set>
+#include <string>
+
 // Proof of concept library API for the library+executable build system
 class WebCLValidator
 {
 public:
 
-    WebCLValidator(const std::string &inputSource, int argc, char const* argv[]);
+    WebCLValidator(
+        const std::string &inputSource,
+        const std::set<std::string> &extensions,
+        int argc,
+        char const* argv[]);
     int run();
 
 private:
 
     WebCLArguments arguments;
+    std::set<std::string> extensions;
 };
 
 #endif

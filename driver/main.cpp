@@ -68,8 +68,13 @@ int main(int argc, char const* argv[])
         ifs.read(&inputSource[0], inputSource.size());
     }
 
+    std::set<std::string> extensions;
+    extensions.insert("cl_khr_fp64");
+    extensions.insert("cl_khr_fp16");
+    extensions.insert("cl_khr_gl_sharing");
+
     // Only pass the rest of the arguments to the lib
-    WebCLValidator validator(inputSource, argc - 2, argv + 2);
+    WebCLValidator validator(inputSource, extensions, argc - 2, argv + 2);
 
     return validator.run();
 }

@@ -30,8 +30,12 @@
 #include <set>
 #include <string>
 
-WebCLValidator::WebCLValidator(const std::string &inputSource, int argc, char const* argv[])
-    : arguments(inputSource, argc, argv)
+WebCLValidator::WebCLValidator(
+    const std::string &inputSource,
+    const std::set<std::string> &extensions,
+    int argc,
+    char const* argv[])
+    : arguments(inputSource, argc, argv), extensions(extensions)
 {
 }
 
@@ -65,23 +69,27 @@ int WebCLValidator::run()
 
     WebCLPreprocessorTool preprocessorTool(preprocessorArgc, preprocessorArgv,
                                            preprocessorInput, matcher1Input);
+    preprocessorTool.setExtensions(extensions);
     const int preprocessorStatus = preprocessorTool.run();
     if (preprocessorStatus)
         return preprocessorStatus;
 
     WebCLMatcher1Tool matcher1Tool(matcher1Argc, matcher1Argv,
                                    matcher1Input, matcher2Input);
+    matcher1Tool.setExtensions(extensions);
     const int matcher1Status = matcher1Tool.run();
     if (matcher1Status)
         return matcher1Status;
     WebCLMatcher2Tool matcher2Tool(matcher2Argc, matcher2Argv,
                                    matcher2Input, validatorInput);
+    matcher2Tool.setExtensions(extensions);
     const int matcher2Status = matcher2Tool.run();
     if (matcher2Status)
         return matcher2Status;
 
     WebCLValidatorTool validatorTool(validatorArgc, validatorArgv,
                                      validatorInput);
+    validatorTool.setExtensions(extensions);
     const int validatorStatus = validatorTool.run();
     return validatorStatus;
 }

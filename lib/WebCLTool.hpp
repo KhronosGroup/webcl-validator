@@ -57,6 +57,8 @@ public:
               char const *input, char const *output = NULL);
     virtual ~WebCLTool();
 
+    void setExtensions(const std::set<std::string> &extensions);
+
     /// \see clang::tooling::FrontendActionFactory
     virtual clang::FrontendAction *create() = 0;
 
@@ -69,6 +71,8 @@ protected:
     const clang::tooling::FixedCompilationDatabase *compilations_;
     /// Source file to process.
     std::vector<std::string> paths_;
+    // Additional OpenCL extensions to allow in preprocessing besides cl_khr_initialize_memory
+    std::set<std::string> extensions_;
     /// Tool representing a validation stage.
     clang::tooling::ClangTool* tool_;
     /// Target file for transformations.

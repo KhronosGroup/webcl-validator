@@ -30,14 +30,11 @@ namespace {
     char const * const ClKhrInitializeMemoryStr = "cl_khr_initialize_memory";
 }
 
-WebCLPreprocessor::WebCLPreprocessor(clang::CompilerInstance &instance)
+WebCLPreprocessor::WebCLPreprocessor(clang::CompilerInstance &instance, const std::set<std::string> &extensions)
     : WebCLReporter(instance)
     , clang::PPCallbacks()
-    , extensions_()
+    , extensions_(extensions)
 {
-    extensions_.insert("cl_khr_fp64");
-    extensions_.insert("cl_khr_fp16");
-    extensions_.insert("cl_khr_gl_sharing");
     extensions_.insert(ClKhrInitializeMemoryStr);
 }
 

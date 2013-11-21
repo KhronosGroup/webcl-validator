@@ -38,7 +38,7 @@ class WebCLPreprocessor : public WebCLReporter
 {
 public:
 
-    explicit WebCLPreprocessor(clang::CompilerInstance &instance);
+    explicit WebCLPreprocessor(clang::CompilerInstance &instance, const std::set<std::string> &extensions);
     ~WebCLPreprocessor();
 
     /// \brief Complain about include directives in main source files.
