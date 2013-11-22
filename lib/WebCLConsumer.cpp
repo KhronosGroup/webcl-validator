@@ -50,6 +50,10 @@ WebCLConsumer::WebCLConsumer(
     // Collects information about nodes.
     visitors_.push_back(&analyser_);
 
+    // Checks that when image types are being used, they always originate from
+    // function parameters
+    passes_.push_back(&imageSafetyHandler_);
+
     // Moves all typedef and struct declarations to start of module
     // to make sure that they are available when address space types are
     // declared.
@@ -71,10 +75,6 @@ WebCLConsumer::WebCLConsumer(
     // Adds check macros to every potentially harmful memory access.
     // Collects information of biggest memory access of each address space.
     passes_.push_back(&memoryAccessHandler_);
-
-    // Checks that when image types are being used, they always originate from
-    // function parameters
-    passes_.push_back(&imageSafetyHandler_);
   
     // Replace calls to builtin functions with versions that check the arguments
     // before calling them. The functions that perform the check are generated.
