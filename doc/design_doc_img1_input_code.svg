@@ -9,8 +9,8 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    version="1.1"
-   width="743.75"
-   height="1052.5"
+   width="544"
+   height="316"
    id="svg2"
    xml:space="preserve"><metadata
      id="metadata8"><rdf:RDF><cc:Work
@@ -21,7 +21,7 @@
          d="m 72,499.6643 451,0 L 523,752 72,752 72,499.6643 z"
          inkscape:connector-curvature="0"
          id="path20" /></clipPath></defs><g
-     transform="matrix(1.25,0,0,-1.25,0,1052.5)"
+     transform="matrix(1.25,0,0,-1.25,-80,940.5)"
      id="g10"><g
        id="g12" /><g
        id="g14"><g
