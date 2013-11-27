@@ -604,8 +604,17 @@ void WebCLImageSafetyHandler::run(clang::ASTContext &context)
                 clang::Expr *expr = callExpr->getArg(argIdx);
                 clang::QualType type = WebCLTypes::reduceType(instance_, expr->getType());
                 if (type.getAsString() == "image2d_t") {
-                    bool ok = false;
-                    bool typeMismatchOnly = false;
+                    enum {
+                        // The corresponding param has not been found (yet)
+                        PARAM_NOT_FOUND,
+                        // The parameter was found but the type was wrong
+                        TYPE_MISMATCH,
+                        // The parameter was found but it had an illegal access qualifier
+                        ILLEGAL_ACCESS,
+                        // Everything is OK
+                        SAFE
+                    } safety = PARAM_NOT_FOUND;
+
                     clang::DeclRefExpr *declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(expr);
                     if (!declRefExpr) {
                         if (clang::ImplicitCastExpr *implicitCastExpr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)) {
@@ -613,27 +622,35 @@ void WebCLImageSafetyHandler::run(clang::ASTContext &context)
                         }
                     }
 
+                    usedAsArgument.insert(declRefExpr);
+
                     if (declRefExpr) {
                         const clang::ValueDecl *valueDecl = declRefExpr->getDecl();
                         if (clang::isa<clang::ParmVarDecl>(valueDecl)) {
                             clang::QualType paramType = WebCLTypes::reduceType(instance_, valueDecl->getType());
                             if (paramType == type) {
-                                ok = true;
+                                // Further check that the parameter access qualifier is supported, if present
+                                const clang::OpenCLImageAccess qualifier = valueDecl->getType().getAccess();
+                                if (!qualifier || qualifier == clang::CLIA_read_only || qualifier == clang::CLIA_write_only) {
+                                    safety = SAFE;
+                                } else {
+                                    safety = ILLEGAL_ACCESS;
+                                }
                             } else {
                                 // can this case ever happen?
-                                typeMismatchOnly = true;
+                                safety = TYPE_MISMATCH;
                             }
                         }
                     }
 
-                    if (!ok) {
-                        if (typeMismatchOnly) {
-                            error(expr->getLocStart(), "image2d_t must always originate from parameters with its original type");
-                        } else {
-                            error(expr->getLocStart(), "image2d_t must always originate from parameters");
-                        }
+
+                    if (safety == TYPE_MISMATCH) {
+                        error(expr->getLocStart(), "image2d_t must always originate from parameters with its original type");
+                    } else if (safety == ILLEGAL_ACCESS) {
+                        error(declRefExpr->getLocStart(), "image2d_t parameters can only have read_only or write_only access qualifier");
+                    } else if (safety == PARAM_NOT_FOUND) {
+                        error(expr->getLocStart(), "image2d_t must always originate from parameters, unchanged");
                     }
-                    usedAsArgument.insert(declRefExpr);
                 }
             }
     }

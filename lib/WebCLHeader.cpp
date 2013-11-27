@@ -152,13 +152,10 @@ void WebCLHeader::emitBuiltinParameter(
             case clang::CLIA_write_only:
                 access = "write_only";
                 break;
-            case clang::CLIA_read_write:
-                access = "read_write";
-                error(parameter->getLocStart(),
-                      "The read_write image access qualifier is not supported.");
-                break;
             default:
-                error(parameter->getLocStart(), "Unknown image access qualifier.");
+                // ImageSafetyHandler errors on this for all image parameters which are passed on to image access functions;
+                // others can be considered read_only with 0 reads as it is not possible to access images directly
+                access = "read_only";
                 break;
             }
         }
