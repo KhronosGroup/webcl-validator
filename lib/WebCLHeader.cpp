@@ -25,17 +25,10 @@
 #include "WebCLHeader.hpp"
 #include "WebCLTypes.hpp"
 
-#include "clang/AST/Decl.h"
-#include "clang/AST/TypeLoc.h"
-#include "clang/Basic/AddressSpaces.h"
-#include "clang/Frontend/CompilerInstance.h"
-
 static const char *image2d = "image2d_t";
 
-WebCLHeader::WebCLHeader(
-    clang::CompilerInstance &instance, WebCLConfiguration &cfg)
-    : instance_(instance)
-    , cfg_(cfg)
+WebCLHeader::WebCLHeader(WebCLConfiguration &cfg)
+    : cfg_(cfg)
     , indentation_("    ")
     , level_(0)
 {

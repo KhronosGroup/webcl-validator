@@ -506,7 +506,7 @@ bool WebCLTransformer::rewrite()
 
 void WebCLTransformer::createJsonHeader(const WebCLAnalyser::KernelList &kernels)
 {
-    WebCLHeader header(instance_, cfg_);
+    WebCLHeader header(cfg_);
     header.emitHeader(jsonPrologue_, kernels);
 }
 

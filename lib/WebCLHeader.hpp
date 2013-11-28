@@ -24,8 +24,6 @@
 ** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 */
 
-#include "clang/AST/Type.h"
-
 #include <iostream>
 #include <map>
 #include <set>
@@ -34,12 +32,6 @@
 // temporary include for the intermediate C++ representation of kernel arg info
 #include "WebCLVisitor.hpp"
 
-namespace clang {
-    class CompilerInstance;
-    class FunctionDecl;
-    class ParmVarDecl;
-}
-
 class WebCLConfiguration;
 
 /// Emits JSON headers for kernels.
@@ -47,7 +39,7 @@ class WebCLHeader
 {
 public:
 
-    WebCLHeader(clang::CompilerInstance &instance, WebCLConfiguration &cfg);
+    WebCLHeader(WebCLConfiguration &cfg);
     ~WebCLHeader();
 
     /// Creates a JSON header for given set of functions and writes it
@@ -134,8 +126,6 @@ private:
     /// Emits correct indentation based on current indentation level.
     void emitIndentation(std::ostream &out) const;
 
-    /// The host compiler instance
-    clang::CompilerInstance &instance_;
     /// Contains information about recurring names.
     WebCLConfiguration &cfg_;
     /// Basic tab width for indentation.
