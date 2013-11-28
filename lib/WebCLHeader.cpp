@@ -185,12 +185,9 @@ void WebCLHeader::emitArrayParameter(
     emitNumberEntry(out, "index", index);
     out << ",\n";
 
-    clang::QualType arrayType = parameter.decl->getType();
-    clang::QualType elementType = arrayType.getTypePtr()->getPointeeType();
-
     emitStringEntry(out, "host-type", "cl_mem");
     out << ",\n";
-    emitHostType(out, "host-element-type", WebCLTypes::reduceType(instance_, elementType).getAsString());
+    emitHostType(out, "host-element-type", parameter.pointeeTypeName);
     out << ",\n";
 
     switch (parameter.pointerKind) {
@@ -227,7 +224,6 @@ void WebCLHeader::emitKernel(std::ostream &out, const WebCLAnalyser::KernelInfo 
     out << "{\n";
     ++level_;
 
-    // Noble goal TODO: don't use kernel.decl and/or parameter.decl (clang data types) here at all
     unsigned index = 0;
     for (std::vector<WebCLAnalyser::KernelArgInfo>::const_iterator i = kernel.args.begin();
         i != kernel.args.end(); ++i) {

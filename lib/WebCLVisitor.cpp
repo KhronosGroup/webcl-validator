@@ -447,6 +447,13 @@ WebCLAnalyser::KernelArgInfo::KernelArgInfo(clang::CompilerInstance &instance, c
             }
         }
     }
+
+    if (pointerKind != NOT_POINTER && pointerKind != IMAGE_HANDLE) {
+        const clang::QualType arrayType = decl->getType();
+        const clang::QualType elementType = arrayType.getTypePtr()->getPointeeType();
+
+        pointeeTypeName = WebCLTypes::reduceType(instance, elementType).getAsString();
+    }
 }
 
 WebCLAnalyser::KernelInfo::KernelInfo(clang::CompilerInstance &instance, clang::FunctionDecl *decl)
