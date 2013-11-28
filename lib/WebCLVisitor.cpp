@@ -407,7 +407,27 @@ WebCLAnalyser::KernelArgInfo::KernelArgInfo(clang::CompilerInstance &instance, c
     : decl(decl)
     , name(decl->getName().str())
     , reducedTypeName(WebCLTypes::reduceType(instance, decl->getType()).getAsString())
+    , pointerKind(NOT_POINTER)
 {
+    if (decl->getType().getTypePtr()->isPointerType()) {
+        switch (decl->getType().getTypePtr()->getPointeeType().getAddressSpace()) {
+        case clang::LangAS::opencl_global:
+            pointerKind = GLOBAL_POINTER;
+            break;
+        case clang::LangAS::opencl_constant:
+            pointerKind = CONSTANT_POINTER;
+            break;
+        case clang::LangAS::opencl_local:
+            pointerKind = LOCAL_POINTER;
+            break;
+        default:
+            if (WebCLTypes::supportedBuiltinTypes().count(reducedTypeName) > 0) {
+                pointerKind = IMAGE_HANDLE;
+            } else {
+                pointerKind = PRIVATE_POINTER;
+            }
+        }
+    }
 }
 
 WebCLAnalyser::KernelInfo::KernelInfo(clang::CompilerInstance &instance, clang::FunctionDecl *decl)

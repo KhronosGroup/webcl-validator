@@ -214,6 +214,15 @@ public:
   ///         have been normalized.
   virtual bool handleForStmt(clang::ForStmt *stmt);
 
+  enum PointerKind {
+      NOT_POINTER,
+      PRIVATE_POINTER,
+      LOCAL_POINTER,
+      CONSTANT_POINTER,
+      GLOBAL_POINTER,
+      IMAGE_HANDLE
+  };
+
   /// Collected nodes.
   struct KernelArgInfo {
       /// Not exposed outside the library
@@ -223,6 +232,8 @@ public:
       std::string name;
       /// Type name, cleaned of qualifiers and non-standard typedefs
       std::string reducedTypeName;
+      /// Is this a pointer arg, and if so, to which address space
+      PointerKind pointerKind;
       /// TODO add more info
 
       KernelArgInfo(clang::CompilerInstance &instance, clang::ParmVarDecl *decl);

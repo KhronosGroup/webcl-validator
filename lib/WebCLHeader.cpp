@@ -196,20 +196,21 @@ void WebCLHeader::emitArrayParameter(
     emitHostType(out, "host-element-type", WebCLTypes::reduceType(instance_, elementType).getAsString());
     out << ",\n";
 
-    unsigned addressSpace = elementType.getAddressSpace();
-    switch (addressSpace) {
-    case clang::LangAS::opencl_global:
-        // fall through intentionally
-    case clang::LangAS::opencl_constant:
-        // fall through intentionally
-    case clang::LangAS::opencl_local:
-        emitStringEntry(out, "address-space", cfg_.getNameOfAddressSpace(addressSpace));
-        out << ",\n";
+    switch (parameter.pointerKind) {
+    case WebCLAnalyser::GLOBAL_POINTER:
+        emitStringEntry(out, "address-space", "global");
+        break;
+    case WebCLAnalyser::CONSTANT_POINTER:
+        emitStringEntry(out, "address-space", "constant");
+        break;
+    case WebCLAnalyser::LOCAL_POINTER:
+        emitStringEntry(out, "address-space", "local");
         break;
     default:
         assert(false && "WebCLKernelHandler::run() should have rejected array of private memory kernel parameter");
         break;
     }
+    out << ",\n";
 
     emitStringEntry(out, "size-parameter", cfg_.getNameOfSizeParameter(parameter.name));
     out << "\n";
@@ -241,7 +242,7 @@ void WebCLHeader::emitKernel(std::ostream &out, const WebCLAnalyser::KernelInfo 
         if (WebCLTypes::supportedBuiltinTypes().count(parameter.reducedTypeName)) {
             // images and samplers
             emitBuiltinParameter(out, parameter, index, parameter.reducedTypeName);
-        } else if (parameter.decl->getType().getTypePtr()->isPointerType()) {
+        } else if (parameter.pointerKind != WebCLAnalyser::NOT_POINTER) {
             // memory objects
             emitArrayParameter(out, parameter, index);
             ++index;

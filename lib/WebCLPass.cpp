@@ -316,7 +316,7 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
             for (std::vector<WebCLAnalyser::KernelArgInfo>::const_iterator j = i->args.begin();
                 j != i->args.end(); ++j) {
                     const WebCLAnalyser::KernelArgInfo &parm = *j;
-                    if (parm.decl->getType().getTypePtr()->isPointerType()) {
+                    if (parm.pointerKind != WebCLAnalyser::NOT_POINTER) {
 
                         transformer_.addSizeParameter(parm.decl);
 
@@ -325,27 +325,26 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
                             << func->getDeclName().getAsString()
                             << " arg:" << parm.name << "\n"; );
 
-                        switch (parm.decl->getType().getTypePtr()->getPointeeType().getAddressSpace()) {
-                        case clang::LangAS::opencl_global:
+                        switch (parm.pointerKind) {
+                        case WebCLAnalyser::GLOBAL_POINTER:
                             DEBUG( std::cerr << "Global address space!\n"; );
                             globalLimits_.insert(parm.decl);
                             break;
-                        case clang::LangAS::opencl_constant:
+                        case WebCLAnalyser::CONSTANT_POINTER:
                             DEBUG( std::cerr << "Constant address space!\n"; );
                             constantLimits_.insert(parm.decl);
                             break;
-                        case clang::LangAS::opencl_local:
+                        case WebCLAnalyser::LOCAL_POINTER:
                             DEBUG( std::cerr << "Local address space!\n"; );
                             localLimits_.insert(parm.decl);
                             break;
+                        case WebCLAnalyser::IMAGE_HANDLE:
+                            DEBUG( std::cerr << "Image or sampler argument!\n"; );
+                            break;
                         default:
-                            if (WebCLTypes::supportedBuiltinTypes().count(parm.reducedTypeName) > 0) {
-                                DEBUG( std::cerr << "Image or sampler argument!\n"; );
-                            } else {
-                                // This used to be just a debug, but WebCLHeader made it a fatal error in the end.
-                                // To move WebCLHeader out of the validator library, we must make it fatal here.
-                                error(parm.decl->getLocStart(), "Invalid address space.");
-                            }
+                            // This used to be just a debug, but WebCLHeader made it a fatal error in the end.
+                            // To move WebCLHeader out of the validator library, we must make it fatal here.
+                            error(parm.decl->getLocStart(), "Invalid address space.");
                         }
                     }
             }
