@@ -46,7 +46,7 @@ WebCLHeader::~WebCLHeader()
 {
 }
 
-void WebCLHeader::emitHeader(std::ostream &out, Kernels &kernels)
+void WebCLHeader::emitHeader(std::ostream &out, const WebCLAnalyser::KernelList &kernels)
 {
     out << "\n";
     emitIndentation(out);
@@ -221,19 +221,20 @@ void WebCLHeader::emitArrayParameter(
     --level_;
 }
 
-void WebCLHeader::emitKernel(std::ostream &out, const clang::FunctionDecl *kernel)
+void WebCLHeader::emitKernel(std::ostream &out, const WebCLAnalyser::KernelInfo &kernel)
 {
     emitIndentation(out);
-    out << "\"" << kernel->getName().str() << "\"" << " :\n";
+    out << "\"" << kernel.name << "\"" << " :\n";
     ++level_;
     emitIndentation(out);
     out << "{\n";
     ++level_;
 
+    // Noble goal TODO: don't use kernel.decl (clang data type) here at all
     unsigned index = 0;
-    const unsigned int numParameters = kernel->getNumParams();
+    const unsigned int numParameters = kernel.decl->getNumParams();
     for (unsigned int i = 0; i < numParameters; ++i) {
-        const clang::ParmVarDecl *parameter = kernel->getParamDecl(i);
+        const clang::ParmVarDecl *parameter = kernel.decl->getParamDecl(i);
 
         if (i > 0)
             out << ",\n";
@@ -265,14 +266,7 @@ void WebCLHeader::emitKernel(std::ostream &out, const clang::FunctionDecl *kerne
     --level_;
 }
 
-namespace {
-    bool functionDeclCompareByName(clang::FunctionDecl* a, clang::FunctionDecl* b)
-    {
-	return a->getNameInfo().getAsString() < b->getNameInfo().getAsString();
-    }
-}
-
-void WebCLHeader::emitKernels(std::ostream &out, Kernels &kernels)
+void WebCLHeader::emitKernels(std::ostream &out, const WebCLAnalyser::KernelList &kernels)
 {
     emitIndentation(out);
     out << "\"kernels\" :\n";
@@ -281,16 +275,10 @@ void WebCLHeader::emitKernels(std::ostream &out, Kernels &kernels)
     out << "{\n";
     ++level_;
 
-    // why sort the list? because it makes the test case of valid-json-header.cl
-    // simpler to implement in a robust fashion
-    typedef std::list<clang::FunctionDecl*> KernelList;
-    KernelList sortedKernels(kernels.begin(), kernels.end());
-    sortedKernels.sort(functionDeclCompareByName);
+    for (WebCLAnalyser::KernelList::const_iterator i = kernels.begin(); i != kernels.end(); ++i) {
+        const WebCLAnalyser::KernelInfo &kernel = *i;
 
-    for (KernelList::iterator i = sortedKernels.begin(); i != sortedKernels.end(); ++i) {
-        const clang::FunctionDecl *kernel = *i;
-
-        if (i != sortedKernels.begin())
+        if (i != kernels.begin())
             out << ",\n";
         emitKernel(out, kernel);
     }

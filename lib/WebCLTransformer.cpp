@@ -504,7 +504,7 @@ bool WebCLTransformer::rewrite()
     return status;
 }
 
-void WebCLTransformer::createJsonHeader(std::set<clang::FunctionDecl*> &kernels)
+void WebCLTransformer::createJsonHeader(const WebCLAnalyser::KernelList &kernels)
 {
     WebCLHeader header(instance_, cfg_);
     header.emitHeader(jsonPrologue_, kernels);

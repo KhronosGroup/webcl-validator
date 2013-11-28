@@ -33,24 +33,17 @@ typedef __write_only image2d_t wcl_wo_image2d_t;
 #endif
 typedef sampler_t wcl_sampler_t;
 
-__kernel void json_scalars(
-    wcl_char char_arg,
-    wcl_unsigned_char unsigned_char_arg,
-    wcl_uchar uchar_arg,
-
-    wcl_short short_arg,
-    wcl_unsigned_short wcl_unsigned_short_arg,
-    wcl_ushort ushort_arg,
-
-    wcl_int int_arg,
-    wcl_unsigned_int unsigned_int_arg,
-    wcl_uint uint_arg,
-
-    wcl_long long_arg,
-    wcl_unsigned_long unsiged_long_arg,
-    wcl_ulong ulong_arg,
-
-    const wcl_float float_arg)
+__kernel void json_builtins(
+    wcl_image2d_t image_arg, // __read_only
+    __read_only wcl_image2d_t read_image_arg,
+    __write_only wcl_image2d_t write_image_arg,
+    wcl_sampler_t sampler_arg
+#ifdef QUALDEFS
+    ,
+    wcl_ro_image2d_t read_image_arg2,
+    wcl_wo_image2d_t write_image_arg2
+#endif
+    )
 {
 }
 
@@ -75,12 +68,24 @@ __kernel void json_scalar_arrays(
 {
 }
 
-__kernel void json_vectors(
-    wcl_char4 char4_arg, wcl_uchar4 uchar4_arg,
-    wcl_short4 short4_arg, wcl_ushort4 ushort4_arg,
-    wcl_int4 int4_arg, wcl_uint4 uint4_arg,
-    wcl_long4 long4_arg, wcl_ulong4 ulong4_arg,
-    const wcl_float4 float4_arg)
+__kernel void json_scalars(
+    wcl_char char_arg,
+    wcl_unsigned_char unsigned_char_arg,
+    wcl_uchar uchar_arg,
+
+    wcl_short short_arg,
+    wcl_unsigned_short wcl_unsigned_short_arg,
+    wcl_ushort ushort_arg,
+
+    wcl_int int_arg,
+    wcl_unsigned_int unsigned_int_arg,
+    wcl_uint uint_arg,
+
+    wcl_long long_arg,
+    wcl_unsigned_long unsiged_long_arg,
+    wcl_ulong ulong_arg,
+
+    const wcl_float float_arg)
 {
 }
 
@@ -97,17 +102,12 @@ __kernel void json_vector_arrays(
 {
 }
 
-__kernel void json_builtins(
-    wcl_image2d_t image_arg, // __read_only
-    __read_only wcl_image2d_t read_image_arg,
-    __write_only wcl_image2d_t write_image_arg,
-    wcl_sampler_t sampler_arg
-#ifdef QUALDEFS
-    ,
-    wcl_ro_image2d_t read_image_arg2,
-    wcl_wo_image2d_t write_image_arg2
-#endif
-    )
+__kernel void json_vectors(
+    wcl_char4 char4_arg, wcl_uchar4 uchar4_arg,
+    wcl_short4 short4_arg, wcl_ushort4 ushort4_arg,
+    wcl_int4 int4_arg, wcl_uint4 uint4_arg,
+    wcl_long4 long4_arg, wcl_ulong4 ulong4_arg,
+    const wcl_float4 float4_arg)
 {
 }
 

@@ -31,6 +31,9 @@
 #include <set>
 #include <string>
 
+// temporary include for the intermediate C++ representation of kernel arg info
+#include "WebCLVisitor.hpp"
+
 namespace clang {
     class CompilerInstance;
     class FunctionDecl;
@@ -47,11 +50,9 @@ public:
     WebCLHeader(clang::CompilerInstance &instance, WebCLConfiguration &cfg);
     ~WebCLHeader();
 
-    /// A set of functions to include in the JSON header.
-    typedef std::set<clang::FunctionDecl*> Kernels;
     /// Creates a JSON header for given set of functions and writes it
     /// to the given stream.
-    void emitHeader(std::ostream &out, Kernels &kernels);
+    void emitHeader(std::ostream &out, const WebCLAnalyser::KernelList &kernels);
 
 private:
 
@@ -119,7 +120,7 @@ private:
     /// "__kernel void foo(...)"
     /// ->
     /// "foo" : { ... }
-    void emitKernel(std::ostream &out, const clang::FunctionDecl *kernel);
+    void emitKernel(std::ostream &out, const WebCLAnalyser::KernelInfo &kernel);
 
     /// Emits kernels and their parameters to the given stream:
     /// "__kernel void foo(...); __kernel void bar(...)"
@@ -128,7 +129,7 @@ private:
     ///               "foo" : { ... },
     ///               "bar" : { ... }
     ///             }
-    void emitKernels(std::ostream &out, Kernels &kernels);
+    void emitKernels(std::ostream &out, const WebCLAnalyser::KernelList &kernels);
 
     /// Emits correct indentation based on current indentation level.
     void emitIndentation(std::ostream &out) const;

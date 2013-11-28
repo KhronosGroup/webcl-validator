@@ -24,6 +24,7 @@
 ** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 */
 
+#include "WebCLVisitor.hpp" // temporary
 #include "WebCLConfiguration.hpp"
 #include "WebCLHelper.hpp"
 #include "WebCLReporter.hpp"
@@ -47,7 +48,6 @@ namespace clang {
     class DeclRefExpr;
 }
 
-class WebCLAnalyser; // used by wrapBuiltinFunction
 class WebCLKernelHandler; // used by wrapBuiltinFunction
 
 /// Performs transformations that need to be done by the memory access
@@ -74,7 +74,7 @@ public:
 
     /// Creates a comment that contains information about kernels and
     /// kernel parameters in JSON format.
-    void createJsonHeader(std::set<clang::FunctionDecl*> &kernels);
+    void createJsonHeader(const WebCLAnalyser::KernelList &kernels);
 
     /// Create address space structure. The structure contains all
     /// relocated variables of the given address space as fields.

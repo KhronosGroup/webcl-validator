@@ -403,13 +403,20 @@ bool WebCLAnalyser::handleUnaryOperator(clang::UnaryOperator *expr)
   return true;
 }
 
+WebCLAnalyser::KernelInfo::KernelInfo(clang::CompilerInstance &instance, clang::FunctionDecl *decl)
+    : decl(decl)
+    , name(decl->getNameInfo().getAsString())
+{
+    /// Go through arguments, collect info using the compiler instance
+}
+
 bool WebCLAnalyser::handleFunctionDecl(clang::FunctionDecl *decl)
 {
   if (!isFromMainFile(decl->getLocStart())) return true;
   
   if (decl->hasAttr<clang::OpenCLKernelAttr>()) {
     info(decl->getLocStart(), "This is kernel, go through arguments to collect pointers etc.");
-    kernelFunctions_.insert(decl);
+    kernelFunctions_.push_back(KernelInfo(instance_, decl));
   } else {
     info(decl->getLocStart(), "This is prototype/function, add to list to add wcl_allocs arg and add to list to recognize internal functions for call conversion.");
     helperFunctions_.insert(decl);
@@ -509,7 +516,7 @@ bool WebCLAnalyser::handleForStmt(clang::ForStmt *stmt) {
   return true;
 }
 
-WebCLAnalyser::FunctionDeclSet &WebCLAnalyser::getKernelFunctions()
+WebCLAnalyser::KernelList &WebCLAnalyser::getKernelFunctions()
 {
     return kernelFunctions_;
 }
@@ -559,7 +566,7 @@ WebCLAnalyser::TypeDeclList &WebCLAnalyser::getTypeDecls()
     return typeDeclList_;
 }
 
-const WebCLAnalyser::FunctionDeclSet &WebCLAnalyser::getKernelFunctions() const
+const WebCLAnalyser::KernelList &WebCLAnalyser::getKernelFunctions() const
 {
     return kernelFunctions_;
 }

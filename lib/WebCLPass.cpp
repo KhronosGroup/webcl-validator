@@ -24,6 +24,7 @@
 #include "WebCLDebug.hpp"
 #include "WebCLPass.hpp"
 #include "WebCLVisitor.hpp"
+#include "WebCLTransformer.hpp"
 #include "WebCLTypes.hpp"
 #include "WebCLCommon.hpp"
 
@@ -307,11 +308,11 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
     privateLimits_.setStaticLimits(true);
 
     // go through dynamic limits in the program and create variables for them
-    WebCLAnalyser::FunctionDeclSet &kernels = analyser_.getKernelFunctions();
-    for (WebCLAnalyser::FunctionDeclSet::iterator i = kernels.begin();
+    WebCLAnalyser::KernelList &kernels = analyser_.getKernelFunctions();
+    for (WebCLAnalyser::KernelList::iterator i = kernels.begin();
         i != kernels.end(); ++i) {
 
-            clang::FunctionDecl *func = *i;
+            clang::FunctionDecl *func = i->decl;
             for (clang::FunctionDecl::param_iterator parmIter = func->param_begin();
                 parmIter != func->param_end(); ++parmIter) {
 
@@ -368,10 +369,10 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
 
     // now that we have all the data about the limit structures, we can actually
     // create the initialization code for each kernel
-    for (WebCLAnalyser::FunctionDeclSet::iterator i = kernels.begin();
+    for (WebCLAnalyser::KernelList::iterator i = kernels.begin();
         i != kernels.end(); ++i) {
 
-            clang::FunctionDecl *func = *i;
+            clang::FunctionDecl *func = i->decl;
 
             // Create allocation for local address space according to
             // earlier typedef. This is required if there are static

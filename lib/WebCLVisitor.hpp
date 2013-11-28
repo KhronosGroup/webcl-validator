@@ -26,7 +26,10 @@
 
 #include "WebCLBuiltins.hpp"
 #include "WebCLReporter.hpp"
-#include "WebCLTransformer.hpp"
+
+#include <map>
+#include <set>
+#include <vector>
 
 #include "clang/AST/RecursiveASTVisitor.h"
 
@@ -212,7 +215,23 @@ public:
   virtual bool handleForStmt(clang::ForStmt *stmt);
 
   /// Collected nodes.
+  struct KernelArgInfo {
+      /// TODO define and collect arg info
+  };
+  struct KernelInfo {
+      /// Not exposed outside the library
+      clang::FunctionDecl *decl;
+
+      /// Kernel name
+      std::string name;
+      /// Kernel arguments
+      std::vector<KernelArgInfo> args;
+
+      KernelInfo(clang::CompilerInstance &instance, clang::FunctionDecl *decl);
+  };
+
   typedef std::set<clang::FunctionDecl*> FunctionDeclSet;
+  typedef std::vector<KernelInfo> KernelList;
   typedef std::set<clang::CallExpr*> CallExprSet;
   typedef std::set<clang::VarDecl*> VarDeclSet;
   typedef std::set<clang::DeclRefExpr*> DeclRefExprSet;
@@ -224,7 +243,7 @@ public:
   typedef std::map<clang::Expr*, clang::VarDecl*> MemoryAccessMap;
   
   /// Accessors for collected data.
-  FunctionDeclSet &getKernelFunctions();
+  KernelList &getKernelFunctions();
   FunctionDeclSet &getHelperFunctions();
   CallExprSet &getInternalCalls();
   CallExprSet &getBuiltinCalls();
@@ -236,7 +255,7 @@ public:
   TypeDeclList &getTypeDecls();
 
   /// Const versions of the above
-  const FunctionDeclSet &getKernelFunctions() const;
+  const KernelList &getKernelFunctions() const;
   const FunctionDeclSet &getHelperFunctions() const;
   const CallExprSet &getInternalCalls() const;
   const CallExprSet &getBuiltinCalls() const;
@@ -266,7 +285,7 @@ private:
   void collectVariable(clang::VarDecl *decl);
 
   /// User defined kernels.
-  FunctionDeclSet kernelFunctions_;
+  KernelList kernelFunctions_;
   /// User defined functions.
   FunctionDeclSet helperFunctions_;
   /// Calls to user defined functions.
