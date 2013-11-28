@@ -96,7 +96,7 @@ void WebCLHeader::emitHostType(
     
     HostTypes::const_iterator i = hostTypes().find(type);
     if (i == hostTypes().end()) {
-        error("Can't determine host type for %0.") << type;
+        assert(false && "WebCLRestrictor should have prevented using unsupported kernel parameter types");
         return;
     }
 

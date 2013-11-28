@@ -199,7 +199,8 @@ bool WebCLRestrictor::handleParmVarDecl(clang::ParmVarDecl *decl)
 
     clang::SourceLocation typeLocation = info->getTypeLoc().getBeginLoc();
 
-    const clang::Type *type = info->getType().getTypePtrOrNull();
+    const clang::QualType qualType = info->getType();
+    const clang::Type *type = qualType.getTypePtrOrNull();
     if (!info) {
         error(typeLocation, "Invalid parameter type.\n");
         return true;
@@ -217,6 +218,7 @@ bool WebCLRestrictor::handleParmVarDecl(clang::ParmVarDecl *decl)
 
     checkStructureParameter(function, typeLocation, type);
     check3dImageParameter(function, typeLocation, type);
+    checkUnsupportedBuiltinParameter(function, typeLocation, qualType);
     return true;
 }
 
@@ -245,6 +247,18 @@ void WebCLRestrictor::check3dImageParameter(
         clang::QualType pointee = type->getPointeeType();
         if (pointee.getAsString() == "struct image3d_t_")
             error(typeLocation, "WebCL doesn't support 3D images.\n");
+    }
+}
+
+void WebCLRestrictor::checkUnsupportedBuiltinParameter(
+    clang::FunctionDecl *decl,
+    clang::SourceLocation typeLocation, const clang::QualType &type)
+{
+    clang::QualType reduced = WebCLTypes::reduceType(instance_, type);
+    std::string typeName = reduced.getAsString();
+    if (decl->hasAttr<clang::OpenCLKernelAttr>() &&
+        WebCLTypes::unsupportedBuiltinTypes().count(typeName) > 0) {
+            error(typeLocation, "Unsupported builtin type %0 used as a kernel parameter.") << typeName;
     }
 }
 

@@ -125,6 +125,10 @@ private:
     void check3dImageParameter(
         clang::FunctionDecl *decl,
         clang::SourceLocation typeLocation, const clang::Type *type);
+    /// Checks that unsupported builtin types are not used as parameters
+    void checkUnsupportedBuiltinParameter(
+        clang::FunctionDecl *decl,
+        clang::SourceLocation typeLocation, const clang::QualType &type);
 };
 
 /// \brief Collects all information needed by transformations.
