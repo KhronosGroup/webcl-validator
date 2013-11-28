@@ -208,7 +208,7 @@ void WebCLHeader::emitArrayParameter(
         out << ",\n";
         break;
     default:
-        error(parameter->getLocStart(), "Invalid address space.");
+        assert(false && "WebCLKernelHandler::run() should have rejected array of private memory kernel parameter");
         break;
     }
 

@@ -325,6 +325,7 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
                             << func->getDeclName().getAsString()
                             << " arg:" << parm->getDeclName().getAsString() << "\n"; );
 
+                        clang::QualType reducedType = WebCLTypes::reduceType(instance_, parm->getType());
                         switch (parm->getType().getTypePtr()->getPointeeType().getAddressSpace()) {
                         case clang::LangAS::opencl_global:
                             DEBUG( std::cerr << "Global address space!\n"; );
@@ -339,7 +340,13 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
                             localLimits_.insert(parm);
                             break;
                         default:
-                            DEBUG( std::cerr << "Private address space kernel arg pointer! Vendor compiler should catch this if really invalid and not some typedef of valid opencl type.\n"; );
+                            if (WebCLTypes::supportedBuiltinTypes().count(reducedType.getAsString()) > 0) {
+                                DEBUG( std::cerr << "Image or sampler argument!\n"; );
+                            } else {
+                                // This used to be just a debug, but WebCLHeader made it a fatal error in the end.
+                                // To move WebCLHeader out of the validator library, we must make it fatal here.
+                                error(parm->getLocStart(), "Invalid address space.");
+                            }
                         }
                     }
             }
