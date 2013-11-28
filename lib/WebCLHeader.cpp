@@ -169,7 +169,7 @@ void WebCLHeader::emitSizeParameter(
     std::ostream &out,
     const WebCLAnalyser::KernelArgInfo &parameter, int index)
 {
-    const std::string parameterName = cfg_.getNameOfSizeParameter(parameter.decl);
+    const std::string parameterName = cfg_.getNameOfSizeParameter(parameter.name);
     const std::string typeName = cfg_.sizeParameterType_;
     emitParameter(out, parameterName, index, typeName);
 }
@@ -211,7 +211,7 @@ void WebCLHeader::emitArrayParameter(
         break;
     }
 
-    emitStringEntry(out, "size-parameter", cfg_.getNameOfSizeParameter(parameter.decl));
+    emitStringEntry(out, "size-parameter", cfg_.getNameOfSizeParameter(parameter.name));
     out << "\n";
 
     --level_;

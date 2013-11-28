@@ -652,7 +652,7 @@ std::string WebCLTransformer::addressSpaceLimitsInitializer(
             retVal << "&" << name
                    << "[0], "
                    << "&" << name
-                   << "[" << cfg_.getNameOfSizeParameter(decl) << "]";
+                   << "[" << cfg_.getNameOfSizeParameter(name) << "]";
         } else {
             retVal << "0, 0";
         }
@@ -1187,7 +1187,7 @@ void WebCLTransformer::addRecordArgument(clang::CallExpr *call)
 void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
 {
     const std::string parameter =
-        cfg_.sizeParameterType_ + " " + cfg_.getNameOfSizeParameter(decl);
+        cfg_.sizeParameterType_ + " " + cfg_.getNameOfSizeParameter(decl->getName());
     const std::string replacement =
         wclRewriter_.getOriginalText(decl->getSourceRange()) + ", " + parameter;
     wclRewriter_.replaceText(
