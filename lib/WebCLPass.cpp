@@ -313,40 +313,38 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
         i != kernels.end(); ++i) {
 
             clang::FunctionDecl *func = i->decl;
-            for (clang::FunctionDecl::param_iterator parmIter = func->param_begin();
-                parmIter != func->param_end(); ++parmIter) {
+            for (std::vector<WebCLAnalyser::KernelArgInfo>::const_iterator j = i->args.begin();
+                j != i->args.end(); ++j) {
+                    const WebCLAnalyser::KernelArgInfo &parm = *j;
+                    if (parm.decl->getType().getTypePtr()->isPointerType()) {
 
-                    clang::ParmVarDecl *parm = *parmIter;
-                    if (parm->getType().getTypePtr()->isPointerType()) {
-
-                        transformer_.addSizeParameter(parm);
+                        transformer_.addSizeParameter(parm.decl);
 
                         DEBUG(
                             std::cerr << "Adding dynamic limits from kernel:"
                             << func->getDeclName().getAsString()
-                            << " arg:" << parm->getDeclName().getAsString() << "\n"; );
+                            << " arg:" << parm.name << "\n"; );
 
-                        clang::QualType reducedType = WebCLTypes::reduceType(instance_, parm->getType());
-                        switch (parm->getType().getTypePtr()->getPointeeType().getAddressSpace()) {
+                        switch (parm.decl->getType().getTypePtr()->getPointeeType().getAddressSpace()) {
                         case clang::LangAS::opencl_global:
                             DEBUG( std::cerr << "Global address space!\n"; );
-                            globalLimits_.insert(parm);
+                            globalLimits_.insert(parm.decl);
                             break;
                         case clang::LangAS::opencl_constant:
                             DEBUG( std::cerr << "Constant address space!\n"; );
-                            constantLimits_.insert(parm);
+                            constantLimits_.insert(parm.decl);
                             break;
                         case clang::LangAS::opencl_local:
                             DEBUG( std::cerr << "Local address space!\n"; );
-                            localLimits_.insert(parm);
+                            localLimits_.insert(parm.decl);
                             break;
                         default:
-                            if (WebCLTypes::supportedBuiltinTypes().count(reducedType.getAsString()) > 0) {
+                            if (WebCLTypes::supportedBuiltinTypes().count(parm.reducedTypeName) > 0) {
                                 DEBUG( std::cerr << "Image or sampler argument!\n"; );
                             } else {
                                 // This used to be just a debug, but WebCLHeader made it a fatal error in the end.
                                 // To move WebCLHeader out of the validator library, we must make it fatal here.
-                                error(parm->getLocStart(), "Invalid address space.");
+                                error(parm.decl->getLocStart(), "Invalid address space.");
                             }
                         }
                     }

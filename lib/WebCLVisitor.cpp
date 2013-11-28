@@ -406,6 +406,7 @@ bool WebCLAnalyser::handleUnaryOperator(clang::UnaryOperator *expr)
 WebCLAnalyser::KernelArgInfo::KernelArgInfo(clang::CompilerInstance &instance, clang::ParmVarDecl *decl)
     : decl(decl)
     , name(decl->getName().str())
+    , reducedTypeName(WebCLTypes::reduceType(instance, decl->getType()).getAsString())
 {
 }
 

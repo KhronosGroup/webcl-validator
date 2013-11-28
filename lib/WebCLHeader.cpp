@@ -238,13 +238,9 @@ void WebCLHeader::emitKernel(std::ostream &out, const WebCLAnalyser::KernelInfo 
         if (i != kernel.args.begin())
             out << ",\n";
 
-        clang::QualType originalType = parameter.decl->getType();
-        clang::QualType reducedType = WebCLTypes::reduceType(instance_, originalType);
-        const std::string reducedName = reducedType.getAsString();
-
-        if (WebCLTypes::supportedBuiltinTypes().count(reducedName)) {
+        if (WebCLTypes::supportedBuiltinTypes().count(parameter.reducedTypeName)) {
             // images and samplers
-            emitBuiltinParameter(out, parameter, index, reducedName);
+            emitBuiltinParameter(out, parameter, index, parameter.reducedTypeName);
         } else if (parameter.decl->getType().getTypePtr()->isPointerType()) {
             // memory objects
             emitArrayParameter(out, parameter, index);
@@ -253,7 +249,7 @@ void WebCLHeader::emitKernel(std::ostream &out, const WebCLAnalyser::KernelInfo 
             emitSizeParameter(out, parameter, index);
         } else {
             // primitives
-            emitParameter(out, parameter.name, index, reducedName);
+            emitParameter(out, parameter.name, index, parameter.reducedTypeName);
         }
         ++index;
     }

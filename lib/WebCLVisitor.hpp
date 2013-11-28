@@ -221,6 +221,8 @@ public:
 
       /// Parameter name.
       std::string name;
+      /// Type name, cleaned of qualifiers and non-standard typedefs
+      std::string reducedTypeName;
       /// TODO add more info
 
       KernelArgInfo(clang::CompilerInstance &instance, clang::ParmVarDecl *decl);
