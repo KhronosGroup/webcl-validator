@@ -223,6 +223,14 @@ public:
       IMAGE_HANDLE
   };
 
+  enum ImageKind {
+      NOT_IMAGE,
+      READABLE_IMAGE,
+      WRITABLE_IMAGE,
+      RW_IMAGE,
+      UNKNOWN_ACCESS_IMAGE
+  };
+
   /// Collected nodes.
   struct KernelArgInfo {
       /// Not exposed outside the library
@@ -234,6 +242,8 @@ public:
       std::string reducedTypeName;
       /// Is this a pointer arg, and if so, to which address space
       PointerKind pointerKind;
+      /// Is this an image arg, and if so, with which access qualifiers
+      ImageKind imageKind;
       /// TODO add more info
 
       KernelArgInfo(clang::CompilerInstance &instance, clang::ParmVarDecl *decl);

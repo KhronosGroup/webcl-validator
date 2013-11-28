@@ -408,6 +408,7 @@ WebCLAnalyser::KernelArgInfo::KernelArgInfo(clang::CompilerInstance &instance, c
     , name(decl->getName().str())
     , reducedTypeName(WebCLTypes::reduceType(instance, decl->getType()).getAsString())
     , pointerKind(NOT_POINTER)
+    , imageKind(NOT_IMAGE)
 {
     if (decl->getType().getTypePtr()->isPointerType()) {
         switch (decl->getType().getTypePtr()->getPointeeType().getAddressSpace()) {
@@ -423,6 +424,24 @@ WebCLAnalyser::KernelArgInfo::KernelArgInfo(clang::CompilerInstance &instance, c
         default:
             if (WebCLTypes::supportedBuiltinTypes().count(reducedTypeName) > 0) {
                 pointerKind = IMAGE_HANDLE;
+
+                switch (decl->getType().getAccess()) {
+                case 0:
+                    // no access qualifier, fall through to the default of read-only
+                case clang::CLIA_read_only:
+                    imageKind = READABLE_IMAGE;
+                    break;
+                case clang::CLIA_write_only:
+                    imageKind = WRITABLE_IMAGE;
+                    break;
+                case clang::CLIA_read_write:
+                    // This will cause an error later on
+                    imageKind = RW_IMAGE;
+                    break;
+                default:
+                    imageKind = UNKNOWN_ACCESS_IMAGE;
+                    break;
+                }
             } else {
                 pointerKind = PRIVATE_POINTER;
             }

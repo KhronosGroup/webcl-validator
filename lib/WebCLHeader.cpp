@@ -142,21 +142,18 @@ void WebCLHeader::emitBuiltinParameter(
     if (!type.compare(image2d)) {
         std::string access = "read_only";
 
-        const clang::OpenCLImageAccess qualifier = parameter.decl->getType().getAccess();
-        if (qualifier) {
-            switch (qualifier) {
-            case clang::CLIA_read_only:
-                access = "read_only";
-                break;
-            case clang::CLIA_write_only:
-                access = "write_only";
-                break;
-            default:
-                // ImageSafetyHandler errors on this for all image parameters which are passed on to image access functions;
-                // others can be considered read_only with 0 reads as it is not possible to access images directly
-                access = "read_only";
-                break;
-            }
+        switch (parameter.imageKind) {
+        case WebCLAnalyser::READABLE_IMAGE:
+            access = "read_only";
+            break;
+        case WebCLAnalyser::WRITABLE_IMAGE:
+            access = "write_only";
+            break;
+        default:
+            // ImageSafetyHandler errors on this for all image parameters which are passed on to image access functions;
+            // others can be considered read_only with 0 reads as it is not possible to access images directly
+            access = "read_only";
+            break;
         }
 
         fields["access"] = access;
