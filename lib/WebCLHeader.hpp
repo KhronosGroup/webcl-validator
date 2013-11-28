@@ -24,8 +24,6 @@
 ** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 */
 
-#include "WebCLReporter.hpp"
-
 #include "clang/AST/Type.h"
 
 #include <iostream>
@@ -42,7 +40,7 @@ namespace clang {
 class WebCLConfiguration;
 
 /// Emits JSON headers for kernels.
-class WebCLHeader : WebCLReporter
+class WebCLHeader
 {
 public:
 
@@ -135,6 +133,8 @@ private:
     /// Emits correct indentation based on current indentation level.
     void emitIndentation(std::ostream &out) const;
 
+    /// The host compiler instance
+    clang::CompilerInstance &instance_;
     /// Contains information about recurring names.
     WebCLConfiguration &cfg_;
     /// Basic tab width for indentation.

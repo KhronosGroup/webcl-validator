@@ -34,7 +34,7 @@ static const char *image2d = "image2d_t";
 
 WebCLHeader::WebCLHeader(
     clang::CompilerInstance &instance, WebCLConfiguration &cfg)
-    : WebCLReporter(instance)
+    : instance_(instance)
     , cfg_(cfg)
     , indentation_("    ")
     , level_(0)
