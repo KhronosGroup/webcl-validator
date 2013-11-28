@@ -134,16 +134,15 @@ void WebCLHeader::emitParameter(
 
 void WebCLHeader::emitBuiltinParameter(
     std::ostream &out,
-    const clang::ParmVarDecl *parameter, int index, const std::string &type)
+    const WebCLAnalyser::KernelArgInfo &parameter, int index, const std::string &type)
 {
-    const std::string parameterName = parameter->getName();
     Fields fields;
 
     // Add "access" : "qualifier" field for images.
     if (!type.compare(image2d)) {
         std::string access = "read_only";
 
-        const clang::OpenCLImageAccess qualifier = parameter->getType().getAccess();
+        const clang::OpenCLImageAccess qualifier = parameter.decl->getType().getAccess();
         if (qualifier) {
             switch (qualifier) {
             case clang::CLIA_read_only:
@@ -163,24 +162,24 @@ void WebCLHeader::emitBuiltinParameter(
         fields["access"] = access;
     }
 
-    emitParameter(out, parameterName, index, type, fields);
+    emitParameter(out, parameter.name, index, type, fields);
 }
 
 void WebCLHeader::emitSizeParameter(
     std::ostream &out,
-    const clang::ParmVarDecl *parameter, int index)
+    const WebCLAnalyser::KernelArgInfo &parameter, int index)
 {
-    const std::string parameterName = cfg_.getNameOfSizeParameter(parameter);
+    const std::string parameterName = cfg_.getNameOfSizeParameter(parameter.decl);
     const std::string typeName = cfg_.sizeParameterType_;
     emitParameter(out, parameterName, index, typeName);
 }
 
 void WebCLHeader::emitArrayParameter(
     std::ostream &out,
-    const clang::ParmVarDecl *parameter, int index)
+    const WebCLAnalyser::KernelArgInfo &parameter, int index)
 {
     emitIndentation(out);
-    out << "\"" << parameter->getName().str() << "\"" << " :\n";
+    out << "\"" << parameter.name << "\"" << " :\n";
     ++level_;
     emitIndentation(out);
     out << "{\n";
@@ -189,7 +188,7 @@ void WebCLHeader::emitArrayParameter(
     emitNumberEntry(out, "index", index);
     out << ",\n";
 
-    clang::QualType arrayType = parameter->getType();
+    clang::QualType arrayType = parameter.decl->getType();
     clang::QualType elementType = arrayType.getTypePtr()->getPointeeType();
 
     emitStringEntry(out, "host-type", "cl_mem");
@@ -212,7 +211,7 @@ void WebCLHeader::emitArrayParameter(
         break;
     }
 
-    emitStringEntry(out, "size-parameter", cfg_.getNameOfSizeParameter(parameter));
+    emitStringEntry(out, "size-parameter", cfg_.getNameOfSizeParameter(parameter.decl));
     out << "\n";
 
     --level_;
@@ -230,23 +229,23 @@ void WebCLHeader::emitKernel(std::ostream &out, const WebCLAnalyser::KernelInfo 
     out << "{\n";
     ++level_;
 
-    // Noble goal TODO: don't use kernel.decl (clang data type) here at all
+    // Noble goal TODO: don't use kernel.decl and/or parameter.decl (clang data types) here at all
     unsigned index = 0;
-    const unsigned int numParameters = kernel.decl->getNumParams();
-    for (unsigned int i = 0; i < numParameters; ++i) {
-        const clang::ParmVarDecl *parameter = kernel.decl->getParamDecl(i);
+    for (std::vector<WebCLAnalyser::KernelArgInfo>::const_iterator i = kernel.args.begin();
+        i != kernel.args.end(); ++i) {
+        const WebCLAnalyser::KernelArgInfo &parameter = *i;
 
-        if (i > 0)
+        if (i != kernel.args.begin())
             out << ",\n";
 
-        clang::QualType originalType = parameter->getType();
+        clang::QualType originalType = parameter.decl->getType();
         clang::QualType reducedType = WebCLTypes::reduceType(instance_, originalType);
         const std::string reducedName = reducedType.getAsString();
 
         if (WebCLTypes::supportedBuiltinTypes().count(reducedName)) {
             // images and samplers
             emitBuiltinParameter(out, parameter, index, reducedName);
-        } else if (parameter->getType().getTypePtr()->isPointerType()) {
+        } else if (parameter.decl->getType().getTypePtr()->isPointerType()) {
             // memory objects
             emitArrayParameter(out, parameter, index);
             ++index;
@@ -254,7 +253,7 @@ void WebCLHeader::emitKernel(std::ostream &out, const WebCLAnalyser::KernelInfo 
             emitSizeParameter(out, parameter, index);
         } else {
             // primitives
-            emitParameter(out, parameter->getName(), index, reducedName);
+            emitParameter(out, parameter.name, index, reducedName);
         }
         ++index;
     }

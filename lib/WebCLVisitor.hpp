@@ -216,7 +216,14 @@ public:
 
   /// Collected nodes.
   struct KernelArgInfo {
-      /// TODO define and collect arg info
+      /// Not exposed outside the library
+      clang::ParmVarDecl *decl;
+
+      /// Parameter name.
+      std::string name;
+      /// TODO add more info
+
+      KernelArgInfo(clang::CompilerInstance &instance, clang::ParmVarDecl *decl);
   };
   struct KernelInfo {
       /// Not exposed outside the library

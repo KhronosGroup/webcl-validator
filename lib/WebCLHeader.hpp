@@ -92,7 +92,7 @@ private:
     /// "img" : { "index" : 0, "host-type" : image2d_t", "access" : "read_only" }
     void emitBuiltinParameter(
         std::ostream &out,
-        const clang::ParmVarDecl *parameter, int index, const std::string &type);
+        const WebCLAnalyser::KernelArgInfo &parameter, int index, const std::string &type);
 
     /// Emits a size parameter for the given memory object parameter:
     /// "__global int *foo", 0
@@ -100,7 +100,7 @@ private:
     /// "_wcl_foo_size" : { "index" : 0, "host-type" : "cl_ulong" }
     void emitSizeParameter(
         std::ostream &out,
-        const clang::ParmVarDecl *parameter, int index);
+        const WebCLAnalyser::KernelArgInfo &parameter, int index);
 
     /// Emits a memory object parameter to the given stream:
     /// "__global int *foo", 0
@@ -114,7 +114,7 @@ private:
     ///         }
     void emitArrayParameter(
         std::ostream &out,
-        const clang::ParmVarDecl *parameter, int index);
+        const WebCLAnalyser::KernelArgInfo &parameter, int index);
 
     /// Emits kernel and its parameters to the given stream:
     /// "__kernel void foo(...)"

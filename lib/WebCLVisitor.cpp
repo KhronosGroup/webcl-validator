@@ -403,11 +403,21 @@ bool WebCLAnalyser::handleUnaryOperator(clang::UnaryOperator *expr)
   return true;
 }
 
+WebCLAnalyser::KernelArgInfo::KernelArgInfo(clang::CompilerInstance &instance, clang::ParmVarDecl *decl)
+    : decl(decl)
+    , name(decl->getName().str())
+{
+}
+
 WebCLAnalyser::KernelInfo::KernelInfo(clang::CompilerInstance &instance, clang::FunctionDecl *decl)
     : decl(decl)
     , name(decl->getNameInfo().getAsString())
 {
     /// Go through arguments, collect info using the compiler instance
+    for (clang::FunctionDecl::param_iterator i = decl->param_begin();
+        i != decl->param_end(); ++i) {
+            args.push_back(KernelArgInfo(instance, *i));
+    }
 }
 
 bool WebCLAnalyser::handleFunctionDecl(clang::FunctionDecl *decl)
