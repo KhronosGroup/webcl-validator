@@ -31,6 +31,7 @@
 
 #include "WebCLConfiguration.hpp"
 #include "WebCLCommon.hpp"
+#include "WebCLDebug.hpp"
 #include "WebCLTypes.hpp"
 
 namespace WebCLTypes {
@@ -183,6 +184,18 @@ namespace WebCLTypes {
         return unsupportedBuiltinTypes_;
     }
 
+    const BuiltinTypes& allOclTypes()
+    {
+        static BuiltinTypes types;
+        if (types.empty()) {
+            for (HostTypes::const_iterator i = hostTypes_.begin(); i != hostTypes_.end(); ++i)
+                types.insert(i->first);
+            types.insert(supportedBuiltinTypes_.begin(), supportedBuiltinTypes_.end());
+            types.insert(unsupportedBuiltinTypes_.begin(), unsupportedBuiltinTypes_.end());
+        }
+        return types;
+    }
+
     const InitialZeroValues& initialZeroValues()
     {
         return initialZeroValues_;
@@ -190,22 +203,42 @@ namespace WebCLTypes {
 
     clang::QualType reduceType(const clang::CompilerInstance &instance, clang::QualType type)
     {
+        static std::string indent;
+
         clang::QualType reducedType = type;
 
-        if (reducedType.isCanonical() && !reducedType.hasQualifiers())
-            return reducedType;
+        DEBUG( std::cerr << indent << "Reducing " << reducedType.getAsString() << '\n'; )
 
-        do {
-            reducedType = type.getUnqualifiedType();
-            const std::string reducedName = reducedType.getAsString();
-            if (unsupportedBuiltinTypes_.count(reducedName))
-                return reducedType;
-            if (hostTypes_.count(reducedName))
-                return reducedType;
+        // First, clean up qualifiers (at the current indirection level in case of pointers)
+        if (reducedType.hasQualifiers()) {
+            reducedType = reducedType.getUnqualifiedType();
+            DEBUG( std::cerr << indent << "  w/o quals " << reducedType.getAsString() << '\n'; )
+        }
 
-            type = type.getSingleStepDesugaredType(instance.getASTContext());
-            type = type.getUnqualifiedType();
-        } while (type != reducedType);
+        // Clean up initial user typedefs, but stop when we encounter an OpenCL type
+        // (in Clang, some OpenCL types like image2d_t are typedefs, but we want to preserve them)
+        clang::QualType nextType;
+        while (!allOclTypes().count(reducedType.getAsString())
+            && (nextType = reducedType.getSingleStepDesugaredType(instance.getASTContext())) != reducedType) {
+                reducedType = nextType;
+                DEBUG( std::cerr << indent << "  desugared " << reducedType.getAsString() << '\n'; )
+        }
+
+        // Clean up pointer (to pointer (...)) types recursively
+        // ... except OpenCL types like image2d_t, which are actually pointers in the clang impl
+        if (reducedType.getTypePtr()->isPointerType() && !allOclTypes().count(reducedType.getAsString())) {
+            DEBUG( std::cerr << indent << "  Handling pointer recursively\n"; )
+            DEBUG( indent.append("    "); )
+
+            clang::QualType pointerType = instance.getASTContext().getPointerType(
+                reduceType(instance, reducedType.getTypePtr()->getPointeeType()));
+            reducedType = pointerType;
+
+            DEBUG( indent.erase(indent.size() - 4); )
+            DEBUG( std::cerr << "  After pointer recursion " << reducedType.getAsString() << '\n'; )
+        }
+
+        DEBUG( std::cerr << indent << "Finally " << reducedType.getAsString() << '\n'; )
 
         return reducedType;
     }

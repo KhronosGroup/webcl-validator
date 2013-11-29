@@ -204,7 +204,7 @@ namespace {
 	newArguments.push_back(std::make_pair(cfg.addressSpaceRecordType_ + "*", cfg.addressSpaceRecordName_));
 	for (size_t argIdx = 0; argIdx < callExpr->getNumArgs(); ++argIdx) {
 	    newArguments.push_back(std::make_pair(
-		    WebCLTypes::reduceType(instance, callExpr->getArg(argIdx)->getType()).getAsString(),
+		    callExpr->getArg(argIdx)->getType().getAsString(),
 		    "arg" + stringify(argIdx)));
 	}
 	
@@ -222,7 +222,7 @@ namespace {
 	    return WrappedFunction();
 	}
 
-	std::string ptrTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType()).getAsString();
+	std::string ptrTypeStr = pointerArg->getType().getAsString();
 	std::string returnTypeStr;
 	unsigned origDataWidth = (aligned_ && width_ == 3) ? 4 : width_;
 
@@ -294,7 +294,7 @@ namespace {
 	    return WrappedFunction();
 	}
 
-	std::string ptrTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType()).getAsString();
+	std::string ptrTypeStr = pointerArg->getType().getAsString();
 	unsigned origDataWidth = (aligned_ && width_ == 3) ? 4 : width_;
 	
 	AddressSpaceLimits &limits = kernelHandler.getDerefLimits(pointerArg);

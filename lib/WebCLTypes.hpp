@@ -40,13 +40,16 @@ namespace WebCLTypes {
     /// Returns the static list of supported host types
     const HostTypes& hostTypes();
 
-    /// Returns the static list of supported builtin types
+    /// Returns the static list of supported non-host builtin types
     const BuiltinTypes& supportedBuiltinTypes();
 
-    /// Returns the static list of unsupported builtin types
+    /// Returns the static list of unsupported non-host builtin types
     const BuiltinTypes& unsupportedBuiltinTypes();
 
-    /// Returns the static list of unsupported builtin types
+    /// Returns the static list of all OpenCL types
+    const BuiltinTypes& allOclTypes();
+
+    /// Returns the static list of initializer values for builtin types
     const InitialZeroValues& initialZeroValues();
 
     /// Reduce the given type to a host mapping type. If the reduction
