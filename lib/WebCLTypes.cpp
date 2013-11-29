@@ -45,178 +45,178 @@ namespace WebCLTypes {
     InitialZeroValues initialZeroValues_;
 
     namespace {
-	/// Add host mappings for scalar types:
-	/// int -> cl_int
-	void initializeScalarTypes()
-	{
-	    hostTypes_["char"] = "cl_char";
-	    initialZeroValues_["char"] = "(char) 0";
-	    hostTypes_["unsigned char"] = "cl_uchar";
-	    initialZeroValues_["unsigned char"] = "(unsigned char) 0";
-	    hostTypes_["uchar"] = "cl_uchar";
-	    initialZeroValues_["uchar"] = "(uchar) 0";
+        /// Add host mappings for scalar types:
+        /// int -> cl_int
+        void initializeScalarTypes()
+        {
+            hostTypes_["char"] = "cl_char";
+            initialZeroValues_["char"] = "(char) 0";
+            hostTypes_["unsigned char"] = "cl_uchar";
+            initialZeroValues_["unsigned char"] = "(unsigned char) 0";
+            hostTypes_["uchar"] = "cl_uchar";
+            initialZeroValues_["uchar"] = "(uchar) 0";
 
-	    hostTypes_["short"] = "cl_short";
-	    initialZeroValues_["short"] = "(short) 0";
-	    hostTypes_["unsigned short"] = "cl_ushort";
-	    initialZeroValues_["unsigned short"] = "(unsigned short) 0";
-	    hostTypes_["ushort"] = "cl_ushort";
-	    initialZeroValues_["ushort"] = "(ushort) 0";
+            hostTypes_["short"] = "cl_short";
+            initialZeroValues_["short"] = "(short) 0";
+            hostTypes_["unsigned short"] = "cl_ushort";
+            initialZeroValues_["unsigned short"] = "(unsigned short) 0";
+            hostTypes_["ushort"] = "cl_ushort";
+            initialZeroValues_["ushort"] = "(ushort) 0";
 
-	    hostTypes_["int"] = "cl_int";
-	    initialZeroValues_["int"] = "(int) 0";
-	    hostTypes_["unsigned int"] = "cl_uint";
-	    initialZeroValues_["unsigned int"] = "(unsigned int) 0";
-	    hostTypes_["uint"] = "cl_uint";
-	    initialZeroValues_["uint"] = "(uint) 0";
+            hostTypes_["int"] = "cl_int";
+            initialZeroValues_["int"] = "(int) 0";
+            hostTypes_["unsigned int"] = "cl_uint";
+            initialZeroValues_["unsigned int"] = "(unsigned int) 0";
+            hostTypes_["uint"] = "cl_uint";
+            initialZeroValues_["uint"] = "(uint) 0";
 
-	    hostTypes_["long"] = "cl_long";
-	    initialZeroValues_["long"] = "(long) 0";
-	    hostTypes_["unsigned long"] = "cl_ulong";
-	    initialZeroValues_["unsigned long"] = "(unsigned long) 0";
-	    hostTypes_["ulong"] = "cl_ulong";
-	    initialZeroValues_["ulong"] = "(ulong) 0";
+            hostTypes_["long"] = "cl_long";
+            initialZeroValues_["long"] = "(long) 0";
+            hostTypes_["unsigned long"] = "cl_ulong";
+            initialZeroValues_["unsigned long"] = "(unsigned long) 0";
+            hostTypes_["ulong"] = "cl_ulong";
+            initialZeroValues_["ulong"] = "(ulong) 0";
 
-	    hostTypes_["double"] = "cl_double";
-	    initialZeroValues_["double"] = "(double) 0";
-	    hostTypes_["float"] = "cl_float";
-	    initialZeroValues_["float"] = "(float) 0";
-	    hostTypes_["half"] = "cl_half";
-	    initialZeroValues_["half"] = "(half) 0";
-	}
+            hostTypes_["double"] = "cl_double";
+            initialZeroValues_["double"] = "(double) 0";
+            hostTypes_["float"] = "cl_float";
+            initialZeroValues_["float"] = "(float) 0";
+            hostTypes_["half"] = "cl_half";
+            initialZeroValues_["half"] = "(half) 0";
+        }
 
-	std::string zeroInitializer(std::string type, unsigned length)
-	{
-	    std::stringstream st;
-	    st << "(" << type << length << ") (";
-	    for (unsigned i = 0; i < length; ++i) {
-		if (i) {
-		    st << ", ";
-		}
-		st << "0";
-	    }
-	    st << ")";
-	    return st.str();
-	}
+        std::string zeroInitializer(std::string type, unsigned length)
+        {
+            std::stringstream st;
+            st << "(" << type << length << ") (";
+            for (unsigned i = 0; i < length; ++i) {
+                if (i) {
+                    st << ", ";
+                }
+                st << "0";
+            }
+            st << ")";
+            return st.str();
+        }
 
-	/// Add host mappings for vector types:
-	/// float4 -> cl_float4
-	void initializeVectorTypes()
-	{
-	    WebCLConfiguration cfg;
+        /// Add host mappings for vector types:
+        /// float4 -> cl_float4
+        void initializeVectorTypes()
+        {
+            WebCLConfiguration cfg;
 
-	    for (UintList::const_iterator it = cfg.dataWidths_.begin();
-		 it != cfg.dataWidths_.end();
-		 ++it) {
-		unsigned length = *it;
-		const std::string lengthStr = stringify(length);
+            for (UintList::const_iterator it = cfg.dataWidths_.begin();
+                it != cfg.dataWidths_.end();
+                ++it) {
+                    unsigned length = *it;
+                    const std::string lengthStr = stringify(length);
 
-		hostTypes_["char" + lengthStr] = "cl_char" + lengthStr;
-		initialZeroValues_["char" + lengthStr] = zeroInitializer("char", length);
-		hostTypes_["uchar" + lengthStr] = "cl_uchar" + lengthStr;
-		initialZeroValues_["uchar" + lengthStr] = zeroInitializer("uchar", length);
+                    hostTypes_["char" + lengthStr] = "cl_char" + lengthStr;
+                    initialZeroValues_["char" + lengthStr] = zeroInitializer("char", length);
+                    hostTypes_["uchar" + lengthStr] = "cl_uchar" + lengthStr;
+                    initialZeroValues_["uchar" + lengthStr] = zeroInitializer("uchar", length);
 
-		hostTypes_["short" + lengthStr] = "cl_short" + lengthStr;
-		initialZeroValues_["short" + lengthStr] = zeroInitializer("short", length);
-		hostTypes_["ushort" + lengthStr] = "cl_ushort" + lengthStr;
-		initialZeroValues_["ushort" + lengthStr] = zeroInitializer("ushort", length);
+                    hostTypes_["short" + lengthStr] = "cl_short" + lengthStr;
+                    initialZeroValues_["short" + lengthStr] = zeroInitializer("short", length);
+                    hostTypes_["ushort" + lengthStr] = "cl_ushort" + lengthStr;
+                    initialZeroValues_["ushort" + lengthStr] = zeroInitializer("ushort", length);
 
-		hostTypes_["int" + lengthStr] = "cl_int" + lengthStr;
-		initialZeroValues_["int" + lengthStr] = zeroInitializer("int", length);
-		hostTypes_["uint" + lengthStr] = "cl_uint" + lengthStr;
-		initialZeroValues_["uint" + lengthStr] = zeroInitializer("uint", length);
+                    hostTypes_["int" + lengthStr] = "cl_int" + lengthStr;
+                    initialZeroValues_["int" + lengthStr] = zeroInitializer("int", length);
+                    hostTypes_["uint" + lengthStr] = "cl_uint" + lengthStr;
+                    initialZeroValues_["uint" + lengthStr] = zeroInitializer("uint", length);
 
-		hostTypes_["long" + lengthStr] = "cl_long" + lengthStr;
-		initialZeroValues_["long" + lengthStr] = zeroInitializer("long", length);
-		hostTypes_["ulong" + lengthStr] = "cl_ulong" + lengthStr;
-		initialZeroValues_["ulong" + lengthStr] = zeroInitializer("ulong", length);
+                    hostTypes_["long" + lengthStr] = "cl_long" + lengthStr;
+                    initialZeroValues_["long" + lengthStr] = zeroInitializer("long", length);
+                    hostTypes_["ulong" + lengthStr] = "cl_ulong" + lengthStr;
+                    initialZeroValues_["ulong" + lengthStr] = zeroInitializer("ulong", length);
 
-		hostTypes_["double" + lengthStr] = "cl_double" + lengthStr;
-		initialZeroValues_["double" + lengthStr] = zeroInitializer("double", length);
-		hostTypes_["float" + lengthStr] = "cl_float" + lengthStr;
-		initialZeroValues_["float" + lengthStr] = zeroInitializer("float", length);
-	    }
-	}
+                    hostTypes_["double" + lengthStr] = "cl_double" + lengthStr;
+                    initialZeroValues_["double" + lengthStr] = zeroInitializer("double", length);
+                    hostTypes_["float" + lengthStr] = "cl_float" + lengthStr;
+                    initialZeroValues_["float" + lengthStr] = zeroInitializer("float", length);
+            }
+        }
 
-	/// Add host mappings for builtin types:
-	/// image2d_t -> image2d_t
-	void initializeSpecialTypes()
-	{
-	    static const char *image2d = "image2d_t";
-	    static const char *image3d = "image3d_t";
-	    static const char *sampler = "sampler_t";
+        /// Add host mappings for builtin types:
+        /// image2d_t -> image2d_t
+        void initializeSpecialTypes()
+        {
+            static const char *image2d = "image2d_t";
+            static const char *image3d = "image3d_t";
+            static const char *sampler = "sampler_t";
 
-	    supportedBuiltinTypes_.insert(image2d);
-	    supportedBuiltinTypes_.insert(image3d);
-	    supportedBuiltinTypes_.insert(sampler);
+            supportedBuiltinTypes_.insert(image2d);
+            supportedBuiltinTypes_.insert(image3d);
+            supportedBuiltinTypes_.insert(sampler);
 
-	    hostTypes_[image2d] = image2d;
-	    hostTypes_[image3d] = image3d;
-	    hostTypes_[sampler] = sampler;
+            hostTypes_[image2d] = image2d;
+            hostTypes_[image3d] = image3d;
+            hostTypes_[sampler] = sampler;
 
-	    static const char *event = "event_t";
+            static const char *event = "event_t";
 
-	    unsupportedBuiltinTypes_.insert(event);
-	}
+            unsupportedBuiltinTypes_.insert(event);
+        }
 
-	struct Initializer {
-	    Initializer() {
-		initializeScalarTypes();
-		initializeVectorTypes();
-		initializeSpecialTypes();
-	    }
-	} initializer;
+        struct Initializer {
+            Initializer() {
+                initializeScalarTypes();
+                initializeVectorTypes();
+                initializeSpecialTypes();
+            }
+        } initializer;
     }
 
     const HostTypes& hostTypes()
     {
-	return hostTypes_;
+        return hostTypes_;
     }
 
     const BuiltinTypes& supportedBuiltinTypes()
     {
-	return supportedBuiltinTypes_;
+        return supportedBuiltinTypes_;
     }
 
     const BuiltinTypes& unsupportedBuiltinTypes()
     {
-	return unsupportedBuiltinTypes_;
+        return unsupportedBuiltinTypes_;
     }
 
     const InitialZeroValues& initialZeroValues()
     {
-	return initialZeroValues_;
+        return initialZeroValues_;
     }
-    
+
     clang::QualType reduceType(const clang::CompilerInstance &instance, clang::QualType type)
     {
-	clang::QualType reducedType = type;
+        clang::QualType reducedType = type;
 
-	if (reducedType.isCanonical() && !reducedType.hasQualifiers())
-	    return reducedType;
+        if (reducedType.isCanonical() && !reducedType.hasQualifiers())
+            return reducedType;
 
-	do {
-	    reducedType = type.getUnqualifiedType();
-	    const std::string reducedName = reducedType.getAsString();
-	    if (unsupportedBuiltinTypes_.count(reducedName))
-		return reducedType;
-	    if (hostTypes_.count(reducedName))
-		return reducedType;
+        do {
+            reducedType = type.getUnqualifiedType();
+            const std::string reducedName = reducedType.getAsString();
+            if (unsupportedBuiltinTypes_.count(reducedName))
+                return reducedType;
+            if (hostTypes_.count(reducedName))
+                return reducedType;
 
-	    type = type.getSingleStepDesugaredType(instance.getASTContext());
-	    type = type.getUnqualifiedType();
-	} while (type != reducedType);
+            type = type.getSingleStepDesugaredType(instance.getASTContext());
+            type = type.getUnqualifiedType();
+        } while (type != reducedType);
 
-	return reducedType;
+        return reducedType;
     }
 
     unsigned getAddressSpace(clang::Expr *expr)
     {
-	clang::ExtVectorElementExpr *vecExpr =
-	    llvm::dyn_cast<clang::ExtVectorElementExpr>(expr);
-	clang::QualType exprType = (vecExpr && vecExpr->isArrow()) ?
-	    vecExpr->getBase()->getType().getTypePtr()->getPointeeType() :
-	    expr->getType();
-	return exprType.getAddressSpace();
+        clang::ExtVectorElementExpr *vecExpr =
+            llvm::dyn_cast<clang::ExtVectorElementExpr>(expr);
+        clang::QualType exprType = (vecExpr && vecExpr->isArrow()) ?
+            vecExpr->getBase()->getType().getTypePtr()->getPointeeType() :
+            expr->getType();
+        return exprType.getAddressSpace();
     }
 }
