@@ -23,7 +23,6 @@
 
 #include "WebCLConfiguration.hpp"
 #include "WebCLHeader.hpp"
-#include "WebCLTypes.hpp"
 
 static const char *image2d = "image2d_t";
 
@@ -207,7 +206,7 @@ void WebCLHeader::emitKernel(std::ostream &out, const WebCLAnalyser::KernelInfo 
         if (i != kernel.args.begin())
             out << ",\n";
 
-        if (WebCLTypes::supportedBuiltinTypes().count(parameter.reducedTypeName)) {
+        if (parameter.imageKind != WebCLAnalyser::NOT_IMAGE || parameter.reducedTypeName == "sampler_t") {
             // images and samplers
             emitBuiltinParameter(out, parameter, index, parameter.reducedTypeName);
         } else if (parameter.pointerKind != WebCLAnalyser::NOT_POINTER) {
