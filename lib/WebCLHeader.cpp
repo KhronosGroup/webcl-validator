@@ -81,22 +81,6 @@ void WebCLHeader::emitVersion(std::ostream &out)
     emitStringEntry(out, "version", "1.0");
 }
 
-void WebCLHeader::emitHostType(
-    std::ostream &out,
-    const std::string &key, const std::string &type)
-{
-    using namespace WebCLTypes;
-    
-    HostTypes::const_iterator i = hostTypes().find(type);
-    if (i == hostTypes().end()) {
-        assert(false && "WebCLRestrictor should have prevented using unsupported kernel parameter types");
-        return;
-    }
-
-    const std::string &hostType = i->second;
-    emitStringEntry(out, key, hostType);
-}
-
 void WebCLHeader::emitParameter(
     std::ostream &out,
     const std::string &parameter, int index, const std::string &type,
@@ -111,7 +95,7 @@ void WebCLHeader::emitParameter(
 
     emitNumberEntry(out, "index", index);
     out << ",\n";
-    emitHostType(out, "host-type", type);
+    emitStringEntry(out, "type", type);
 
     for (Fields::const_iterator i = fields.begin(); i != fields.end(); ++i) {
         out << ",\n";
@@ -178,9 +162,7 @@ void WebCLHeader::emitArrayParameter(
     emitNumberEntry(out, "index", index);
     out << ",\n";
 
-    emitStringEntry(out, "host-type", "cl_mem");
-    out << ",\n";
-    emitHostType(out, "host-element-type", parameter.pointeeTypeName);
+    emitStringEntry(out, "type", parameter.reducedTypeName);
     out << ",\n";
 
     switch (parameter.pointerKind) {

@@ -59,10 +59,6 @@ private:
     /// -> "version" : "1.0"
     void emitVersion(std::ostream &out);
 
-    /// Emits a host type to the given stream:
-    /// "unsigned long" -> "host-type" : "cl_ulong"
-    void emitHostType(std::ostream &out, const std::string &key, const std::string &type);
-
     /// Contains optional "key" : "string" entries for parameters.
     typedef std::map<std::string, std::string> Fields;
 
