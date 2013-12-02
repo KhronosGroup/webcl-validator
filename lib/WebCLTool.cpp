@@ -130,7 +130,7 @@ WebCLValidatorTool::~WebCLValidatorTool()
 
 clang::FrontendAction *WebCLValidatorTool::create()
 {
-    WebCLAction *action = new WebCLValidatorAction(validatedSource_);
+    WebCLAction *action = new WebCLValidatorAction(validatedSource_, kernels_);
     action->setExtensions(extensions_);
     return action;
 }

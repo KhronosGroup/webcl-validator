@@ -51,6 +51,9 @@ public:
     /// Get transformed source
     const std::string &getTransformedSource() const;
 
+    /// Get kernel info
+    const WebCLAnalyser::KernelList &getKernels() const;
+
 private:
 
     /// Runs all error checking and analysis passes.

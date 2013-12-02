@@ -24,7 +24,9 @@
 #ifndef WEBCL_VALIDATOR_WCLV_H
 #define WEBCL_VALIDATOR_WCLV_H
 
+// These are just temporarily here, until we have the C API
 #include "../lib/WebCLArguments.hpp"
+#include "../lib/WebCLVisitor.hpp"
 
 #include <set>
 #include <string>
@@ -43,6 +45,8 @@ public:
 
     /// Returns validated source after a successful run
     const std::string &getValidatedSource() const { return validatedSource_; }
+    /// Ditto for kernel info
+    const WebCLAnalyser::KernelList &getKernels() const { return kernels_; }
 
 private:
 
@@ -51,6 +55,8 @@ private:
 
     // Stores validated source after validation is complete.
     std::string validatedSource_;
+    /// Ditto for kernel info
+    WebCLAnalyser::KernelList kernels_;
 };
 
 #endif

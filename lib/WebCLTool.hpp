@@ -26,6 +26,8 @@
 
 #include "clang/Tooling/Tooling.h"
 
+#include "WebCLVisitor.hpp"
+
 #include <string>
 #include <vector>
 
@@ -139,11 +141,15 @@ public:
 
     /// Returns validated source after a successful run
     const std::string &getValidatedSource() const { return validatedSource_; }
+    /// Ditto for kernel info
+    const WebCLAnalyser::KernelList &getKernels() const { return kernels_; }
 
 private:
 
     // Stores validated source after validation is complete.
     std::string validatedSource_;
+    // ditto for kernels
+    WebCLAnalyser::KernelList kernels_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLTOOL

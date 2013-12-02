@@ -114,6 +114,11 @@ const std::string &WebCLConsumer::getTransformedSource() const
     return printer_.getOutput();
 }
 
+const WebCLAnalyser::KernelList &WebCLConsumer::getKernels() const
+{
+    return analyser_.getKernelFunctions();
+}
+
 void WebCLConsumer::checkAndAnalyze(clang::ASTContext &context)
 {
     clang::TranslationUnitDecl *decl = context.getTranslationUnitDecl();

@@ -26,6 +26,7 @@
 
 #include "WebCLConsumer.hpp"
 #include "WebCLConfiguration.hpp"
+#include "WebCLVisitor.hpp"
 
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Frontend/FrontendAction.h"
@@ -168,7 +169,7 @@ class WebCLValidatorAction : public WebCLAction
 {
 public:
 
-    WebCLValidatorAction(std::string &validatedSource);
+    WebCLValidatorAction(std::string &validatedSource, WebCLAnalyser::KernelList &kernels);
     virtual ~WebCLValidatorAction();
 
     /// \see clang::FrontendAction
@@ -199,6 +200,8 @@ private:
     clang::Sema *sema_;
     /// Where to store transformed source after validation is complete.
     std::string &validatedSource_;
+    /// Ditto for kernel info
+    WebCLAnalyser::KernelList &kernels_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLACTION

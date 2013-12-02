@@ -294,13 +294,14 @@ void WebCLMatcher2Action::ExecuteAction()
     }
 }
 
-WebCLValidatorAction::WebCLValidatorAction(std::string &validatedSource)
+WebCLValidatorAction::WebCLValidatorAction(std::string &validatedSource, WebCLAnalyser::KernelList &kernels)
     : WebCLAction()
     , consumer_(0)
     , transformer_(0)
     , rewriter_(0)
     , sema_(0)
     , validatedSource_(validatedSource)
+    , kernels_(kernels)
 {
 }
 
@@ -328,6 +329,7 @@ void WebCLValidatorAction::ExecuteAction()
     llvm::OwningPtr<clang::Sema> sema(sema_);
     ParseAST(*sema.get());
     validatedSource_ = consumer_->getTransformedSource();
+    kernels_ = consumer_->getKernels();
 }
 
 bool WebCLValidatorAction::usesPreprocessorOnly() const
