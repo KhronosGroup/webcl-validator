@@ -400,9 +400,6 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
             transformer_.createLocalAreaZeroing(func, localLimits_);
     }
 
-    /// Export kernel signatures.
-    transformer_.createJsonHeader(kernels);
-
     // Fixes all the function signatures and calls of internal helper functions
     // with additional wcl_allocs arg
     if (hasProgramAllocations())

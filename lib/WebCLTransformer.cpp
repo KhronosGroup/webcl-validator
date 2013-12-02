@@ -22,7 +22,6 @@
 */
 
 #include "WebCLDebug.hpp"
-#include "WebCLHeader.hpp"
 #include "WebCLTransformer.hpp"
 #include "WebCLVisitor.hpp"
 #include "WebCLPass.hpp"
@@ -502,12 +501,6 @@ bool WebCLTransformer::rewrite()
     flushQueuedTransformations();
 
     return status;
-}
-
-void WebCLTransformer::createJsonHeader(const WebCLAnalyser::KernelList &kernels)
-{
-    WebCLHeader header;
-    header.emitHeader(jsonPrologue_, kernels);
 }
 
 std::stringstream& WebCLTransformer::functionPrologue(
@@ -1311,7 +1304,6 @@ std::string WebCLTransformer::getWclAddrCheckMacroDefinition(unsigned aSpaceNum,
 
 void WebCLTransformer::emitPrologue(std::ostream &out)
 {
-    out << jsonPrologue_.str();
     out << preModulePrologue_.str();
     out << modulePrologue_.str();
     emitGeneralCode(out);

@@ -29,8 +29,7 @@
 #include <set>
 #include <string>
 
-// temporary include for the intermediate C++ representation of kernel arg info
-#include "WebCLVisitor.hpp"
+#include <wclv/wclv.h>
 
 /// Emits JSON headers for kernels.
 class WebCLHeader

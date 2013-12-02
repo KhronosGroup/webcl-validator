@@ -26,7 +26,6 @@ llvm_process_sources(libwclv_srcs
   WebCLBuiltins.cpp
   WebCLConfiguration.cpp
   WebCLConsumer.cpp
-  WebCLHeader.cpp
   WebCLHelper.cpp
   WebCLMatcher.cpp
   WebCLPass.cpp

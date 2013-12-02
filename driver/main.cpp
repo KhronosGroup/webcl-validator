@@ -30,6 +30,8 @@
 #include <set>
 #include <string>
 
+#include "WebCLHeader.hpp"
+
 int main(int argc, char const* argv[])
 {
     std::set<std::string> help;
@@ -80,6 +82,8 @@ int main(int argc, char const* argv[])
 
     if (exitStatus == 0) {
         // success, print output
+        WebCLHeader header;
+        header.emitHeader(std::cout, validator.getKernels());
         std::cout << validator.getValidatedSource();
     }
 

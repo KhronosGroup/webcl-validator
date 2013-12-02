@@ -4,6 +4,7 @@ set(LLVM_LINK_COMPONENTS
 
 add_clang_executable(webcl-validator
   main.cpp
+  WebCLHeader.cpp
 )
 
 target_link_libraries(webcl-validator
