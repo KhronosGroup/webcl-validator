@@ -21,14 +21,17 @@
 ** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 */
 
-#include "WebCLConfiguration.hpp"
 #include "WebCLHeader.hpp"
 
 static const char *image2d = "image2d_t";
 
-WebCLHeader::WebCLHeader(WebCLConfiguration &cfg)
-    : cfg_(cfg)
-    , indentation_("    ")
+// must be the same as WebCLConfiguration::variablePrefix_
+static const char *sizeParameterPrefix = "_wcl";
+// must be the same as WebCLConfiguration::sizeParameterType_
+static const char *sizeParameterType = "unsigned long";
+
+WebCLHeader::WebCLHeader()
+    : indentation_("    ")
     , level_(0)
 {
     // nothing
@@ -138,13 +141,11 @@ void WebCLHeader::emitBuiltinParameter(
     emitParameter(out, parameter.name, index, type, fields);
 }
 
-void WebCLHeader::emitSizeParameter(
-    std::ostream &out,
-    const WebCLAnalyser::KernelArgInfo &parameter, int index)
-{
-    const std::string parameterName = cfg_.getNameOfSizeParameter(parameter.name);
-    const std::string typeName = cfg_.sizeParameterType_;
-    emitParameter(out, parameterName, index, typeName);
+namespace {
+    std::string buildSizeParameterName(const WebCLAnalyser::KernelArgInfo &arrayParam)
+    {
+        return std::string(sizeParameterPrefix) + "_" + arrayParam.name + "_size";
+    }
 }
 
 void WebCLHeader::emitArrayParameter(
@@ -180,7 +181,7 @@ void WebCLHeader::emitArrayParameter(
     }
     out << ",\n";
 
-    emitStringEntry(out, "size-parameter", cfg_.getNameOfSizeParameter(parameter.name));
+    emitStringEntry(out, "size-parameter", buildSizeParameterName(parameter));
     out << "\n";
 
     --level_;
@@ -214,7 +215,7 @@ void WebCLHeader::emitKernel(std::ostream &out, const WebCLAnalyser::KernelInfo 
             emitArrayParameter(out, parameter, index);
             ++index;
             out << ",\n";
-            emitSizeParameter(out, parameter, index);
+            emitParameter(out, buildSizeParameterName(parameter), index, sizeParameterType);
         } else {
             // primitives
             emitParameter(out, parameter.name, index, parameter.reducedTypeName);

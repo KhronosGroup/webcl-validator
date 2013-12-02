@@ -32,14 +32,12 @@
 // temporary include for the intermediate C++ representation of kernel arg info
 #include "WebCLVisitor.hpp"
 
-class WebCLConfiguration;
-
 /// Emits JSON headers for kernels.
 class WebCLHeader
 {
 public:
 
-    WebCLHeader(WebCLConfiguration &cfg);
+    WebCLHeader();
     ~WebCLHeader();
 
     /// Creates a JSON header for given set of functions and writes it
@@ -82,14 +80,6 @@ private:
         std::ostream &out,
         const WebCLAnalyser::KernelArgInfo &parameter, int index, const std::string &type);
 
-    /// Emits a size parameter for the given memory object parameter:
-    /// "__global int *foo", 0
-    /// ->
-    /// "_wcl_foo_size" : { "index" : 0, "host-type" : "cl_ulong" }
-    void emitSizeParameter(
-        std::ostream &out,
-        const WebCLAnalyser::KernelArgInfo &parameter, int index);
-
     /// Emits a memory object parameter to the given stream:
     /// "__global int *foo", 0
     /// ->
@@ -122,8 +112,6 @@ private:
     /// Emits correct indentation based on current indentation level.
     void emitIndentation(std::ostream &out) const;
 
-    /// Contains information about recurring names.
-    WebCLConfiguration &cfg_;
     /// Basic tab width for indentation.
     const std::string indentation_;
     /// Current indentation level.
