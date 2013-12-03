@@ -244,9 +244,6 @@ public:
       PointerKind pointerKind;
       /// Is this an image arg, and if so, with which access qualifiers
       ImageKind imageKind;
-      /// For pointer args, the cleaned type name of the pointed-to type
-      std::string pointeeTypeName;
-      /// TODO add more info
 
       KernelArgInfo(clang::CompilerInstance &instance, clang::ParmVarDecl *decl);
   };
