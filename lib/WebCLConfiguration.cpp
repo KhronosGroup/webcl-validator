@@ -58,7 +58,7 @@ WebCLConfiguration::WebCLConfiguration()
     , minSuffix_("min")
     , maxSuffix_("max")
     , indentation_("    ")
-    , sizeParameterType_("unsigned long")
+    , sizeParameterType_("ulong")
 
     , privateAddressSpace_("private")
     , localAddressSpace_("local")

@@ -23,7 +23,7 @@ void set_pointed_value(
 }
 
 __kernel void access_pointer(
-    // CHECK: __global int *array, unsigned long _wcl_array_size)
+    // CHECK: __global int *array, ulong _wcl_array_size)
     __global int *array)
 {
     // CHECK: _WclProgramAllocations _wcl_allocations_allocation = {

@@ -28,7 +28,7 @@ static const char *image2d = "image2d_t";
 // must be the same as WebCLConfiguration::variablePrefix_
 static const char *sizeParameterPrefix = "_wcl";
 // must be the same as WebCLConfiguration::sizeParameterType_
-static const char *sizeParameterType = "unsigned long";
+static const char *sizeParameterType = "ulong";
 
 WebCLHeader::WebCLHeader()
     : indentation_("    ")

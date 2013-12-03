@@ -403,6 +403,25 @@ bool WebCLAnalyser::handleUnaryOperator(clang::UnaryOperator *expr)
   return true;
 }
 
+namespace {
+    std::map<std::string, std::string> typeShorthands()
+    {
+        static std::map<std::string, std::string> typeShorthands_;
+        if (typeShorthands_.empty()) {
+            typeShorthands_["unsigned char"] = "uchar";
+            typeShorthands_["unsigned short"] = "ushort";
+            typeShorthands_["unsigned int"] = "uint";
+            typeShorthands_["unsigned long"] = "ulong";
+
+            typeShorthands_["unsigned char *"] = "uchar *";
+            typeShorthands_["unsigned short *"] = "ushort *";
+            typeShorthands_["unsigned int *"] = "uint *";
+            typeShorthands_["unsigned long *"] = "ulong *";
+        }
+        return typeShorthands_;
+    }
+}
+
 WebCLAnalyser::KernelArgInfo::KernelArgInfo(clang::CompilerInstance &instance, clang::ParmVarDecl *decl)
     : decl(decl)
     , name(decl->getName().str())
@@ -410,6 +429,10 @@ WebCLAnalyser::KernelArgInfo::KernelArgInfo(clang::CompilerInstance &instance, c
     , pointerKind(NOT_POINTER)
     , imageKind(NOT_IMAGE)
 {
+    if (typeShorthands().count(reducedTypeName)) {
+        reducedTypeName = typeShorthands()[reducedTypeName];
+    }
+
     if (decl->getType().getTypePtr()->isPointerType()) {
         switch (decl->getType().getTypePtr()->getPointeeType().getAddressSpace()) {
         case clang::LangAS::opencl_global:
