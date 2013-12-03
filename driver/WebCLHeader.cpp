@@ -23,6 +23,7 @@
 
 #include "WebCLHeader.hpp"
 
+#if 0
 static const char *image2d = "image2d_t";
 
 // must be the same as WebCLConfiguration::variablePrefix_
@@ -259,3 +260,4 @@ void WebCLHeader::emitIndentation(std::ostream &out) const
     for (unsigned int i = 0; i < level_; ++i)
         out << indentation_;
 }
+#endif

@@ -31,6 +31,8 @@
 
 #include <wclv/wclv.h>
 
+// Disabled until there is C API for kernel info
+#if 0
 /// Emits JSON headers for kernels.
 class WebCLHeader
 {
@@ -118,3 +120,4 @@ private:
 };
 
 #endif // WEBCLVALIDATOR_WEBCLHEADER
+#endif

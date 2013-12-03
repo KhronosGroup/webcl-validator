@@ -23,14 +23,16 @@
 
 #include <wclv/wclv.h>
 
+#include <cassert>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <iterator>
 #include <set>
 #include <string>
+#include <vector>
 
-#include "WebCLHeader.hpp"
+//#include "WebCLHeader.hpp"
 
 int main(int argc, char const* argv[])
 {
@@ -70,22 +72,63 @@ int main(int argc, char const* argv[])
         ifs.read(&inputSource[0], inputSource.size());
     }
 
-    std::set<std::string> extensions;
-    extensions.insert("cl_khr_fp64");
-    extensions.insert("cl_khr_fp16");
-    extensions.insert("cl_khr_gl_sharing");
+    // Enable usual extensions
+    std::vector<const char *> extensions;
+    extensions.push_back("cl_khr_fp64");
+    extensions.push_back("cl_khr_fp16");
+    extensions.push_back("cl_khr_gl_sharing");
+    extensions.push_back(0);
 
-    // Only pass the rest of the arguments to the lib
-    WebCLValidator validator(inputSource, extensions, argc - 2, argv + 2);
-
-    int exitStatus = validator.run();
-
-    if (exitStatus == 0) {
-        // success, print output
-        WebCLHeader header;
-        header.emitHeader(std::cout, validator.getKernels());
-        std::cout << validator.getValidatedSource();
+    // Parse user defines
+    std::vector<const char *> userDefines;
+    for (int i = 2; i < argc; ++i) {
+        char const *option = argv[i];
+        if (!std::string(option).substr(0, 2).compare("-D"))
+            userDefines.push_back(option + 2);
     }
+    userDefines.push_back(0);
+
+    // Run validator
+    cl_int err = CL_SUCCESS;
+    wclv_program prog = wclvValidate(inputSource.c_str(), &extensions[0], &userDefines[0], NULL, NULL, &err);
+    if (!prog) {
+        std::cerr << "Failed to call validator: " << err << '\n';
+        return EXIT_FAILURE;
+    }
+
+    int exitStatus = EXIT_SUCCESS;
+    if (wclvGetProgramStatus(prog) == WCLV_PROGRAM_ACCEPTED ||
+        wclvGetProgramStatus(prog) == WCLV_PROGRAM_ACCEPTED_WITH_WARNINGS) {
+        // Success, print output
+
+        // TODO: print warnings, if any
+        // TODO: print JSON header
+
+        // Determine source size
+        size_t sourceSize = 0;
+        err = wclvProgramGetValidatedSource(prog, 0, NULL, &sourceSize);
+        assert(err == CL_SUCCESS);
+
+        // Get source
+        std::string validatedSource(sourceSize, '\0');
+        err = wclvProgramGetValidatedSource(prog, validatedSource.size(), &validatedSource[0], NULL);
+        assert(err == CL_SUCCESS);
+
+        // Strip terminating NUL, we don't need it
+        assert(validatedSource[validatedSource.size() - 1] == '\0');
+        validatedSource.erase(validatedSource.size() - 1);
+
+        // Print source
+        std::cout << validatedSource;
+    } else {
+        // Validation failed
+
+        // TODO: print errors
+
+        exitStatus = EXIT_FAILURE;
+    }
+
+    wclvReleaseProgram(prog);
 
     return exitStatus;
 }
