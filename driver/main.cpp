@@ -88,6 +88,9 @@ int main(int argc, char const* argv[])
     }
     userDefines.push_back(0);
 
+    // TODO: handle arguments like -ferror-limit as webcl-validator CLI specific options;
+    // that specific one should affect error printing
+
     // Run validator
     cl_int err = CL_SUCCESS;
     wclv_program prog = wclvValidate(inputSource.c_str(), &extensions[0], &userDefines[0], NULL, NULL, &err);
