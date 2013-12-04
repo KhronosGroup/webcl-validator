@@ -31,8 +31,6 @@
 
 #include <wclv/wclv.h>
 
-// Disabled until there is C API for kernel info
-#if 0
 /// Emits JSON headers for kernels.
 class WebCLHeader
 {
@@ -43,7 +41,7 @@ public:
 
     /// Creates a JSON header for given set of functions and writes it
     /// to the given stream.
-    void emitHeader(std::ostream &out, const WebCLAnalyser::KernelList &kernels);
+    void emitHeader(std::ostream &out, wclv_program program);
 
 private:
 
@@ -72,7 +70,8 @@ private:
         std::ostream &out,
         const std::string &parameter, int index, const std::string &type,
         const Fields &fields = Fields());
-
+    // Disabled until there is C API for kernel info
+#if 0
     /// Emits builtin parameter to the given stream:
     /// "__read_only image2d_t img", 0
     /// ->
@@ -100,6 +99,7 @@ private:
     /// ->
     /// "foo" : { ... }
     void emitKernel(std::ostream &out, const WebCLAnalyser::KernelInfo &kernel);
+    #endif
 
     /// Emits kernels and their parameters to the given stream:
     /// "__kernel void foo(...); __kernel void bar(...)"
@@ -108,7 +108,7 @@ private:
     ///               "foo" : { ... },
     ///               "bar" : { ... }
     ///             }
-    void emitKernels(std::ostream &out, const WebCLAnalyser::KernelList &kernels);
+    void emitKernels(std::ostream &out, wclv_program program);
 
     /// Emits correct indentation based on current indentation level.
     void emitIndentation(std::ostream &out) const;
@@ -120,4 +120,3 @@ private:
 };
 
 #endif // WEBCLVALIDATOR_WEBCLHEADER
-#endif

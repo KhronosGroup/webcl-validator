@@ -32,7 +32,7 @@
 #include <string>
 #include <vector>
 
-//#include "WebCLHeader.hpp"
+#include "WebCLHeader.hpp"
 
 int main(int argc, char const* argv[])
 {
@@ -105,7 +105,10 @@ int main(int argc, char const* argv[])
         // Success, print output
 
         // TODO: print warnings, if any
-        // TODO: print JSON header
+
+        // Print JSON header
+        WebCLHeader header;
+        header.emitHeader(std::cout, prog);
 
         // Determine source size
         size_t sourceSize = 0;

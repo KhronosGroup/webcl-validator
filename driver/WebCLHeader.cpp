@@ -23,7 +23,6 @@
 
 #include "WebCLHeader.hpp"
 
-#if 0
 static const char *image2d = "image2d_t";
 
 // must be the same as WebCLConfiguration::variablePrefix_
@@ -42,7 +41,7 @@ WebCLHeader::~WebCLHeader()
 {
 }
 
-void WebCLHeader::emitHeader(std::ostream &out, const WebCLAnalyser::KernelList &kernels)
+void WebCLHeader::emitHeader(std::ostream &out, wclv_program program)
 {
     out << "\n";
     emitIndentation(out);
@@ -53,7 +52,7 @@ void WebCLHeader::emitHeader(std::ostream &out, const WebCLAnalyser::KernelList 
     ++level_;
     emitVersion(out);
     out << ",\n";
-    emitKernels(out, kernels);
+    emitKernels(out, program);
     out << "\n";
 
     --level_;
@@ -112,6 +111,7 @@ void WebCLHeader::emitParameter(
     --level_;
 }
 
+#if 0
 void WebCLHeader::emitBuiltinParameter(
     std::ostream &out,
     const WebCLAnalyser::KernelArgInfo &parameter, int index, const std::string &type)
@@ -230,8 +230,9 @@ void WebCLHeader::emitKernel(std::ostream &out, const WebCLAnalyser::KernelInfo 
     out << "}";
     --level_;
 }
+#endif
 
-void WebCLHeader::emitKernels(std::ostream &out, const WebCLAnalyser::KernelList &kernels)
+void WebCLHeader::emitKernels(std::ostream &out, wclv_program program)
 {
     emitIndentation(out);
     out << "\"kernels\" :\n";
@@ -240,6 +241,8 @@ void WebCLHeader::emitKernels(std::ostream &out, const WebCLAnalyser::KernelList
     out << "{\n";
     ++level_;
 
+    // TODO: iterate over kernels in program
+    /*
     for (WebCLAnalyser::KernelList::const_iterator i = kernels.begin(); i != kernels.end(); ++i) {
         const WebCLAnalyser::KernelInfo &kernel = *i;
 
@@ -248,6 +251,7 @@ void WebCLHeader::emitKernels(std::ostream &out, const WebCLAnalyser::KernelList
         emitKernel(out, kernel);
     }
     out << "\n";
+    */
 
     --level_;
     emitIndentation(out);
@@ -260,4 +264,3 @@ void WebCLHeader::emitIndentation(std::ostream &out) const
     for (unsigned int i = 0; i < level_; ++i)
         out << indentation_;
 }
-#endif
