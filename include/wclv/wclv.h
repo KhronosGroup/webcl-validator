@@ -66,6 +66,18 @@ typedef enum {
 WCLV_API wclv_program_status WCLV_CALL wclvGetProgramStatus(
     wclv_program program);
 
+// Get number of kernels found in program
+WCLV_API cl_int WCLV_CALL wclvGetProgramKernelCount(
+    wclv_program program);
+
+// Get name of nth kernel in program
+WCLV_API cl_int WCLV_CALL wclvGetProgramKernelName(
+    wclv_program program,
+    cl_uint n,
+    size_t name_buf_size,
+    char *name_buf,
+    size_t *name_size_ret);
+
 // Get validated source, ready to pass on to compiler
 WCLV_API cl_int WCLV_CALL wclvProgramGetValidatedSource(
     wclv_program program,

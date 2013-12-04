@@ -93,13 +93,13 @@ private:
     void emitArrayParameter(
         std::ostream &out,
         const WebCLAnalyser::KernelArgInfo &parameter, int index);
+    #endif
 
     /// Emits kernel and its parameters to the given stream:
     /// "__kernel void foo(...)"
     /// ->
     /// "foo" : { ... }
-    void emitKernel(std::ostream &out, const WebCLAnalyser::KernelInfo &kernel);
-    #endif
+    void emitKernel(std::ostream &out, wclv_program program, cl_int n);
 
     /// Emits kernels and their parameters to the given stream:
     /// "__kernel void foo(...); __kernel void bar(...)"

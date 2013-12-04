@@ -23,6 +23,8 @@
 
 #include "WebCLHeader.hpp"
 
+#include <cassert>
+
 static const char *image2d = "image2d_t";
 
 // must be the same as WebCLConfiguration::variablePrefix_
@@ -190,16 +192,30 @@ void WebCLHeader::emitArrayParameter(
     out << "}";
     --level_;
 }
+#endif
 
-void WebCLHeader::emitKernel(std::ostream &out, const WebCLAnalyser::KernelInfo &kernel)
+void WebCLHeader::emitKernel(std::ostream &out, wclv_program program, cl_int n)
 {
+    cl_int err = CL_SUCCESS;
+    size_t nameSize = 0;
+
+    err = wclvGetProgramKernelName(program, n, 0, NULL, &nameSize);
+    assert(err == CL_SUCCESS);
+
+    std::string name(nameSize, '\0');
+    err = wclvGetProgramKernelName(program, n, name.size(), &name[0], NULL);
+    assert(err == CL_SUCCESS);
+    name.erase(name.size() - 1);
+
     emitIndentation(out);
-    out << "\"" << kernel.name << "\"" << " :\n";
+    out << "\"" << name << "\"" << " :\n";
     ++level_;
     emitIndentation(out);
     out << "{\n";
     ++level_;
 
+    // TODO: emit kernel arguments
+    /*
     unsigned index = 0;
     for (std::vector<WebCLAnalyser::KernelArgInfo>::const_iterator i = kernel.args.begin();
         i != kernel.args.end(); ++i) {
@@ -222,7 +238,7 @@ void WebCLHeader::emitKernel(std::ostream &out, const WebCLAnalyser::KernelInfo 
             emitParameter(out, parameter.name, index, parameter.reducedTypeName);
         }
         ++index;
-    }
+    }*/
     out << "\n";
 
     --level_;
@@ -230,7 +246,6 @@ void WebCLHeader::emitKernel(std::ostream &out, const WebCLAnalyser::KernelInfo 
     out << "}";
     --level_;
 }
-#endif
 
 void WebCLHeader::emitKernels(std::ostream &out, wclv_program program)
 {
@@ -241,17 +256,15 @@ void WebCLHeader::emitKernels(std::ostream &out, wclv_program program)
     out << "{\n";
     ++level_;
 
-    // TODO: iterate over kernels in program
-    /*
-    for (WebCLAnalyser::KernelList::const_iterator i = kernels.begin(); i != kernels.end(); ++i) {
-        const WebCLAnalyser::KernelInfo &kernel = *i;
-
-        if (i != kernels.begin())
+    cl_int numKernels = wclvGetProgramKernelCount(program);
+    assert(numKernels >= 0);
+    for (cl_int i = 0; i < numKernels; ++i) {
+        if (i != 0)
             out << ",\n";
-        emitKernel(out, kernel);
+
+        emitKernel(out, program, i);
     }
     out << "\n";
-    */
 
     --level_;
     emitIndentation(out);

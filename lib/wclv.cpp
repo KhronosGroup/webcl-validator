@@ -191,6 +191,18 @@ WCLV_API extern "C" wclv_program_status WCLV_CALL wclvGetProgramStatus(
     return program->getExitStatus() == EXIT_SUCCESS ? WCLV_PROGRAM_ACCEPTED : WCLV_PROGRAM_ILLEGAL;
 }
 
+WCLV_API extern "C" cl_int WCLV_CALL wclvGetProgramKernelCount(
+    wclv_program program)
+{
+    if (!program)
+        return CL_INVALID_PROGRAM;
+
+    if (program->getExitStatus() != EXIT_SUCCESS)
+        return 0;
+
+    return program->getKernels().size();
+}
+
 namespace
 {
     cl_int returnString(const std::string &ret, size_t ret_buf_size, char *ret_buf, size_t *size_ret)
@@ -208,6 +220,25 @@ namespace
 
         return CL_SUCCESS;
     }
+}
+
+WCLV_API extern "C" cl_int WCLV_CALL wclvGetProgramKernelName(
+    wclv_program program,
+    cl_uint n,
+    size_t name_buf_size,
+    char *name_buf,
+    size_t *name_size_ret)
+{
+    if (!program)
+        return CL_INVALID_PROGRAM;
+
+    if (n >= program->getKernels().size())
+        return CL_INVALID_VALUE;
+
+    if (name_buf && !name_buf_size)
+        return CL_INVALID_VALUE;
+
+    return returnString(program->getKernels()[n].name, name_buf_size, name_buf, name_size_ret);
 }
 
 WCLV_API cl_int WCLV_CALL wclvProgramGetValidatedSource(
