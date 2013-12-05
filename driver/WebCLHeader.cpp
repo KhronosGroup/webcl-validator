@@ -43,7 +43,7 @@ WebCLHeader::~WebCLHeader()
 {
 }
 
-void WebCLHeader::emitHeader(std::ostream &out, wclv_program program)
+void WebCLHeader::emitHeader(std::ostream &out, clv_program program)
 {
     out << "\n";
     emitIndentation(out);
@@ -192,16 +192,16 @@ void WebCLHeader::emitArrayParameter(
     --level_;
 }
 
-void WebCLHeader::emitKernel(std::ostream &out, wclv_program program, cl_int kernel)
+void WebCLHeader::emitKernel(std::ostream &out, clv_program program, cl_int kernel)
 {
     cl_int err = CL_SUCCESS;
     size_t nameSize = 0;
 
-    err = wclvGetProgramKernelName(program, kernel, 0, NULL, &nameSize);
+    err = clvGetProgramKernelName(program, kernel, 0, NULL, &nameSize);
     assert(err == CL_SUCCESS);
 
     std::string name(nameSize, '\0');
-    err = wclvGetProgramKernelName(program, kernel, name.size(), &name[0], NULL);
+    err = clvGetProgramKernelName(program, kernel, name.size(), &name[0], NULL);
     assert(err == CL_SUCCESS);
     name.erase(name.size() - 1);
 
@@ -212,7 +212,7 @@ void WebCLHeader::emitKernel(std::ostream &out, wclv_program program, cl_int ker
     out << "{\n";
     ++level_;
 
-    cl_int numArgs = wclvGetKernelArgCount(program, kernel);
+    cl_int numArgs = clvGetKernelArgCount(program, kernel);
     assert(numArgs >= 0);
     unsigned index = 0;
     for (cl_int arg = 0; arg < numArgs; ++arg) {
@@ -220,31 +220,31 @@ void WebCLHeader::emitKernel(std::ostream &out, wclv_program program, cl_int ker
             out << ",\n";
 
         // Get argument name
-        err = wclvGetKernelArgName(program, kernel, arg, 0, NULL, &nameSize);
+        err = clvGetKernelArgName(program, kernel, arg, 0, NULL, &nameSize);
         assert(err == CL_SUCCESS);
         name.resize(nameSize, '\0');
 
-        err = wclvGetKernelArgName(program, kernel, arg, name.size(), &name[0], NULL);
+        err = clvGetKernelArgName(program, kernel, arg, name.size(), &name[0], NULL);
         assert(err == CL_SUCCESS);
         name.erase(name.size() - 1);
 
         // Get argument type
         size_t typeSize = 0;
 
-        err = wclvGetKernelArgType(program, kernel, arg, 0, NULL, &typeSize);
+        err = clvGetKernelArgType(program, kernel, arg, 0, NULL, &typeSize);
         assert(err == CL_SUCCESS);
 
         std::string type(typeSize, '\0');
-        err = wclvGetKernelArgType(program, kernel, arg, type.size(), &type[0], NULL);
+        err = clvGetKernelArgType(program, kernel, arg, type.size(), &type[0], NULL);
         assert(err == CL_SUCCESS);
         type.erase(type.size() - 1);
 
-        if (wclvKernelArgIsImage(program, kernel, arg) || type == "sampler_t") {
+        if (clvKernelArgIsImage(program, kernel, arg) || type == "sampler_t") {
             // images and samplers
-            emitBuiltinParameter(out, name, index, type, wclvGetKernelArgAccessQual(program, kernel, arg));
-        } else if (wclvKernelArgIsPointer(program, kernel, arg)) {
+            emitBuiltinParameter(out, name, index, type, clvGetKernelArgAccessQual(program, kernel, arg));
+        } else if (clvKernelArgIsPointer(program, kernel, arg)) {
             // memory objects
-            emitArrayParameter(out, name, index, type, wclvGetKernelArgAddressQual(program, kernel, arg));
+            emitArrayParameter(out, name, index, type, clvGetKernelArgAddressQual(program, kernel, arg));
             ++index;
             out << ",\n";
             emitParameter(out, buildSizeParameterName(name), index, sizeParameterType);
@@ -262,7 +262,7 @@ void WebCLHeader::emitKernel(std::ostream &out, wclv_program program, cl_int ker
     --level_;
 }
 
-void WebCLHeader::emitKernels(std::ostream &out, wclv_program program)
+void WebCLHeader::emitKernels(std::ostream &out, clv_program program)
 {
     emitIndentation(out);
     out << "\"kernels\" :\n";
@@ -271,7 +271,7 @@ void WebCLHeader::emitKernels(std::ostream &out, wclv_program program)
     out << "{\n";
     ++level_;
 
-    cl_int numKernels = wclvGetProgramKernelCount(program);
+    cl_int numKernels = clvGetProgramKernelCount(program);
     assert(numKernels >= 0);
     for (cl_int i = 0; i < numKernels; ++i) {
         if (i != 0)

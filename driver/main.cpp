@@ -21,7 +21,7 @@
 ** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 */
 
-#include <wclv/wclv.h>
+#include <clv/clv.h>
 
 #include <cassert>
 #include <fstream>
@@ -93,15 +93,15 @@ int main(int argc, char const* argv[])
 
     // Run validator
     cl_int err = CL_SUCCESS;
-    wclv_program prog = wclvValidate(inputSource.c_str(), &extensions[0], &userDefines[0], NULL, NULL, &err);
+    clv_program prog = clvValidate(inputSource.c_str(), &extensions[0], &userDefines[0], NULL, NULL, &err);
     if (!prog) {
         std::cerr << "Failed to call validator: " << err << '\n';
         return EXIT_FAILURE;
     }
 
     int exitStatus = EXIT_SUCCESS;
-    if (wclvGetProgramStatus(prog) == WCLV_PROGRAM_ACCEPTED ||
-        wclvGetProgramStatus(prog) == WCLV_PROGRAM_ACCEPTED_WITH_WARNINGS) {
+    if (clvGetProgramStatus(prog) == CLV_PROGRAM_ACCEPTED ||
+        clvGetProgramStatus(prog) == CLV_PROGRAM_ACCEPTED_WITH_WARNINGS) {
         // Success, print output
 
         // TODO: print warnings, if any
@@ -112,12 +112,12 @@ int main(int argc, char const* argv[])
 
         // Determine source size
         size_t sourceSize = 0;
-        err = wclvProgramGetValidatedSource(prog, 0, NULL, &sourceSize);
+        err = clvProgramGetValidatedSource(prog, 0, NULL, &sourceSize);
         assert(err == CL_SUCCESS);
 
         // Get source
         std::string validatedSource(sourceSize, '\0');
-        err = wclvProgramGetValidatedSource(prog, validatedSource.size(), &validatedSource[0], NULL);
+        err = clvProgramGetValidatedSource(prog, validatedSource.size(), &validatedSource[0], NULL);
         assert(err == CL_SUCCESS);
 
         // Strip terminating NUL, we don't need it
@@ -134,7 +134,7 @@ int main(int argc, char const* argv[])
         exitStatus = EXIT_FAILURE;
     }
 
-    wclvReleaseProgram(prog);
+    clvReleaseProgram(prog);
 
     return exitStatus;
 }

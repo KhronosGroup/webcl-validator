@@ -28,7 +28,7 @@
 #include <map>
 #include <string>
 
-#include <wclv/wclv.h>
+#include <clv/clv.h>
 
 /// Emits JSON headers for kernels.
 class WebCLHeader
@@ -40,7 +40,7 @@ public:
 
     /// Creates a JSON header for given set of functions and writes it
     /// to the given stream.
-    void emitHeader(std::ostream &out, wclv_program program);
+    void emitHeader(std::ostream &out, clv_program program);
 
 private:
 
@@ -98,7 +98,7 @@ private:
     /// "__kernel void foo(...)"
     /// ->
     /// "foo" : { ... }
-    void emitKernel(std::ostream &out, wclv_program program, cl_int n);
+    void emitKernel(std::ostream &out, clv_program program, cl_int n);
 
     /// Emits kernels and their parameters to the given stream:
     /// "__kernel void foo(...); __kernel void bar(...)"
@@ -107,7 +107,7 @@ private:
     ///               "foo" : { ... },
     ///               "bar" : { ... }
     ///             }
-    void emitKernels(std::ostream &out, wclv_program program);
+    void emitKernels(std::ostream &out, clv_program program);
 
     /// Emits correct indentation based on current indentation level.
     void emitIndentation(std::ostream &out) const;

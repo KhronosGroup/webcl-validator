@@ -83,7 +83,7 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
     close(headerDescriptor);
   
     char const *preprocessorInvocation[] = {
-        "wclv", inputFilename, "--"
+        "libclv", inputFilename, "--"
     };
     const int preprocessorInvocationSize =
         sizeof(preprocessorInvocation) / sizeof(preprocessorInvocation[0]);
@@ -94,7 +94,7 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
         sizeof(preprocessorOptions) / sizeof(preprocessorOptions[0]);
 
     char const *validatorInvocation[] = {
-        "wclv", NULL, "--"
+        "libclv", NULL, "--"
     };
     const int validatorInvocationSize =
         sizeof(validatorInvocation) / sizeof(validatorInvocation[0]);

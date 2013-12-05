@@ -21,7 +21,7 @@
 ** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 */
 
-#include <wclv/wclv.h>
+#include <clv/clv.h>
 
 #include "WebCLTool.hpp"
 
@@ -147,11 +147,11 @@ void WebCLValidator::run()
     exitStatus_ = validatorStatus;
 }
 
-WCLV_API extern "C" wclv_program WCLV_CALL wclvValidate(
+CLV_API extern "C" clv_program CLV_CALL clvValidate(
     const char *input_source,
     const char **active_extensions,
     const char **user_defines,
-    void (CL_CALLBACK *pfn_notify)(wclv_program program, void *user_data),
+    void (CL_CALLBACK *pfn_notify)(clv_program program, void *user_data),
     void *notify_data,
     cl_int *errcode_ret)
 {
@@ -184,15 +184,15 @@ WCLV_API extern "C" wclv_program WCLV_CALL wclvValidate(
     return validator;
 }
 
-WCLV_API extern "C" wclv_program_status WCLV_CALL wclvGetProgramStatus(
-    wclv_program program)
+CLV_API extern "C" clv_program_status CLV_CALL clvGetProgramStatus(
+    clv_program program)
 {
     // TODO: make consider callback not yet called, errors, warnings
-    return program->getExitStatus() == EXIT_SUCCESS ? WCLV_PROGRAM_ACCEPTED : WCLV_PROGRAM_ILLEGAL;
+    return program->getExitStatus() == EXIT_SUCCESS ? CLV_PROGRAM_ACCEPTED : CLV_PROGRAM_ILLEGAL;
 }
 
-WCLV_API extern "C" cl_int WCLV_CALL wclvGetProgramKernelCount(
-    wclv_program program)
+CLV_API extern "C" cl_int CLV_CALL clvGetProgramKernelCount(
+    clv_program program)
 {
     if (!program)
         return CL_INVALID_PROGRAM;
@@ -222,8 +222,8 @@ namespace
     }
 }
 
-WCLV_API extern "C" cl_int WCLV_CALL wclvGetProgramKernelName(
-    wclv_program program,
+CLV_API extern "C" cl_int CLV_CALL clvGetProgramKernelName(
+    clv_program program,
     cl_uint n,
     size_t name_buf_size,
     char *name_buf,
@@ -243,8 +243,8 @@ WCLV_API extern "C" cl_int WCLV_CALL wclvGetProgramKernelName(
     return returnString(kernels[n].name, name_buf_size, name_buf, name_size_ret);
 }
 
-WCLV_API extern "C" cl_int WCLV_CALL wclvGetKernelArgCount(
-    wclv_program program,
+CLV_API extern "C" cl_int CLV_CALL clvGetKernelArgCount(
+    clv_program program,
     cl_uint n)
 {
     if (!program)
@@ -258,8 +258,8 @@ WCLV_API extern "C" cl_int WCLV_CALL wclvGetKernelArgCount(
     return kernels[n].args.size();
 }
 
-WCLV_API extern "C" cl_int WCLV_CALL wclvGetKernelArgName(
-    wclv_program program,
+CLV_API extern "C" cl_int CLV_CALL clvGetKernelArgName(
+    clv_program program,
     cl_uint kernel,
     cl_uint arg,
     size_t name_buf_size,
@@ -280,8 +280,8 @@ WCLV_API extern "C" cl_int WCLV_CALL wclvGetKernelArgName(
     return returnString(kernels[kernel].args[arg].name, name_buf_size, name_buf, name_size_ret);
 }
 
-WCLV_API extern "C" cl_int WCLV_CALL wclvGetKernelArgType(
-    wclv_program program,
+CLV_API extern "C" cl_int CLV_CALL clvGetKernelArgType(
+    clv_program program,
     cl_uint kernel,
     cl_uint arg,
     size_t type_buf_size,
@@ -302,8 +302,8 @@ WCLV_API extern "C" cl_int WCLV_CALL wclvGetKernelArgType(
     return returnString(kernels[kernel].args[arg].reducedTypeName, type_buf_size, type_buf, type_size_ret);
 }
 
-WCLV_API extern "C" cl_bool WCLV_CALL wclvKernelArgIsPointer(
-    wclv_program program,
+CLV_API extern "C" cl_bool CLV_CALL clvKernelArgIsPointer(
+    clv_program program,
     cl_uint kernel,
     cl_uint arg)
 {
@@ -321,8 +321,8 @@ WCLV_API extern "C" cl_bool WCLV_CALL wclvKernelArgIsPointer(
     return kernels[kernel].args[arg].pointerKind == WebCLAnalyser::NOT_POINTER ? CL_FALSE : CL_TRUE;
 }
 
-WCLV_API extern "C" cl_kernel_arg_address_qualifier WCLV_CALL wclvGetKernelArgAddressQual(
-    wclv_program program,
+CLV_API extern "C" cl_kernel_arg_address_qualifier CLV_CALL clvGetKernelArgAddressQual(
+    clv_program program,
     cl_uint kernel,
     cl_uint arg)
 {
@@ -350,8 +350,8 @@ WCLV_API extern "C" cl_kernel_arg_address_qualifier WCLV_CALL wclvGetKernelArgAd
     }
 }
 
-WCLV_API extern "C" cl_bool WCLV_CALL wclvKernelArgIsImage(
-    wclv_program program,
+CLV_API extern "C" cl_bool CLV_CALL clvKernelArgIsImage(
+    clv_program program,
     cl_uint kernel,
     cl_uint arg)
 {
@@ -369,8 +369,8 @@ WCLV_API extern "C" cl_bool WCLV_CALL wclvKernelArgIsImage(
     return kernels[kernel].args[arg].imageKind == WebCLAnalyser::NOT_IMAGE ? CL_FALSE : CL_TRUE;
 }
 
-WCLV_API extern "C" cl_kernel_arg_access_qualifier WCLV_CALL wclvGetKernelArgAccessQual(
-    wclv_program program,
+CLV_API extern "C" cl_kernel_arg_access_qualifier CLV_CALL clvGetKernelArgAccessQual(
+    clv_program program,
     cl_uint kernel,
     cl_uint arg)
 {
@@ -398,8 +398,8 @@ WCLV_API extern "C" cl_kernel_arg_access_qualifier WCLV_CALL wclvGetKernelArgAcc
     }
 }
 
-WCLV_API cl_int WCLV_CALL wclvProgramGetValidatedSource(
-    wclv_program program,
+CLV_API cl_int CLV_CALL clvProgramGetValidatedSource(
+    clv_program program,
     size_t source_buf_size,
     char *source_buf,
     size_t *source_size_ret)
@@ -417,8 +417,8 @@ WCLV_API cl_int WCLV_CALL wclvProgramGetValidatedSource(
     return returnString(source, source_buf_size, source_buf, source_size_ret);
 }
 
-WCLV_API extern "C" void WCLV_CALL wclvReleaseProgram(
-    wclv_program program)
+CLV_API extern "C" void CLV_CALL clvReleaseProgram(
+    clv_program program)
 {
     delete program;
 }
