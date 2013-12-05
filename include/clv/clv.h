@@ -132,7 +132,7 @@ CLV_API cl_int CLV_CALL clvProgramGetValidatedSource(
     char *source_buf,
     size_t *source_size_ret);
 
-// Release resources allocated by clv_validate()
+// Release resources allocated by clvValidate()
 CLV_API void CLV_CALL clvReleaseProgram(
     clv_program program);
 
