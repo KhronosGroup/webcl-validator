@@ -232,13 +232,170 @@ WCLV_API extern "C" cl_int WCLV_CALL wclvGetProgramKernelName(
     if (!program)
         return CL_INVALID_PROGRAM;
 
-    if (n >= program->getKernels().size())
+    const WebCLAnalyser::KernelList &kernels = program->getKernels();
+
+    if (n >= kernels.size())
         return CL_INVALID_VALUE;
 
     if (name_buf && !name_buf_size)
         return CL_INVALID_VALUE;
 
-    return returnString(program->getKernels()[n].name, name_buf_size, name_buf, name_size_ret);
+    return returnString(kernels[n].name, name_buf_size, name_buf, name_size_ret);
+}
+
+WCLV_API extern "C" cl_int WCLV_CALL wclvGetKernelArgCount(
+    wclv_program program,
+    cl_uint n)
+{
+    if (!program)
+        return CL_INVALID_PROGRAM;
+
+    const WebCLAnalyser::KernelList &kernels = program->getKernels();
+
+    if (n >= kernels.size())
+        return CL_INVALID_VALUE;
+
+    return kernels[n].args.size();
+}
+
+WCLV_API extern "C" cl_int WCLV_CALL wclvGetKernelArgName(
+    wclv_program program,
+    cl_uint kernel,
+    cl_uint arg,
+    size_t name_buf_size,
+    char *name_buf,
+    size_t *name_size_ret)
+{
+    if (!program)
+        return CL_INVALID_PROGRAM;
+
+    const WebCLAnalyser::KernelList &kernels = program->getKernels();
+
+    if (kernel >= kernels.size())
+        return CL_INVALID_VALUE;
+
+    if (arg >= kernels[kernel].args.size())
+        return CL_INVALID_ARG_INDEX;
+
+    return returnString(kernels[kernel].args[arg].name, name_buf_size, name_buf, name_size_ret);
+}
+
+WCLV_API extern "C" cl_int WCLV_CALL wclvGetKernelArgType(
+    wclv_program program,
+    cl_uint kernel,
+    cl_uint arg,
+    size_t type_buf_size,
+    char *type_buf,
+    size_t *type_size_ret)
+{
+    if (!program)
+        return CL_INVALID_PROGRAM;
+
+    const WebCLAnalyser::KernelList &kernels = program->getKernels();
+
+    if (kernel >= kernels.size())
+        return CL_INVALID_VALUE;
+
+    if (arg >= kernels[kernel].args.size())
+        return CL_INVALID_ARG_INDEX;
+
+    return returnString(kernels[kernel].args[arg].reducedTypeName, type_buf_size, type_buf, type_size_ret);
+}
+
+WCLV_API extern "C" cl_bool WCLV_CALL wclvKernelArgIsPointer(
+    wclv_program program,
+    cl_uint kernel,
+    cl_uint arg)
+{
+    if (!program)
+        return CL_FALSE;
+
+    const WebCLAnalyser::KernelList &kernels = program->getKernels();
+
+    if (kernel >= kernels.size())
+        return CL_FALSE;
+
+    if (arg >= kernels[kernel].args.size())
+        return CL_FALSE;
+
+    return kernels[kernel].args[arg].pointerKind == WebCLAnalyser::NOT_POINTER ? CL_FALSE : CL_TRUE;
+}
+
+WCLV_API extern "C" cl_kernel_arg_address_qualifier WCLV_CALL wclvGetKernelArgAddressQual(
+    wclv_program program,
+    cl_uint kernel,
+    cl_uint arg)
+{
+    if (!program)
+        return CL_KERNEL_ARG_ADDRESS_PRIVATE;
+
+    const WebCLAnalyser::KernelList &kernels = program->getKernels();
+
+    if (kernel >= kernels.size())
+        return CL_KERNEL_ARG_ADDRESS_PRIVATE;
+
+    if (arg >= kernels[kernel].args.size())
+        return CL_KERNEL_ARG_ADDRESS_PRIVATE;
+
+    switch (kernels[kernel].args[arg].pointerKind) {
+    default:
+    case WebCLAnalyser::NOT_POINTER:
+        return CL_KERNEL_ARG_ADDRESS_PRIVATE;
+    case WebCLAnalyser::LOCAL_POINTER:
+        return CL_KERNEL_ARG_ADDRESS_LOCAL;
+    case WebCLAnalyser::CONSTANT_POINTER:
+        return CL_KERNEL_ARG_ADDRESS_CONSTANT;
+    case WebCLAnalyser::GLOBAL_POINTER:
+        return CL_KERNEL_ARG_ADDRESS_GLOBAL;
+    }
+}
+
+WCLV_API extern "C" cl_bool WCLV_CALL wclvKernelArgIsImage(
+    wclv_program program,
+    cl_uint kernel,
+    cl_uint arg)
+{
+    if (!program)
+        return CL_FALSE;
+
+    const WebCLAnalyser::KernelList &kernels = program->getKernels();
+
+    if (kernel >= kernels.size())
+        return CL_FALSE;
+
+    if (arg >= kernels[kernel].args.size())
+        return CL_FALSE;
+
+    return kernels[kernel].args[arg].imageKind == WebCLAnalyser::NOT_IMAGE ? CL_FALSE : CL_TRUE;
+}
+
+WCLV_API extern "C" cl_kernel_arg_access_qualifier WCLV_CALL wclvGetKernelArgAccessQual(
+    wclv_program program,
+    cl_uint kernel,
+    cl_uint arg)
+{
+    if (!program)
+        return CL_KERNEL_ARG_ACCESS_NONE;
+
+    const WebCLAnalyser::KernelList &kernels = program->getKernels();
+
+    if (kernel >= kernels.size())
+        return CL_KERNEL_ARG_ACCESS_NONE;
+
+    if (arg >= kernels[kernel].args.size())
+        return CL_KERNEL_ARG_ACCESS_NONE;
+
+    switch (kernels[kernel].args[arg].imageKind) {
+    default:
+    case WebCLAnalyser::NOT_IMAGE:
+        return CL_KERNEL_ARG_ACCESS_NONE;
+    case WebCLAnalyser::READABLE_IMAGE:
+        return CL_KERNEL_ARG_ACCESS_READ_ONLY;
+    case WebCLAnalyser::WRITABLE_IMAGE:
+        return CL_KERNEL_ARG_ACCESS_WRITE_ONLY;
+    case WebCLAnalyser::RW_IMAGE:
+        return CL_KERNEL_ARG_ACCESS_READ_WRITE;
+    }
 }
 
 WCLV_API cl_int WCLV_CALL wclvProgramGetValidatedSource(

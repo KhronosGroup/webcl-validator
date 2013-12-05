@@ -113,10 +113,9 @@ void WebCLHeader::emitParameter(
     --level_;
 }
 
-#if 0
 void WebCLHeader::emitBuiltinParameter(
     std::ostream &out,
-    const WebCLAnalyser::KernelArgInfo &parameter, int index, const std::string &type)
+    const std::string &name, int index, const std::string &type, cl_kernel_arg_access_qualifier accessQual)
 {
     Fields fields;
 
@@ -124,11 +123,11 @@ void WebCLHeader::emitBuiltinParameter(
     if (!type.compare(image2d)) {
         std::string access = "read_only";
 
-        switch (parameter.imageKind) {
-        case WebCLAnalyser::READABLE_IMAGE:
+        switch (accessQual) {
+        case CL_KERNEL_ARG_ACCESS_READ_ONLY:
             access = "read_only";
             break;
-        case WebCLAnalyser::WRITABLE_IMAGE:
+        case CL_KERNEL_ARG_ACCESS_WRITE_ONLY:
             access = "write_only";
             break;
         default:
@@ -141,22 +140,22 @@ void WebCLHeader::emitBuiltinParameter(
         fields["access"] = access;
     }
 
-    emitParameter(out, parameter.name, index, type, fields);
+    emitParameter(out, name, index, type, fields);
 }
 
 namespace {
-    std::string buildSizeParameterName(const WebCLAnalyser::KernelArgInfo &arrayParam)
+    std::string buildSizeParameterName(const std::string &arrayParamName)
     {
-        return std::string(sizeParameterPrefix) + "_" + arrayParam.name + "_size";
+        return std::string(sizeParameterPrefix) + "_" + arrayParamName + "_size";
     }
 }
 
 void WebCLHeader::emitArrayParameter(
     std::ostream &out,
-    const WebCLAnalyser::KernelArgInfo &parameter, int index)
+    const std::string &name, int index, const std::string &type, cl_kernel_arg_address_qualifier addressQual)
 {
     emitIndentation(out);
-    out << "\"" << parameter.name << "\"" << " :\n";
+    out << "\"" << name << "\"" << " :\n";
     ++level_;
     emitIndentation(out);
     out << "{\n";
@@ -165,17 +164,17 @@ void WebCLHeader::emitArrayParameter(
     emitNumberEntry(out, "index", index);
     out << ",\n";
 
-    emitStringEntry(out, "type", parameter.reducedTypeName);
+    emitStringEntry(out, "type", type);
     out << ",\n";
 
-    switch (parameter.pointerKind) {
-    case WebCLAnalyser::GLOBAL_POINTER:
+    switch (addressQual) {
+    case CL_KERNEL_ARG_ADDRESS_GLOBAL:
         emitStringEntry(out, "address-space", "global");
         break;
-    case WebCLAnalyser::CONSTANT_POINTER:
+    case CL_KERNEL_ARG_ADDRESS_CONSTANT:
         emitStringEntry(out, "address-space", "constant");
         break;
-    case WebCLAnalyser::LOCAL_POINTER:
+    case CL_KERNEL_ARG_ADDRESS_LOCAL:
         emitStringEntry(out, "address-space", "local");
         break;
     default:
@@ -184,7 +183,7 @@ void WebCLHeader::emitArrayParameter(
     }
     out << ",\n";
 
-    emitStringEntry(out, "size-parameter", buildSizeParameterName(parameter));
+    emitStringEntry(out, "size-parameter", buildSizeParameterName(name));
     out << "\n";
 
     --level_;
@@ -192,18 +191,17 @@ void WebCLHeader::emitArrayParameter(
     out << "}";
     --level_;
 }
-#endif
 
-void WebCLHeader::emitKernel(std::ostream &out, wclv_program program, cl_int n)
+void WebCLHeader::emitKernel(std::ostream &out, wclv_program program, cl_int kernel)
 {
     cl_int err = CL_SUCCESS;
     size_t nameSize = 0;
 
-    err = wclvGetProgramKernelName(program, n, 0, NULL, &nameSize);
+    err = wclvGetProgramKernelName(program, kernel, 0, NULL, &nameSize);
     assert(err == CL_SUCCESS);
 
     std::string name(nameSize, '\0');
-    err = wclvGetProgramKernelName(program, n, name.size(), &name[0], NULL);
+    err = wclvGetProgramKernelName(program, kernel, name.size(), &name[0], NULL);
     assert(err == CL_SUCCESS);
     name.erase(name.size() - 1);
 
@@ -214,31 +212,48 @@ void WebCLHeader::emitKernel(std::ostream &out, wclv_program program, cl_int n)
     out << "{\n";
     ++level_;
 
-    // TODO: emit kernel arguments
-    /*
+    cl_int numArgs = wclvGetKernelArgCount(program, kernel);
+    assert(numArgs >= 0);
     unsigned index = 0;
-    for (std::vector<WebCLAnalyser::KernelArgInfo>::const_iterator i = kernel.args.begin();
-        i != kernel.args.end(); ++i) {
-        const WebCLAnalyser::KernelArgInfo &parameter = *i;
-
-        if (i != kernel.args.begin())
+    for (cl_int arg = 0; arg < numArgs; ++arg) {
+        if (arg != 0)
             out << ",\n";
 
-        if (parameter.imageKind != WebCLAnalyser::NOT_IMAGE || parameter.reducedTypeName == "sampler_t") {
+        // Get argument name
+        err = wclvGetKernelArgName(program, kernel, arg, 0, NULL, &nameSize);
+        assert(err == CL_SUCCESS);
+        name.resize(nameSize, '\0');
+
+        err = wclvGetKernelArgName(program, kernel, arg, name.size(), &name[0], NULL);
+        assert(err == CL_SUCCESS);
+        name.erase(name.size() - 1);
+
+        // Get argument type
+        size_t typeSize = 0;
+
+        err = wclvGetKernelArgType(program, kernel, arg, 0, NULL, &typeSize);
+        assert(err == CL_SUCCESS);
+
+        std::string type(typeSize, '\0');
+        err = wclvGetKernelArgType(program, kernel, arg, type.size(), &type[0], NULL);
+        assert(err == CL_SUCCESS);
+        type.erase(type.size() - 1);
+
+        if (wclvKernelArgIsImage(program, kernel, arg) || type == "sampler_t") {
             // images and samplers
-            emitBuiltinParameter(out, parameter, index, parameter.reducedTypeName);
-        } else if (parameter.pointerKind != WebCLAnalyser::NOT_POINTER) {
+            emitBuiltinParameter(out, name, index, type, wclvGetKernelArgAccessQual(program, kernel, arg));
+        } else if (wclvKernelArgIsPointer(program, kernel, arg)) {
             // memory objects
-            emitArrayParameter(out, parameter, index);
+            emitArrayParameter(out, name, index, type, wclvGetKernelArgAddressQual(program, kernel, arg));
             ++index;
             out << ",\n";
-            emitParameter(out, buildSizeParameterName(parameter), index, sizeParameterType);
+            emitParameter(out, buildSizeParameterName(name), index, sizeParameterType);
         } else {
             // primitives
-            emitParameter(out, parameter.name, index, parameter.reducedTypeName);
+            emitParameter(out, name, index, type);
         }
         ++index;
-    }*/
+    }
     out << "\n";
 
     --level_;

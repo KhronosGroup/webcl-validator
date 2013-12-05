@@ -78,6 +78,53 @@ WCLV_API cl_int WCLV_CALL wclvGetProgramKernelName(
     char *name_buf,
     size_t *name_size_ret);
 
+// Get number of arguments for the nth kernel in the program
+WCLV_API cl_int WCLV_CALL wclvGetKernelArgCount(
+    wclv_program program,
+    cl_uint n);
+
+// Get name of a kernel argument in the program
+WCLV_API cl_int WCLV_CALL wclvGetKernelArgName(
+    wclv_program program,
+    cl_uint kernel,
+    cl_uint arg,
+    size_t name_buf_size,
+    char *name_buf,
+    size_t *name_size_ret);
+
+// Get type of a kernel argument in the program
+WCLV_API cl_int WCLV_CALL wclvGetKernelArgType(
+    wclv_program program,
+    cl_uint kernel,
+    cl_uint arg,
+    size_t type_buf_size,
+    char *type_buf,
+    size_t *type_size_ret);
+
+// Determine if the given kernel argument is a pointer
+WCLV_API cl_bool WCLV_CALL wclvKernelArgIsPointer(
+    wclv_program program,
+    cl_uint kernel,
+    cl_uint arg);
+
+// Return the address qualifier of the given pointer kernel argument
+WCLV_API cl_kernel_arg_address_qualifier WCLV_CALL wclvGetKernelArgAddressQual(
+    wclv_program program,
+    cl_uint kernel,
+    cl_uint arg);
+
+// Determine if the given kernel argument is an image
+WCLV_API cl_bool WCLV_CALL wclvKernelArgIsImage(
+    wclv_program program,
+    cl_uint kernel,
+    cl_uint arg);
+
+// Return the access qualifier of the given image kernel argument
+WCLV_API cl_kernel_arg_access_qualifier WCLV_CALL wclvGetKernelArgAccessQual(
+    wclv_program program,
+    cl_uint kernel,
+    cl_uint arg);
+
 // Get validated source, ready to pass on to compiler
 WCLV_API cl_int WCLV_CALL wclvProgramGetValidatedSource(
     wclv_program program,

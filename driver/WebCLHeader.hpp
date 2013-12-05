@@ -26,7 +26,6 @@
 
 #include <iostream>
 #include <map>
-#include <set>
 #include <string>
 
 #include <wclv/wclv.h>
@@ -70,15 +69,15 @@ private:
         std::ostream &out,
         const std::string &parameter, int index, const std::string &type,
         const Fields &fields = Fields());
-    // Disabled until there is C API for kernel info
-#if 0
+
     /// Emits builtin parameter to the given stream:
     /// "__read_only image2d_t img", 0
     /// ->
     /// "img" : { "index" : 0, "host-type" : image2d_t", "access" : "read_only" }
     void emitBuiltinParameter(
         std::ostream &out,
-        const WebCLAnalyser::KernelArgInfo &parameter, int index, const std::string &type);
+        const std::string &name, int index, const std::string &type,
+        cl_kernel_arg_access_qualifier accessQual);
 
     /// Emits a memory object parameter to the given stream:
     /// "__global int *foo", 0
@@ -92,8 +91,8 @@ private:
     ///         }
     void emitArrayParameter(
         std::ostream &out,
-        const WebCLAnalyser::KernelArgInfo &parameter, int index);
-    #endif
+        const std::string &name, int index, const std::string &type,
+        cl_kernel_arg_address_qualifier addressQual);
 
     /// Emits kernel and its parameters to the given stream:
     /// "__kernel void foo(...)"
