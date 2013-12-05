@@ -112,12 +112,12 @@ int main(int argc, char const* argv[])
 
         // Determine source size
         size_t sourceSize = 0;
-        err = clvProgramGetValidatedSource(prog, 0, NULL, &sourceSize);
+        err = clvGetProgramValidatedSource(prog, 0, NULL, &sourceSize);
         assert(err == CL_SUCCESS);
 
         // Get source
         std::string validatedSource(sourceSize, '\0');
-        err = clvProgramGetValidatedSource(prog, validatedSource.size(), &validatedSource[0], NULL);
+        err = clvGetProgramValidatedSource(prog, validatedSource.size(), &validatedSource[0], NULL);
         assert(err == CL_SUCCESS);
 
         // Strip terminating NUL, we don't need it

@@ -398,7 +398,7 @@ CLV_API extern "C" cl_kernel_arg_access_qualifier CLV_CALL clvGetKernelArgAccess
     }
 }
 
-CLV_API cl_int CLV_CALL clvProgramGetValidatedSource(
+CLV_API cl_int CLV_CALL clvGetProgramValidatedSource(
     clv_program program,
     size_t source_buf_size,
     char *source_buf,

@@ -126,7 +126,7 @@ CLV_API cl_kernel_arg_access_qualifier CLV_CALL clvGetKernelArgAccessQual(
     cl_uint arg);
 
 // Get validated source, ready to pass on to compiler
-CLV_API cl_int CLV_CALL clvProgramGetValidatedSource(
+CLV_API cl_int CLV_CALL clvGetProgramValidatedSource(
     clv_program program,
     size_t source_buf_size,
     char *source_buf,
