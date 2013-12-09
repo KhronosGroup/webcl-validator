@@ -580,16 +580,58 @@ WebCLBuiltinHandler::~WebCLBuiltinHandler()
     // nothing
 }
 
-WebCLImageSafetyHandler::WebCLImageSafetyHandler(
+class WebCLImageSamplerSafetyHandler::TypeAccessChecker {
+public:
+    TypeAccessChecker();
+
+    virtual bool validAccess(const clang::ValueDecl &valueDecl) const = 0;
+
+    virtual ~TypeAccessChecker();
+};
+
+WebCLImageSamplerSafetyHandler::TypeAccessChecker::TypeAccessChecker()
+{
+    // nothing
+}
+
+WebCLImageSamplerSafetyHandler::TypeAccessChecker::~TypeAccessChecker()
+{
+    // nothing
+}
+
+class WebCLImageSamplerSafetyHandler::TypeAccessCheckerImage2d: public WebCLImageSamplerSafetyHandler::TypeAccessChecker {
+public:
+    TypeAccessCheckerImage2d() {}
+    ~TypeAccessCheckerImage2d() {}
+
+    virtual bool validAccess(const clang::ValueDecl &valueDecl) const {
+        // Further check that the parameter access qualifier is supported, if present
+        const clang::OpenCLImageAccess qualifier = valueDecl.getType().getAccess();
+        return (!qualifier || qualifier == clang::CLIA_read_only || qualifier == clang::CLIA_write_only);
+    }
+};
+
+class WebCLImageSamplerSafetyHandler::TypeAccessCheckerSampler: public WebCLImageSamplerSafetyHandler::TypeAccessChecker {
+public:
+    TypeAccessCheckerSampler() {}
+    ~TypeAccessCheckerSampler() {}
+
+    virtual bool validAccess(const clang::ValueDecl &valueDecl) const {
+        return true;
+    }
+};
+
+WebCLImageSamplerSafetyHandler::WebCLImageSamplerSafetyHandler(
     clang::CompilerInstance &instance,
     WebCLAnalyser &analyser,
     WebCLTransformer &transformer)
     : WebCLPass(instance, analyser, transformer)
 {
-    // nothing
+    checkedTypes_["image2d_t"] = new TypeAccessCheckerImage2d;
+    checkedTypes_["sampler_t"] = new TypeAccessCheckerSampler;
 }
 
-void WebCLImageSafetyHandler::run(clang::ASTContext &context)
+void WebCLImageSamplerSafetyHandler::run(clang::ASTContext &context)
 {
     WebCLAnalyser::CallExprSet calls = analyser_.getBuiltinCalls();
     std::set<clang::DeclRefExpr*> usedAsArgument;
@@ -603,53 +645,59 @@ void WebCLImageSafetyHandler::run(clang::ASTContext &context)
             for (unsigned argIdx = 0; argIdx < callExpr->getNumArgs(); ++argIdx) {
                 clang::Expr *expr = callExpr->getArg(argIdx);
                 clang::QualType type = WebCLTypes::reduceType(instance_, expr->getType());
-                if (type.getAsString() == "image2d_t") {
-                    enum {
-                        // The corresponding param has not been found (yet)
-                        PARAM_NOT_FOUND,
-                        // The parameter was found but the type was wrong
-                        TYPE_MISMATCH,
-                        // The parameter was found but it had an illegal access qualifier
-                        ILLEGAL_ACCESS,
-                        // Everything is OK
-                        SAFE
-                    } safety = PARAM_NOT_FOUND;
+                for (TypeAccessCheckerMap::const_iterator checkedTypeIt = checkedTypes_.begin();
+                     checkedTypeIt != checkedTypes_.end();
+                     ++checkedTypeIt) {
+                    const std::string& checkedTypeName = checkedTypeIt->first;
+                    const TypeAccessChecker* checkedTypeChecker = checkedTypeIt->second;
+                    if (type.getAsString() == checkedTypeName) {
+                        enum {
+                            // The corresponding param has not been found (yet)
+                            PARAM_NOT_FOUND,
+                            // The parameter was found but the type was wrong
+                            TYPE_MISMATCH,
+                            // The parameter was found but it had an illegal access qualifier
+                            ILLEGAL_ACCESS,
+                            // Everything is OK
+                            SAFE
+                        } safety = PARAM_NOT_FOUND;
 
-                    clang::DeclRefExpr *declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(expr);
-                    if (!declRefExpr) {
-                        if (clang::ImplicitCastExpr *implicitCastExpr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)) {
-                            declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(*implicitCastExpr->child_begin());
-                        }
-                    }
-
-                    usedAsArgument.insert(declRefExpr);
-
-                    if (declRefExpr) {
-                        const clang::ValueDecl *valueDecl = declRefExpr->getDecl();
-                        if (clang::isa<clang::ParmVarDecl>(valueDecl)) {
-                            clang::QualType paramType = WebCLTypes::reduceType(instance_, valueDecl->getType());
-                            if (paramType == type) {
-                                // Further check that the parameter access qualifier is supported, if present
-                                const clang::OpenCLImageAccess qualifier = valueDecl->getType().getAccess();
-                                if (!qualifier || qualifier == clang::CLIA_read_only || qualifier == clang::CLIA_write_only) {
-                                    safety = SAFE;
-                                } else {
-                                    safety = ILLEGAL_ACCESS;
-                                }
-                            } else {
-                                // can this case ever happen?
-                                safety = TYPE_MISMATCH;
+                        clang::DeclRefExpr *declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(expr);
+                        if (!declRefExpr) {
+                            if (clang::ImplicitCastExpr *implicitCastExpr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)) {
+                                declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(*implicitCastExpr->child_begin());
                             }
                         }
-                    }
+
+                        usedAsArgument.insert(declRefExpr);
+
+                        if (declRefExpr) {
+                            const clang::ValueDecl *valueDecl = declRefExpr->getDecl();
+                            if (clang::isa<clang::ParmVarDecl>(valueDecl)) {
+                                clang::QualType paramType = WebCLTypes::reduceType(instance_, valueDecl->getType());
+                                if (paramType == type) {
+                                    if (checkedTypeChecker->validAccess(*valueDecl)) {
+                                        safety = SAFE;
+                                    } else {
+                                        safety = ILLEGAL_ACCESS;
+                                    }
+                                } else {
+                                    // can this case ever happen?
+                                    safety = TYPE_MISMATCH;
+                                }
+                            }
+                        }
 
 
-                    if (safety == TYPE_MISMATCH) {
-                        error(expr->getLocStart(), "image2d_t must always originate from parameters with its original type");
-                    } else if (safety == ILLEGAL_ACCESS) {
-                        error(declRefExpr->getLocStart(), "image2d_t parameters can only have read_only or write_only access qualifier");
-                    } else if (safety == PARAM_NOT_FOUND) {
-                        error(expr->getLocStart(), "image2d_t must always originate from parameters, unchanged");
+                        if (safety == TYPE_MISMATCH) {
+                            error(expr->getLocStart(), "%0 must always originate from parameters with its original type") << checkedTypeName;
+                        } else if (safety == ILLEGAL_ACCESS) {
+                            // now this doesn't quite work with the genericity of TypeAccessChecker, but for the moment
+                            // only image2d_t can fail with ILLEGAL_ACCESS
+                            error(declRefExpr->getLocStart(), "%0 parameters can only have read_only or write_only access qualifier") << checkedTypeName;
+                        } else if (safety == PARAM_NOT_FOUND) {
+                            error(expr->getLocStart(), "%0 must always originate from parameters, unchanged") << checkedTypeName;
+                        }
                     }
                 }
             }
@@ -661,15 +709,19 @@ void WebCLImageSafetyHandler::run(clang::ASTContext &context)
         ++useIt) {
             clang::DeclRefExpr *expr = *useIt;
             clang::QualType type = WebCLTypes::reduceType(instance_, expr->getType());
-            if (type.getAsString() == "image2d_t") {
-                if (!usedAsArgument.count(expr)) {
-                    error((expr)->getLocStart(), "image2d_t must always be used as a function argument");
+            for (TypeAccessCheckerMap::const_iterator checkedTypeIt = checkedTypes_.begin();
+                 checkedTypeIt != checkedTypes_.end();
+                 ++checkedTypeIt) {
+                if (type.getAsString() == checkedTypeIt->first) {
+                    if (!usedAsArgument.count(expr)) {
+                        error((expr)->getLocStart(), "%0 must always be used as a function argument") << checkedTypeIt->first;
+                    }
                 }
             }
     }
 }
 
-WebCLImageSafetyHandler::~WebCLImageSafetyHandler()
+WebCLImageSamplerSafetyHandler::~WebCLImageSamplerSafetyHandler()
 {
     // nothing
 }

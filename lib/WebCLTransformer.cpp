@@ -384,7 +384,7 @@ namespace {
 		}
 	    }
 	} else {
-	    transformer.error(samplerArg->getLocStart(), "read_image sampler_t is not a constant argument");
+	    transformer.error(samplerArg->getLocStart(), "read_image sampler_t is not a constant argument or originate from function parameters");
 	}
 	return WrappedFunction();
     }

@@ -297,15 +297,15 @@ private:
     WebCLKernelHandler &kernelHandler_;
 };
 
-/// Checks that image parmaeters can only originate from function arguments
-class WebCLImageSafetyHandler : public WebCLPass
+/// Checks that image2d_t and sampler_t can only originate from function arguments
+class WebCLImageSamplerSafetyHandler : public WebCLPass
 {
 public:
-    WebCLImageSafetyHandler(
+    WebCLImageSamplerSafetyHandler(
         clang::CompilerInstance &instance,
         WebCLAnalyser &analyser,
 	WebCLTransformer &transformer);
-    virtual ~WebCLImageSafetyHandler();
+    virtual ~WebCLImageSamplerSafetyHandler();
 
     /// - Goes through all function calls and checks that their image2d_t
     /// arguments refer to function arguments
@@ -314,6 +314,13 @@ public:
     virtual void run(clang::ASTContext &context);
 
 private:
+    class TypeAccessChecker;
+    class TypeAccessCheckerImage2d;
+    class TypeAccessCheckerSampler;
+
+    typedef std::map<std::string, TypeAccessChecker*> TypeAccessCheckerMap;
+
+    TypeAccessCheckerMap checkedTypes_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLPASS

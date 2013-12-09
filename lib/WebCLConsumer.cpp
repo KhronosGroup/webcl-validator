@@ -41,7 +41,7 @@ WebCLConsumer::WebCLConsumer(
     , kernelHandler_(instance, analyser_, transformer, addressSpaceHandler_)
     , memoryAccessHandler_(instance, analyser_, transformer, kernelHandler_)
     , printer_(instance, rewriter, analyser_, transformer)
-    , imageSafetyHandler_(instance, analyser_, transformer)
+    , imageSampleSafetyHandler_(instance, analyser_, transformer)
     , builtinHandler_(instance, analyser_, transformer, kernelHandler_)
     , passes_()
 {
@@ -52,7 +52,7 @@ WebCLConsumer::WebCLConsumer(
 
     // Checks that when image types are being used, they always originate from
     // function parameters
-    passes_.push_back(&imageSafetyHandler_);
+    passes_.push_back(&imageSampleSafetyHandler_);
 
     // Moves all typedef and struct declarations to start of module
     // to make sure that they are available when address space types are
