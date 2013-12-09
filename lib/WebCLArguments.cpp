@@ -116,7 +116,7 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
     preprocessorArgc_ =
         preprocessorInvocationSize + userDefines.size() + numPreprocessorOptions + 1;
     validatorArgc_ =
-        validatorInvocationSize + argc + numValidatorOptions + 1;
+        validatorInvocationSize + argc + numValidatorOptions + 3;
 
     preprocessorArgv_ = new char const *[preprocessorArgc_];
     if (!preprocessorArgv_) {
@@ -154,6 +154,8 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
               validatorOptions + numValidatorOptions,
               validatorArgv_ + validatorInvocationSize + argc);
     validatorArgv_[validatorArgc_ - 1] = "-ferror-limit=0";
+    validatorArgv_[validatorArgc_ - 2] = "-fno-builtin";
+    validatorArgv_[validatorArgc_ - 3] = "-ffreestanding";
 }
 
 WebCLArguments::~WebCLArguments()
