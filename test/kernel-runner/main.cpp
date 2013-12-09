@@ -31,7 +31,7 @@
 
 #include <cstring>
 
-#include "llvm/support/TimeValue.h"
+#include "llvm/Support/TimeValue.h"
 
 #define SCALAR 0
 
