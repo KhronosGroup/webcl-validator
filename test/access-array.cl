@@ -43,7 +43,7 @@ void set_indexed_value(
 }
 
 __kernel void access_array(
-    // CHECK: __global int *array, unsigned long _wcl_array_size)
+    // CHECK: __global int *array, ulong _wcl_array_size)
     __global int *array)
 {
     // CHECK: _WclProgramAllocations _wcl_allocations_allocation = {

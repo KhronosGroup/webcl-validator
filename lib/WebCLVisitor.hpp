@@ -26,7 +26,10 @@
 
 #include "WebCLBuiltins.hpp"
 #include "WebCLReporter.hpp"
-#include "WebCLTransformer.hpp"
+
+#include <map>
+#include <set>
+#include <vector>
 
 #include "clang/AST/RecursiveASTVisitor.h"
 
@@ -125,6 +128,10 @@ private:
     void check3dImageParameter(
         clang::FunctionDecl *decl,
         clang::SourceLocation typeLocation, const clang::Type *type);
+    /// Checks that unsupported builtin types are not used as parameters
+    void checkUnsupportedBuiltinParameter(
+        clang::FunctionDecl *decl,
+        clang::SourceLocation typeLocation, const clang::QualType &type);
 };
 
 /// \brief Collects all information needed by transformations.
@@ -207,8 +214,53 @@ public:
   ///         have been normalized.
   virtual bool handleForStmt(clang::ForStmt *stmt);
 
+  enum PointerKind {
+      NOT_POINTER,
+      PRIVATE_POINTER,
+      LOCAL_POINTER,
+      CONSTANT_POINTER,
+      GLOBAL_POINTER,
+      IMAGE_HANDLE
+  };
+
+  enum ImageKind {
+      NOT_IMAGE,
+      READABLE_IMAGE,
+      WRITABLE_IMAGE,
+      RW_IMAGE,
+      UNKNOWN_ACCESS_IMAGE
+  };
+
   /// Collected nodes.
+  struct KernelArgInfo {
+      /// Not exposed outside the library
+      clang::ParmVarDecl *decl;
+
+      /// Parameter name.
+      std::string name;
+      /// Type name, cleaned of qualifiers and non-standard typedefs
+      std::string reducedTypeName;
+      /// Is this a pointer arg, and if so, to which address space
+      PointerKind pointerKind;
+      /// Is this an image arg, and if so, with which access qualifiers
+      ImageKind imageKind;
+
+      KernelArgInfo(clang::CompilerInstance &instance, clang::ParmVarDecl *decl);
+  };
+  struct KernelInfo {
+      /// Not exposed outside the library
+      clang::FunctionDecl *decl;
+
+      /// Kernel name
+      std::string name;
+      /// Kernel arguments
+      std::vector<KernelArgInfo> args;
+
+      KernelInfo(clang::CompilerInstance &instance, clang::FunctionDecl *decl);
+  };
+
   typedef std::set<clang::FunctionDecl*> FunctionDeclSet;
+  typedef std::vector<KernelInfo> KernelList;
   typedef std::set<clang::CallExpr*> CallExprSet;
   typedef std::set<clang::VarDecl*> VarDeclSet;
   typedef std::set<clang::DeclRefExpr*> DeclRefExprSet;
@@ -220,7 +272,7 @@ public:
   typedef std::map<clang::Expr*, clang::VarDecl*> MemoryAccessMap;
   
   /// Accessors for collected data.
-  FunctionDeclSet &getKernelFunctions();
+  KernelList &getKernelFunctions();
   FunctionDeclSet &getHelperFunctions();
   CallExprSet &getInternalCalls();
   CallExprSet &getBuiltinCalls();
@@ -230,6 +282,18 @@ public:
   DeclRefExprSet &getVariableUses();
   MemoryAccessMap &getPointerAceesses();
   TypeDeclList &getTypeDecls();
+
+  /// Const versions of the above
+  const KernelList &getKernelFunctions() const;
+  const FunctionDeclSet &getHelperFunctions() const;
+  const CallExprSet &getInternalCalls() const;
+  const CallExprSet &getBuiltinCalls() const;
+  const VarDeclSet &getConstantVariables() const;
+  const VarDeclSet &getLocalVariables() const;
+  const VarDeclSet &getPrivateVariables() const;
+  const DeclRefExprSet &getVariableUses() const;
+  const MemoryAccessMap &getPointerAceesses() const;
+  const TypeDeclList &getTypeDecls() const;
 
   /// \return Whether address of variable is taken.
   bool hasAddressReferences(clang::VarDecl *decl);
@@ -250,7 +314,7 @@ private:
   void collectVariable(clang::VarDecl *decl);
 
   /// User defined kernels.
-  FunctionDeclSet kernelFunctions_;
+  KernelList kernelFunctions_;
   /// User defined functions.
   FunctionDeclSet helperFunctions_;
   /// Calls to user defined functions.

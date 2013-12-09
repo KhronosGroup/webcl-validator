@@ -308,7 +308,7 @@ int relocate_private_variables()
 }
 
 __kernel void relocate_variables(
-    // CHECK: __global int *result, unsigned long _wcl_result_size)
+    // CHECK: __global int *result, ulong _wcl_result_size)
     __global int *result)
 {
     int value = constant_value;

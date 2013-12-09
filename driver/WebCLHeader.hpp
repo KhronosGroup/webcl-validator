@@ -24,36 +24,23 @@
 ** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 */
 
-#include "WebCLReporter.hpp"
-
-#include "clang/AST/Type.h"
-
 #include <iostream>
 #include <map>
-#include <set>
 #include <string>
 
-namespace clang {
-    class CompilerInstance;
-    class FunctionDecl;
-    class ParmVarDecl;
-}
-
-class WebCLConfiguration;
+#include <clv/clv.h>
 
 /// Emits JSON headers for kernels.
-class WebCLHeader : WebCLReporter
+class WebCLHeader
 {
 public:
 
-    WebCLHeader(clang::CompilerInstance &instance, WebCLConfiguration &cfg);
+    WebCLHeader();
     ~WebCLHeader();
 
-    /// A set of functions to include in the JSON header.
-    typedef std::set<clang::FunctionDecl*> Kernels;
     /// Creates a JSON header for given set of functions and writes it
     /// to the given stream.
-    void emitHeader(std::ostream &out, Kernels &kernels);
+    void emitHeader(std::ostream &out, clv_program program);
 
 private:
 
@@ -67,10 +54,6 @@ private:
     /// Emits version to the given stream:
     /// -> "version" : "1.0"
     void emitVersion(std::ostream &out);
-
-    /// Emits a host type to the given stream:
-    /// "unsigned long" -> "host-type" : "cl_ulong"
-    void emitHostType(std::ostream &out, const std::string &key, const std::string &type);
 
     /// Contains optional "key" : "string" entries for parameters.
     typedef std::map<std::string, std::string> Fields;
@@ -93,15 +76,8 @@ private:
     /// "img" : { "index" : 0, "host-type" : image2d_t", "access" : "read_only" }
     void emitBuiltinParameter(
         std::ostream &out,
-        const clang::ParmVarDecl *parameter, int index, const std::string &type);
-
-    /// Emits a size parameter for the given memory object parameter:
-    /// "__global int *foo", 0
-    /// ->
-    /// "_wcl_foo_size" : { "index" : 0, "host-type" : "cl_ulong" }
-    void emitSizeParameter(
-        std::ostream &out,
-        const clang::ParmVarDecl *parameter, int index);
+        const std::string &name, int index, const std::string &type,
+        cl_kernel_arg_access_qualifier accessQual);
 
     /// Emits a memory object parameter to the given stream:
     /// "__global int *foo", 0
@@ -115,13 +91,14 @@ private:
     ///         }
     void emitArrayParameter(
         std::ostream &out,
-        const clang::ParmVarDecl *parameter, int index);
+        const std::string &name, int index, const std::string &type,
+        cl_kernel_arg_address_qualifier addressQual);
 
     /// Emits kernel and its parameters to the given stream:
     /// "__kernel void foo(...)"
     /// ->
     /// "foo" : { ... }
-    void emitKernel(std::ostream &out, const clang::FunctionDecl *kernel);
+    void emitKernel(std::ostream &out, clv_program program, cl_int n);
 
     /// Emits kernels and their parameters to the given stream:
     /// "__kernel void foo(...); __kernel void bar(...)"
@@ -130,13 +107,11 @@ private:
     ///               "foo" : { ... },
     ///               "bar" : { ... }
     ///             }
-    void emitKernels(std::ostream &out, Kernels &kernels);
+    void emitKernels(std::ostream &out, clv_program program);
 
     /// Emits correct indentation based on current indentation level.
     void emitIndentation(std::ostream &out) const;
 
-    /// Contains information about recurring names.
-    WebCLConfiguration &cfg_;
     /// Basic tab width for indentation.
     const std::string indentation_;
     /// Current indentation level.

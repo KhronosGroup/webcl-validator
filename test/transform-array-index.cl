@@ -3,7 +3,7 @@
 // RUN: %webcl-validator %s | grep -v CHECK | %FileCheck %s
 
 __kernel void transform_array_index(
-    // CHECK: __global int *array, unsigned long _wcl_array_size)
+    // CHECK: __global int *array, ulong _wcl_array_size)
     __global int *array)
 {
     const int i = get_global_id(0);

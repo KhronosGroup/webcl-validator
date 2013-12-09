@@ -27,6 +27,8 @@
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
+#include "llvm/Support/raw_ostream.h"
+
 WebCLPrinter::WebCLPrinter(clang::Rewriter &rewriter)
     : rewriter_(rewriter)
 {
@@ -75,7 +77,9 @@ void WebCLValidatorPrinter::run(clang::ASTContext &context)
     if (!transformer_.rewrite())
         return;
 
-    if (!print(llvm::outs(), "// WebCL Validator: validation stage.\n")) {
+    output_.clear();
+    llvm::raw_string_ostream os(output_);
+    if (!print(os, "// WebCL Validator: validation stage.\n")) {
         fatal("Can't print validator output.");
         return;
     }

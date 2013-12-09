@@ -26,6 +26,8 @@
 
 #include "clang/Tooling/Tooling.h"
 
+#include "WebCLVisitor.hpp"
+
 #include <string>
 #include <vector>
 
@@ -57,6 +59,8 @@ public:
               char const *input, char const *output = NULL);
     virtual ~WebCLTool();
 
+    void setExtensions(const std::set<std::string> &extensions);
+
     /// \see clang::tooling::FrontendActionFactory
     virtual clang::FrontendAction *create() = 0;
 
@@ -69,6 +73,8 @@ protected:
     const clang::tooling::FixedCompilationDatabase *compilations_;
     /// Source file to process.
     std::vector<std::string> paths_;
+    // Additional OpenCL extensions to allow in preprocessing besides cl_khr_initialize_memory
+    std::set<std::string> extensions_;
     /// Tool representing a validation stage.
     clang::tooling::ClangTool* tool_;
     /// Target file for transformations.
@@ -132,6 +138,18 @@ public:
 
     /// \see clang::tooling::FrontendActionFactory
     virtual clang::FrontendAction *create();
+
+    /// Returns validated source after a successful run
+    const std::string &getValidatedSource() const { return validatedSource_; }
+    /// Ditto for kernel info
+    const WebCLAnalyser::KernelList &getKernels() const { return kernels_; }
+
+private:
+
+    // Stores validated source after validation is complete.
+    std::string validatedSource_;
+    // ditto for kernels
+    WebCLAnalyser::KernelList kernels_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLTOOL

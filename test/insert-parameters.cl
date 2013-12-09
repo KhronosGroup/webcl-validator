@@ -43,7 +43,7 @@ int used_parameters(
         constant_array[index] + private_array[index];
 }
 
-// CHECK: __kernel void insert_parameters(__global int *global_array, unsigned long _wcl_global_array_size, __local int *local_array, unsigned long _wcl_local_array_size, __constant int *constant_array, unsigned long _wcl_constant_array_size)
+// CHECK: __kernel void insert_parameters(__global int *global_array, ulong _wcl_global_array_size, __local int *local_array, ulong _wcl_local_array_size, __constant int *constant_array, ulong _wcl_constant_array_size)
 __kernel void insert_parameters(__global int *global_array, __local int *local_array, __constant int *constant_array)
 {
     const int i = get_global_id(0);

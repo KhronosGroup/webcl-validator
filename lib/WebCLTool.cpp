@@ -55,6 +55,11 @@ WebCLTool::~WebCLTool()
     compilations_ = NULL;
 }
 
+void WebCLTool::setExtensions(const std::set<std::string> &extensions)
+{
+    extensions_ = extensions;
+}
+
 int WebCLTool::run()
 {
     if (!compilations_ || !tool_)
@@ -74,7 +79,9 @@ WebCLPreprocessorTool::~WebCLPreprocessorTool()
 
 clang::FrontendAction *WebCLPreprocessorTool::create()
 {
-    return new WebCLPreprocessorAction(output_);
+    WebCLAction *action = new WebCLPreprocessorAction(output_);
+    action->setExtensions(extensions_);
+    return action;
 }
 
 WebCLMatcher1Tool::WebCLMatcher1Tool(int argc, char const **argv,
@@ -89,7 +96,9 @@ WebCLMatcher1Tool::~WebCLMatcher1Tool()
 
 clang::FrontendAction *WebCLMatcher1Tool::create()
 {
-    return new WebCLMatcher1Action(output_);
+    WebCLAction *action = new WebCLMatcher1Action(output_);
+    action->setExtensions(extensions_);
+    return action;
 }
 
 WebCLMatcher2Tool::WebCLMatcher2Tool(int argc, char const **argv,
@@ -104,7 +113,9 @@ WebCLMatcher2Tool::~WebCLMatcher2Tool()
 
 clang::FrontendAction *WebCLMatcher2Tool::create()
 {
-    return new WebCLMatcher2Action(output_);
+    WebCLAction *action = new WebCLMatcher2Action(output_);
+    action->setExtensions(extensions_);
+    return action;
 }
 
 WebCLValidatorTool::WebCLValidatorTool(int argc, char const **argv,
@@ -119,5 +130,7 @@ WebCLValidatorTool::~WebCLValidatorTool()
 
 clang::FrontendAction *WebCLValidatorTool::create()
 {
-    return new WebCLValidatorAction;
+    WebCLAction *action = new WebCLValidatorAction(validatedSource_, kernels_);
+    action->setExtensions(extensions_);
+    return action;
 }

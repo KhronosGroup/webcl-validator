@@ -24,6 +24,7 @@
 #include "WebCLDebug.hpp"
 #include "WebCLPass.hpp"
 #include "WebCLVisitor.hpp"
+#include "WebCLTransformer.hpp"
 #include "WebCLTypes.hpp"
 #include "WebCLCommon.hpp"
 
@@ -56,8 +57,8 @@ void WebCLInputNormaliser::run(clang::ASTContext &context)
 {
     WebCLAnalyser::TypeDeclList &typeDecls = analyser_.getTypeDecls();
     for (WebCLAnalyser::TypeDeclList::iterator i = typeDecls.begin();
-         i != typeDecls.end(); ++i) {
-        transformer_.moveToModulePrologue(*i);
+        i != typeDecls.end(); ++i) {
+            transformer_.moveToModulePrologue(*i);
     }
 }
 
@@ -78,16 +79,16 @@ void WebCLHelperFunctionHandler::run(clang::ASTContext &context)
     // structure parameter in front of parameter list.
     WebCLAnalyser::FunctionDeclSet &helperFunctions = analyser_.getHelperFunctions();
     for (WebCLAnalyser::FunctionDeclSet::iterator i = helperFunctions.begin();
-         i != helperFunctions.end(); ++i) {
-        transformer_.addRecordParameter(*i);
+        i != helperFunctions.end(); ++i) {
+            transformer_.addRecordParameter(*i);
     }
-    
+
     // Go through all helper function calls and add allocation
     // structure argument in front of argument list.
     WebCLAnalyser::CallExprSet &internalCalls = analyser_.getInternalCalls();
     for (WebCLAnalyser::CallExprSet::iterator i = internalCalls.begin();
-         i != internalCalls.end(); ++i) {
-      transformer_.addRecordArgument(*i);
+        i != internalCalls.end(); ++i) {
+            transformer_.addRecordArgument(*i);
     }
 }
 
@@ -109,43 +110,43 @@ void WebCLAddressSpaceHandler::run(clang::ASTContext &context)
     WebCLAnalyser::VarDeclSet &privateVars = analyser_.getPrivateVariables();
     for(WebCLAnalyser::VarDeclSet::iterator i = privateVars.begin();
         i != privateVars.end(); ++i) {
-        // struct types must be also in address space, because there might be
-        // tables / ponters inside struct... simpler structs could
-        // maybe be left out.
-        clang::VarDecl *decl = *i;
-        if (decl->getType()->isPointerType() ||
-            decl->getType()->isStructureType() ||
-            decl->getType()->isArrayType() ||
-            analyser_.hasAddressReferences(decl)) {
-            DEBUG(
-                std::cerr << "Adding to AS: "
-                << decl->getDeclName().getAsString() << "\n"; );
-            privates_.insert(decl);
-        } else {
-            DEBUG(
-                std::cerr << "Skipping: "
-                << decl->getDeclName().getAsString() << "\n"; );
-        }
+            // struct types must be also in address space, because there might be
+            // tables / ponters inside struct... simpler structs could
+            // maybe be left out.
+            clang::VarDecl *decl = *i;
+            if (decl->getType()->isPointerType() ||
+                decl->getType()->isStructureType() ||
+                decl->getType()->isArrayType() ||
+                analyser_.hasAddressReferences(decl)) {
+                    DEBUG(
+                        std::cerr << "Adding to AS: "
+                        << decl->getDeclName().getAsString() << "\n"; );
+                    privates_.insert(decl);
+            } else {
+                DEBUG(
+                    std::cerr << "Skipping: "
+                    << decl->getDeclName().getAsString() << "\n"; );
+            }
     }
-    
+
     WebCLAnalyser::VarDeclSet &constantVars = analyser_.getConstantVariables();
     for(WebCLAnalyser::VarDeclSet::iterator i = constantVars.begin();
         i != constantVars.end(); ++i) {
-        constants_.insert(*i);
+            constants_.insert(*i);
     }
-    
+
     WebCLAnalyser::VarDeclSet &localVars = analyser_.getLocalVariables();
     for(WebCLAnalyser::VarDeclSet::iterator i = localVars.begin();
         i != localVars.end(); ++i) {
-        locals_.insert(*i);
+            locals_.insert(*i);
     }
-      
+
     // create address space types
     transformer_.createPrivateAddressSpaceTypedef(getPrivateAddressSpace());
     transformer_.createLocalAddressSpaceTypedef(getLocalAddressSpace());
     transformer_.createConstantAddressSpaceTypedef(getConstantAddressSpace());
 }
-  
+
 bool WebCLAddressSpaceHandler::hasPrivateAddressSpace()
 {
     return privates_.size() > 0;
@@ -175,7 +176,7 @@ AddressSpaceInfo &WebCLAddressSpaceHandler::getConstantAddressSpace()
 {
     return getOrCreateAddressSpaceInfo(&constants_);
 }
-  
+
 void WebCLAddressSpaceHandler::emitConstantAddressSpaceAllocation()
 {
     // Allocate space for constant address space and pass original
@@ -190,29 +191,29 @@ void WebCLAddressSpaceHandler::doRelocations()
 
     WebCLAnalyser::DeclRefExprSet &varUses = analyser_.getVariableUses();
     for (WebCLAnalyser::DeclRefExprSet::iterator i = varUses.begin();
-         i != varUses.end(); ++i) {
-      
-        clang::DeclRefExpr *use = *i;
-        clang::VarDecl *decl = llvm::dyn_cast<clang::VarDecl>(use->getDecl());
-      
-        if (decl) {
-            DEBUG( std::cerr << "Decl:" << use->getDecl()->getNameAsString() << "\n"; );
-            
-            // check if declaration has been moved to address space and add
-            // transformation if so.
-            if (isRelocated(decl)) {
-                // add initialization from function arg if necessary
-                if (clang::ParmVarDecl *parmDecl =
-                    llvm::dyn_cast<clang::ParmVarDecl>(decl)) {
-                    transformer_.addRelocationInitializerFromFunctionArg(parmDecl);
+        i != varUses.end(); ++i) {
+
+            clang::DeclRefExpr *use = *i;
+            clang::VarDecl *decl = llvm::dyn_cast<clang::VarDecl>(use->getDecl());
+
+            if (decl) {
+                DEBUG( std::cerr << "Decl:" << use->getDecl()->getNameAsString() << "\n"; );
+
+                // check if declaration has been moved to address space and add
+                // transformation if so.
+                if (isRelocated(decl)) {
+                    // add initialization from function arg if necessary
+                    if (clang::ParmVarDecl *parmDecl =
+                        llvm::dyn_cast<clang::ParmVarDecl>(decl)) {
+                            transformer_.addRelocationInitializerFromFunctionArg(parmDecl);
+                    }
+
+                    DEBUG( std::cerr << "--- relocated!\n"; );
+                    transformer_.replaceWithRelocated(use, decl);
                 }
-      
-                DEBUG( std::cerr << "--- relocated!\n"; );
-                transformer_.replaceWithRelocated(use, decl);
             }
-        }
     }
-    
+
     // add initializer for relocated private address space declarations
     for (AddressSpaceSet::iterator i = privates_.begin(); i != privates_.end(); ++i) {
         clang::VarDecl *privDecl = *i;
@@ -263,8 +264,8 @@ AddressSpaceInfo& WebCLAddressSpaceHandler::getOrCreateAddressSpaceInfo(AddressS
     //              add sorting declarations according to their size
     if (organizedAddressSpaces_.count(declarations) == 0) {
         for (AddressSpaceSet::iterator declIter = declarations->begin();
-             declIter != declarations->end(); ++declIter) {
-            organizedAddressSpaces_[declarations].push_back(*declIter);
+            declIter != declarations->end(); ++declIter) {
+                organizedAddressSpaces_[declarations].push_back(*declIter);
         }
     }
     return organizedAddressSpaces_[declarations];
@@ -307,44 +308,48 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
     privateLimits_.setStaticLimits(true);
 
     // go through dynamic limits in the program and create variables for them
-    WebCLAnalyser::FunctionDeclSet &kernels = analyser_.getKernelFunctions();
-    for (WebCLAnalyser::FunctionDeclSet::iterator i = kernels.begin();
-         i != kernels.end(); ++i) {
+    WebCLAnalyser::KernelList &kernels = analyser_.getKernelFunctions();
+    for (WebCLAnalyser::KernelList::iterator i = kernels.begin();
+        i != kernels.end(); ++i) {
 
-        clang::FunctionDecl *func = *i;
-        for (clang::FunctionDecl::param_iterator parmIter = func->param_begin();
-             parmIter != func->param_end(); ++parmIter) {
-            
-            clang::ParmVarDecl *parm = *parmIter;
-            if (parm->getType().getTypePtr()->isPointerType()) {
-        
-                transformer_.addSizeParameter(parm);
-          
-                DEBUG(
-                    std::cerr << "Adding dynamic limits from kernel:"
-                    << func->getDeclName().getAsString()
-                    << " arg:" << parm->getDeclName().getAsString() << "\n"; );
+            clang::FunctionDecl *func = i->decl;
+            for (std::vector<WebCLAnalyser::KernelArgInfo>::const_iterator j = i->args.begin();
+                j != i->args.end(); ++j) {
+                    const WebCLAnalyser::KernelArgInfo &parm = *j;
+                    if (parm.pointerKind != WebCLAnalyser::NOT_POINTER) {
 
-                switch (parm->getType().getTypePtr()->getPointeeType().getAddressSpace()) {
-                case clang::LangAS::opencl_global:
-                    DEBUG( std::cerr << "Global address space!\n"; );
-                    globalLimits_.insert(parm);
-                    break;
-                case clang::LangAS::opencl_constant:
-                    DEBUG( std::cerr << "Constant address space!\n"; );
-                    constantLimits_.insert(parm);
-                    break;
-                case clang::LangAS::opencl_local:
-                    DEBUG( std::cerr << "Local address space!\n"; );
-                    localLimits_.insert(parm);
-                    break;
-                default:
-                    DEBUG( std::cerr << "Private address space kernel arg pointer! Vendor compiler should catch this if really invalid and not some typedef of valid opencl type.\n"; );
-                }
+                        transformer_.addSizeParameter(parm.decl);
+
+                        DEBUG(
+                            std::cerr << "Adding dynamic limits from kernel:"
+                            << func->getDeclName().getAsString()
+                            << " arg:" << parm.name << "\n"; );
+
+                        switch (parm.pointerKind) {
+                        case WebCLAnalyser::GLOBAL_POINTER:
+                            DEBUG( std::cerr << "Global address space!\n"; );
+                            globalLimits_.insert(parm.decl);
+                            break;
+                        case WebCLAnalyser::CONSTANT_POINTER:
+                            DEBUG( std::cerr << "Constant address space!\n"; );
+                            constantLimits_.insert(parm.decl);
+                            break;
+                        case WebCLAnalyser::LOCAL_POINTER:
+                            DEBUG( std::cerr << "Local address space!\n"; );
+                            localLimits_.insert(parm.decl);
+                            break;
+                        case WebCLAnalyser::IMAGE_HANDLE:
+                            DEBUG( std::cerr << "Image or sampler argument!\n"; );
+                            break;
+                        default:
+                            // This used to be just a debug, but WebCLHeader made it a fatal error in the end.
+                            // To move WebCLHeader out of the validator library, we must make it fatal here.
+                            error(parm.decl->getLocStart(), "Invalid address space.");
+                        }
+                    }
             }
-        }
     }
-    
+
     // Add typedefs for each limit structure. These are required if
     // static or dynamic allocations are present.
     if (!globalLimits_.empty())
@@ -358,51 +363,48 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
             globalLimits_, constantLimits_, localLimits_,
             addressSpaceHandler_.getPrivateAddressSpace());
     }
-    
+
     // now that we have all the data about the limit structures, we can actually
     // create the initialization code for each kernel
-    for (WebCLAnalyser::FunctionDeclSet::iterator i = kernels.begin();
-         i != kernels.end(); ++i) {
-      
-        clang::FunctionDecl *func = *i;
+    for (WebCLAnalyser::KernelList::iterator i = kernels.begin();
+        i != kernels.end(); ++i) {
 
-        // Create allocation for local address space according to
-        // earlier typedef. This is required if there are static
-        // allocations but not if there are only dynamic allocations.
-        if (addressSpaceHandler_.hasLocalAddressSpace())
-            transformer_.createLocalAddressSpaceAllocation(func);
+            clang::FunctionDecl *func = i->decl;
 
-        // Allocate space for local null ptr
-        transformer_.createLocalAddressSpaceNullAllocation(func);
-      
-        // allocate wcl_allocations_allocation and create the wcl_allocs
-        // pointer to it, give all the data it needs to be able to create
-        // also static initializator and prevent need for separate private
-        // area zeroing...
-        if (hasProgramAllocations()) {
-            transformer_.createProgramAllocationsAllocation(
-                func, globalLimits_, constantLimits_, localLimits_,
-                addressSpaceHandler_.getPrivateAddressSpace());
-        }
-      
-        // Initialize null pointers for global and private addres spaces
-        transformer_.initializeAddressSpaceNull(func, globalLimits_);
-        if (!addressSpaceHandler_.getPrivateAddressSpace().empty()) {
-            transformer_.initializeAddressSpaceNull(func, privateLimits_);        
-        }
+            // Create allocation for local address space according to
+            // earlier typedef. This is required if there are static
+            // allocations but not if there are only dynamic allocations.
+            if (addressSpaceHandler_.hasLocalAddressSpace())
+                transformer_.createLocalAddressSpaceAllocation(func);
 
-        // inject code that does zero initializing for all local memory ranges
-        transformer_.createLocalAreaZeroing(func, localLimits_);
+            // Allocate space for local null ptr
+            transformer_.createLocalAddressSpaceNullAllocation(func);
+
+            // allocate wcl_allocations_allocation and create the wcl_allocs
+            // pointer to it, give all the data it needs to be able to create
+            // also static initializator and prevent need for separate private
+            // area zeroing...
+            if (hasProgramAllocations()) {
+                transformer_.createProgramAllocationsAllocation(
+                    func, globalLimits_, constantLimits_, localLimits_,
+                    addressSpaceHandler_.getPrivateAddressSpace());
+            }
+
+            // Initialize null pointers for global and private addres spaces
+            transformer_.initializeAddressSpaceNull(func, globalLimits_);
+            if (!addressSpaceHandler_.getPrivateAddressSpace().empty()) {
+                transformer_.initializeAddressSpaceNull(func, privateLimits_);
+            }
+
+            // inject code that does zero initializing for all local memory ranges
+            transformer_.createLocalAreaZeroing(func, localLimits_);
     }
-
-    /// Export kernel signatures.
-    transformer_.createJsonHeader(kernels);
 
     // Fixes all the function signatures and calls of internal helper functions
     // with additional wcl_allocs arg
     if (hasProgramAllocations())
         helperFunctionHandler_.run(context);
-  
+
     // Now that limits and all new address spaces are created do the replacements
     // so that struct fields are used instead of original variable declarations.
     addressSpaceHandler_.doRelocations();
@@ -425,7 +427,7 @@ AddressSpaceLimits& WebCLKernelHandler::getLimits(
             return localLimits_;
         default:
             return privateLimits_;
-      }
+        }
     }
 
     // FUTURE: implement getting specific limits..
@@ -440,13 +442,13 @@ AddressSpaceLimits& WebCLKernelHandler::getDerefLimits(
 {
     switch(access->getType().getTypePtr()->getPointeeType().getAddressSpace()) {
     case clang::LangAS::opencl_global:
-	return globalLimits_;
+        return globalLimits_;
     case clang::LangAS::opencl_constant:
-	return constantLimits_;
+        return constantLimits_;
     case clang::LangAS::opencl_local:
-	return localLimits_;
+        return localLimits_;
     default:
-	return privateLimits_;
+        return privateLimits_;
     }
     assert(false);
 }
@@ -507,35 +509,35 @@ void WebCLMemoryAccessHandler::run(clang::ASTContext &context)
     maxAccess[clang::LangAS::opencl_global] = 8;
     maxAccess[clang::LangAS::opencl_local] = 8;
     maxAccess[0] = 8;
-      
+
     for (WebCLAnalyser::MemoryAccessMap::iterator i = pointerAccesses.begin();
-         i != pointerAccesses.end(); ++i) {
-      
-        clang::Expr *access = i->first;
-        clang::VarDecl *decl = i->second;
-      
-        // update maximum access data
-        unsigned addressSpace = WebCLTypes::getAddressSpace(access);
-        unsigned accessWidth = context.getTypeSize(access->getType());
-        if (maxAccess.count(addressSpace) == 0) {
-            maxAccess[addressSpace] = accessWidth;
-        }
-        unsigned oldVal = maxAccess[addressSpace];
-        maxAccess[addressSpace] = oldVal > accessWidth ? oldVal : accessWidth;
-      
-        // add memory check generation to transformer
-        transformer_.addMemoryAccessCheck(
-            access,
-	    1, // a single value
-	    kernelHandler_.getLimits(access, decl));
+        i != pointerAccesses.end(); ++i) {
+
+            clang::Expr *access = i->first;
+            clang::VarDecl *decl = i->second;
+
+            // update maximum access data
+            unsigned addressSpace = WebCLTypes::getAddressSpace(access);
+            unsigned accessWidth = context.getTypeSize(access->getType());
+            if (maxAccess.count(addressSpace) == 0) {
+                maxAccess[addressSpace] = accessWidth;
+            }
+            unsigned oldVal = maxAccess[addressSpace];
+            maxAccess[addressSpace] = oldVal > accessWidth ? oldVal : accessWidth;
+
+            // add memory check generation to transformer
+            transformer_.addMemoryAccessCheck(
+                access,
+                1, // a single value
+                kernelHandler_.getLimits(access, decl));
     }
 
     // add defines for address space specific minimum memory requirements.
     // this is needed to be able to serve all memory accesses in program
     for (std::map<unsigned, unsigned>::iterator i = maxAccess.begin();
-         i != maxAccess.end(); i++) {
-      
-        transformer_.addMinimumRequiredContinuousAreaLimit(i->first, i->second);
+        i != maxAccess.end(); i++) {
+
+            transformer_.addMinimumRequiredContinuousAreaLimit(i->first, i->second);
     }
 }
 
@@ -557,21 +559,21 @@ void WebCLBuiltinHandler::run(clang::ASTContext &context)
     unsigned fnCounter = 0;
 
     for (WebCLAnalyser::CallExprSet::const_iterator builtinCallIt = builtinCalls.begin();
-	 builtinCallIt != builtinCalls.end();
-	 ++builtinCallIt) {
-	std::string origName = (*builtinCallIt)->getDirectCallee()->getNameInfo().getAsString();
-	std::string wrapperName = "_wcl_" + origName + "_" + stringify(fnCounter);
+        builtinCallIt != builtinCalls.end();
+        ++builtinCallIt) {
+            std::string origName = (*builtinCallIt)->getDirectCallee()->getNameInfo().getAsString();
+            std::string wrapperName = "_wcl_" + origName + "_" + stringify(fnCounter);
 
-	bool success = transformer_.wrapBuiltinFunction(wrapperName, *builtinCallIt, kernelHandler_);
+            bool success = transformer_.wrapBuiltinFunction(wrapperName, *builtinCallIt, kernelHandler_);
 
-	if (success) {
-	    ++fnCounter;
-	} else if (analyser_.hasUnsafeParameters(*builtinCallIt)) {
-	    // error on unknown builtin functions involving pointer arguments
-	    error((*builtinCallIt)->getLocStart(), "Builtin argument check is required.");
-	} else {
-	    // pass other unknown functions through
-	}
+            if (success) {
+                ++fnCounter;
+            } else if (analyser_.hasUnsafeParameters(*builtinCallIt)) {
+                // error on unknown builtin functions involving pointer arguments
+                error((*builtinCallIt)->getLocStart(), "Builtin argument check is required.");
+            } else {
+                // pass other unknown functions through
+            }
     }
 }
 
@@ -597,58 +599,75 @@ void WebCLImageSafetyHandler::run(clang::ASTContext &context)
     calls.insert(analyser_.getInternalCalls().begin(), analyser_.getInternalCalls().end());
 
     for (WebCLAnalyser::CallExprSet::const_iterator callExprIt = calls.begin();
-	 callExprIt != calls.end();
-	 ++callExprIt) {
-	clang::CallExpr *callExpr = *callExprIt;
-	for (unsigned argIdx = 0; argIdx < callExpr->getNumArgs(); ++argIdx) {
-	    clang::Expr *expr = callExpr->getArg(argIdx);
-	    clang::QualType type = WebCLTypes::reduceType(instance_, expr->getType());
-	    if (type.getAsString() == "image2d_t") {
-		bool ok = false;
-		bool typeMismatchOnly = false;
-		clang::DeclRefExpr *declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(expr);
-		if (!declRefExpr) {
-		    if (clang::ImplicitCastExpr *implicitCastExpr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)) {
-			declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(*implicitCastExpr->child_begin());
-		    }
-		}
-		
-		if (declRefExpr) {
-		    const clang::ValueDecl *valueDecl = declRefExpr->getDecl();
-		    if (clang::isa<clang::ParmVarDecl>(valueDecl)) {
-			clang::QualType paramType = WebCLTypes::reduceType(instance_, valueDecl->getType());
-			if (paramType == type) {
-			    ok = true;
-			} else {
-			    // can this case ever happen?
-			    typeMismatchOnly = true;
-			}
-		    }
-		}
+        callExprIt != calls.end();
+        ++callExprIt) {
+            clang::CallExpr *callExpr = *callExprIt;
+            for (unsigned argIdx = 0; argIdx < callExpr->getNumArgs(); ++argIdx) {
+                clang::Expr *expr = callExpr->getArg(argIdx);
+                clang::QualType type = WebCLTypes::reduceType(instance_, expr->getType());
+                if (type.getAsString() == "image2d_t") {
+                    enum {
+                        // The corresponding param has not been found (yet)
+                        PARAM_NOT_FOUND,
+                        // The parameter was found but the type was wrong
+                        TYPE_MISMATCH,
+                        // The parameter was found but it had an illegal access qualifier
+                        ILLEGAL_ACCESS,
+                        // Everything is OK
+                        SAFE
+                    } safety = PARAM_NOT_FOUND;
 
-		if (!ok) {
-		    if (typeMismatchOnly) {
-			error(expr->getLocStart(), "image2d_t must always originate from parameters with its original type");
-		    } else {
-			error(expr->getLocStart(), "image2d_t must always originate from parameters");
-		    }
-		}
-		usedAsArgument.insert(declRefExpr);
-	    }
-	}
+                    clang::DeclRefExpr *declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(expr);
+                    if (!declRefExpr) {
+                        if (clang::ImplicitCastExpr *implicitCastExpr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)) {
+                            declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(*implicitCastExpr->child_begin());
+                        }
+                    }
+
+                    usedAsArgument.insert(declRefExpr);
+
+                    if (declRefExpr) {
+                        const clang::ValueDecl *valueDecl = declRefExpr->getDecl();
+                        if (clang::isa<clang::ParmVarDecl>(valueDecl)) {
+                            clang::QualType paramType = WebCLTypes::reduceType(instance_, valueDecl->getType());
+                            if (paramType == type) {
+                                // Further check that the parameter access qualifier is supported, if present
+                                const clang::OpenCLImageAccess qualifier = valueDecl->getType().getAccess();
+                                if (!qualifier || qualifier == clang::CLIA_read_only || qualifier == clang::CLIA_write_only) {
+                                    safety = SAFE;
+                                } else {
+                                    safety = ILLEGAL_ACCESS;
+                                }
+                            } else {
+                                // can this case ever happen?
+                                safety = TYPE_MISMATCH;
+                            }
+                        }
+                    }
+
+
+                    if (safety == TYPE_MISMATCH) {
+                        error(expr->getLocStart(), "image2d_t must always originate from parameters with its original type");
+                    } else if (safety == ILLEGAL_ACCESS) {
+                        error(declRefExpr->getLocStart(), "image2d_t parameters can only have read_only or write_only access qualifier");
+                    } else if (safety == PARAM_NOT_FOUND) {
+                        error(expr->getLocStart(), "image2d_t must always originate from parameters, unchanged");
+                    }
+                }
+            }
     }
 
     const WebCLAnalyser::DeclRefExprSet uses = analyser_.getVariableUses();
     for (WebCLAnalyser::DeclRefExprSet::const_iterator useIt = uses.begin();
         useIt != uses.end();
         ++useIt) {
-       clang::DeclRefExpr *expr = *useIt;
-       clang::QualType type = WebCLTypes::reduceType(instance_, expr->getType());
-       if (type.getAsString() == "image2d_t") {
-	   if (!usedAsArgument.count(expr)) {
-               error((expr)->getLocStart(), "image2d_t must always be used as a function argument");
-           }
-       }
+            clang::DeclRefExpr *expr = *useIt;
+            clang::QualType type = WebCLTypes::reduceType(instance_, expr->getType());
+            if (type.getAsString() == "image2d_t") {
+                if (!usedAsArgument.count(expr)) {
+                    error((expr)->getLocStart(), "image2d_t must always be used as a function argument");
+                }
+            }
     }
 }
 

@@ -58,7 +58,7 @@ WebCLConfiguration::WebCLConfiguration()
     , minSuffix_("min")
     , maxSuffix_("max")
     , indentation_("    ")
-    , sizeParameterType_("unsigned long")
+    , sizeParameterType_("ulong")
 
     , privateAddressSpace_("private")
     , localAddressSpace_("local")
@@ -204,10 +204,9 @@ const std::string WebCLConfiguration::getNameOfType(clang::QualType type) const
     return type.getUnqualifiedType().getAsString();
 }
 
-const std::string WebCLConfiguration::getNameOfSizeParameter(const clang::ParmVarDecl *decl) const
+const std::string WebCLConfiguration::getNameOfSizeParameter(const std::string &arrayParamName) const
 {
-    const std::string name = decl->getName();
-    return variablePrefix_ + "_" + name + "_size";
+    return variablePrefix_ + "_" + arrayParamName + "_size";
 }
 
 const std::string WebCLConfiguration::getNameOfAnonymousStructure(const clang::RecordDecl *decl)

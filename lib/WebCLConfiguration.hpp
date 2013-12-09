@@ -98,8 +98,8 @@ public:
     /// \return Type name without qualifiers.
     const std::string getNameOfType(clang::QualType type) const;
     /// \return Name of kernel parameter that contains the size of
-    /// given memory object parameter.
-    const std::string getNameOfSizeParameter(const clang::ParmVarDecl *decl) const;
+    /// the array parameter with the given name.
+    const std::string getNameOfSizeParameter(const std::string &arrayParamName) const;
     /// \return Name that should be generated for given anonymous or
     /// nameless structure.
     const std::string getNameOfAnonymousStructure(const clang::RecordDecl *decl);

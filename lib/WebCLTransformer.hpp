@@ -47,7 +47,6 @@ namespace clang {
     class DeclRefExpr;
 }
 
-class WebCLAnalyser; // used by wrapBuiltinFunction
 class WebCLKernelHandler; // used by wrapBuiltinFunction
 
 /// Performs transformations that need to be done by the memory access
@@ -71,10 +70,6 @@ public:
     /// \return Whether errors were detected. Transformed code
     /// shouldn't be output if there were errors.
     bool rewrite();
-
-    /// Creates a comment that contains information about kernels and
-    /// kernel parameters in JSON format.
-    void createJsonHeader(std::set<clang::FunctionDecl*> &kernels);
 
     /// Create address space structure. The structure contains all
     /// relocated variables of the given address space as fields.
@@ -312,8 +307,6 @@ private:
     /// streams. Kernel prologue comes before function prologue.
     std::stringstream& functionPrologue(FunctionPrologueMap &prologues, const clang::FunctionDecl *func);
 
-    /// Stream for JSON header.
-    std::stringstream jsonPrologue_;
     /// Stream for code that needs to be located at the beginning of
     /// the transformed program even before typedefs.
     std::stringstream preModulePrologue_;

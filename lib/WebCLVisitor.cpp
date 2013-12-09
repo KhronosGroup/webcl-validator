@@ -199,7 +199,8 @@ bool WebCLRestrictor::handleParmVarDecl(clang::ParmVarDecl *decl)
 
     clang::SourceLocation typeLocation = info->getTypeLoc().getBeginLoc();
 
-    const clang::Type *type = info->getType().getTypePtrOrNull();
+    const clang::QualType qualType = info->getType();
+    const clang::Type *type = qualType.getTypePtrOrNull();
     if (!info) {
         error(typeLocation, "Invalid parameter type.\n");
         return true;
@@ -217,6 +218,7 @@ bool WebCLRestrictor::handleParmVarDecl(clang::ParmVarDecl *decl)
 
     checkStructureParameter(function, typeLocation, type);
     check3dImageParameter(function, typeLocation, type);
+    checkUnsupportedBuiltinParameter(function, typeLocation, qualType);
     return true;
 }
 
@@ -245,6 +247,18 @@ void WebCLRestrictor::check3dImageParameter(
         clang::QualType pointee = type->getPointeeType();
         if (pointee.getAsString() == "struct image3d_t_")
             error(typeLocation, "WebCL doesn't support 3D images.\n");
+    }
+}
+
+void WebCLRestrictor::checkUnsupportedBuiltinParameter(
+    clang::FunctionDecl *decl,
+    clang::SourceLocation typeLocation, const clang::QualType &type)
+{
+    clang::QualType reduced = WebCLTypes::reduceType(instance_, type);
+    std::string typeName = reduced.getAsString();
+    if (decl->hasAttr<clang::OpenCLKernelAttr>() &&
+        WebCLTypes::unsupportedBuiltinTypes().count(typeName) > 0) {
+            error(typeLocation, "Unsupported builtin type %0 used as a kernel parameter.") << typeName;
     }
 }
 
@@ -389,13 +403,93 @@ bool WebCLAnalyser::handleUnaryOperator(clang::UnaryOperator *expr)
   return true;
 }
 
+namespace {
+    std::map<std::string, std::string> typeShorthands()
+    {
+        static std::map<std::string, std::string> typeShorthands_;
+        if (typeShorthands_.empty()) {
+            typeShorthands_["unsigned char"] = "uchar";
+            typeShorthands_["unsigned short"] = "ushort";
+            typeShorthands_["unsigned int"] = "uint";
+            typeShorthands_["unsigned long"] = "ulong";
+
+            typeShorthands_["unsigned char *"] = "uchar *";
+            typeShorthands_["unsigned short *"] = "ushort *";
+            typeShorthands_["unsigned int *"] = "uint *";
+            typeShorthands_["unsigned long *"] = "ulong *";
+        }
+        return typeShorthands_;
+    }
+}
+
+WebCLAnalyser::KernelArgInfo::KernelArgInfo(clang::CompilerInstance &instance, clang::ParmVarDecl *decl)
+    : decl(decl)
+    , name(decl->getName().str())
+    , reducedTypeName(WebCLTypes::reduceType(instance, decl->getType()).getAsString())
+    , pointerKind(NOT_POINTER)
+    , imageKind(NOT_IMAGE)
+{
+    if (typeShorthands().count(reducedTypeName)) {
+        reducedTypeName = typeShorthands()[reducedTypeName];
+    }
+
+    if (decl->getType().getTypePtr()->isPointerType()) {
+        switch (decl->getType().getTypePtr()->getPointeeType().getAddressSpace()) {
+        case clang::LangAS::opencl_global:
+            pointerKind = GLOBAL_POINTER;
+            break;
+        case clang::LangAS::opencl_constant:
+            pointerKind = CONSTANT_POINTER;
+            break;
+        case clang::LangAS::opencl_local:
+            pointerKind = LOCAL_POINTER;
+            break;
+        default:
+            if (WebCLTypes::supportedBuiltinTypes().count(reducedTypeName) > 0) {
+                pointerKind = IMAGE_HANDLE;
+
+                switch (decl->getType().getAccess()) {
+                case 0:
+                    // no access qualifier, fall through to the default of read-only
+                case clang::CLIA_read_only:
+                    imageKind = READABLE_IMAGE;
+                    break;
+                case clang::CLIA_write_only:
+                    imageKind = WRITABLE_IMAGE;
+                    break;
+                case clang::CLIA_read_write:
+                    // This will cause an error later on
+                    imageKind = RW_IMAGE;
+                    break;
+                default:
+                    imageKind = UNKNOWN_ACCESS_IMAGE;
+                    break;
+                }
+            } else {
+                pointerKind = PRIVATE_POINTER;
+            }
+        }
+    }
+}
+
+WebCLAnalyser::KernelInfo::KernelInfo(clang::CompilerInstance &instance, clang::FunctionDecl *decl)
+    : decl(decl)
+    , name(decl->getNameInfo().getAsString())
+{
+    /// Go through arguments, collect info using the compiler instance
+    for (clang::FunctionDecl::param_iterator i = decl->param_begin();
+        i != decl->param_end(); ++i) {
+            args.push_back(KernelArgInfo(instance, *i));
+    }
+}
+
 bool WebCLAnalyser::handleFunctionDecl(clang::FunctionDecl *decl)
 {
   if (!isFromMainFile(decl->getLocStart())) return true;
   
   if (decl->hasAttr<clang::OpenCLKernelAttr>()) {
     info(decl->getLocStart(), "This is kernel, go through arguments to collect pointers etc.");
-    kernelFunctions_.insert(decl);
+    kernelFunctions_.push_back(KernelInfo(instance_, decl));
   } else {
     info(decl->getLocStart(), "This is prototype/function, add to list to add wcl_allocs arg and add to list to recognize internal functions for call conversion.");
     helperFunctions_.insert(decl);
@@ -495,7 +589,7 @@ bool WebCLAnalyser::handleForStmt(clang::ForStmt *stmt) {
   return true;
 }
 
-WebCLAnalyser::FunctionDeclSet &WebCLAnalyser::getKernelFunctions()
+WebCLAnalyser::KernelList &WebCLAnalyser::getKernelFunctions()
 {
     return kernelFunctions_;
 }
@@ -541,6 +635,56 @@ WebCLAnalyser::MemoryAccessMap &WebCLAnalyser::getPointerAceesses()
 }
 
 WebCLAnalyser::TypeDeclList &WebCLAnalyser::getTypeDecls()
+{
+    return typeDeclList_;
+}
+
+const WebCLAnalyser::KernelList &WebCLAnalyser::getKernelFunctions() const
+{
+    return kernelFunctions_;
+}
+
+const WebCLAnalyser::FunctionDeclSet &WebCLAnalyser::getHelperFunctions() const
+{
+    return helperFunctions_;
+}
+
+const WebCLAnalyser::CallExprSet &WebCLAnalyser::getInternalCalls() const
+{
+    return internalCalls_;
+}
+
+const WebCLAnalyser::CallExprSet &WebCLAnalyser::getBuiltinCalls() const
+{
+    return builtinCalls_;
+}
+
+const WebCLAnalyser::VarDeclSet &WebCLAnalyser::getConstantVariables() const
+{
+    return constantVariables_;
+}
+
+const WebCLAnalyser::VarDeclSet &WebCLAnalyser::getLocalVariables() const
+{
+    return localVariables_;
+}
+
+const WebCLAnalyser::VarDeclSet &WebCLAnalyser::getPrivateVariables() const
+{
+    return privateVariables_;
+}
+
+const WebCLAnalyser::DeclRefExprSet &WebCLAnalyser::getVariableUses() const
+{
+    return variableUses_;
+}
+
+const WebCLAnalyser::MemoryAccessMap &WebCLAnalyser::getPointerAceesses() const
+{
+    return pointerAccesses_;
+}
+
+const WebCLAnalyser::TypeDeclList &WebCLAnalyser::getTypeDecls() const
 {
     return typeDeclList_;
 }

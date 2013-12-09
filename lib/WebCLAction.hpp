@@ -26,9 +26,13 @@
 
 #include "WebCLConsumer.hpp"
 #include "WebCLConfiguration.hpp"
+#include "WebCLVisitor.hpp"
 
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Frontend/FrontendAction.h"
+
+#include <set>
+#include <string>
 
 namespace clang {
     class Sema;
@@ -48,6 +52,8 @@ public:
     explicit WebCLAction(const char *output = NULL);
     virtual ~WebCLAction();
 
+    void setExtensions(const std::set<std::string> &extensions);
+
 protected:
 
     /// Initializes the action state. Full initialization isn't done
@@ -61,6 +67,8 @@ protected:
     // parsed. For example, include directives are handled during
     // preprocessing and pragmas during AST parsing.
     WebCLPreprocessor *preprocessor_;
+    // Additional OpenCL extensions to allow in preprocessing besides cl_khr_initialize_memory
+    std::set<std::string> extensions_;
     /// Output filename.
     const char *output_;
     /// Stream corresponding to the output filename.
@@ -161,7 +169,7 @@ class WebCLValidatorAction : public WebCLAction
 {
 public:
 
-    WebCLValidatorAction();
+    WebCLValidatorAction(std::string &validatedSource, WebCLAnalyser::KernelList &kernels);
     virtual ~WebCLValidatorAction();
 
     /// \see clang::FrontendAction
@@ -190,6 +198,10 @@ private:
     /// we do, using internal clang components, e.g. in order to
     /// manipulate AST nodes, becomes easier.
     clang::Sema *sema_;
+    /// Where to store transformed source after validation is complete.
+    std::string &validatedSource_;
+    /// Ditto for kernel info
+    WebCLAnalyser::KernelList &kernels_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLACTION

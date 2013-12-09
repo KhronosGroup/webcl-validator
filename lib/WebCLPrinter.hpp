@@ -27,6 +27,8 @@
 #include "WebCLReporter.hpp"
 #include "WebCLPass.hpp"
 
+#include <string>
+
 namespace llvm {
     class raw_ostream;
 }
@@ -66,10 +68,18 @@ public:
 
     /// Apply transformations to original WebCL C source. If the
     /// transformations apply succesfully, print the transformed
-    /// source to standard output.
+    /// source to the output_ variable.
     ///
     /// \see WebCLPass
     virtual void run(clang::ASTContext &context);
+
+    /// Get transformed source
+    const std::string &getOutput() const { return output_; }
+
+private:
+
+    /// Stores transformed source after a succesful run
+    std::string output_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLPRINTER

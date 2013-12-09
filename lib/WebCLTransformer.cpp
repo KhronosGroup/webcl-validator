@@ -22,7 +22,6 @@
 */
 
 #include "WebCLDebug.hpp"
-#include "WebCLHeader.hpp"
 #include "WebCLTransformer.hpp"
 #include "WebCLVisitor.hpp"
 #include "WebCLPass.hpp"
@@ -204,7 +203,7 @@ namespace {
 	newArguments.push_back(std::make_pair(cfg.addressSpaceRecordType_ + "*", cfg.addressSpaceRecordName_));
 	for (size_t argIdx = 0; argIdx < callExpr->getNumArgs(); ++argIdx) {
 	    newArguments.push_back(std::make_pair(
-		    WebCLTypes::reduceType(instance, callExpr->getArg(argIdx)->getType()).getAsString(),
+		    callExpr->getArg(argIdx)->getType().getAsString(),
 		    "arg" + stringify(argIdx)));
 	}
 	
@@ -222,7 +221,7 @@ namespace {
 	    return WrappedFunction();
 	}
 
-	std::string ptrTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType()).getAsString();
+	std::string ptrTypeStr = pointerArg->getType().getAsString();
 	std::string returnTypeStr;
 	unsigned origDataWidth = (aligned_ && width_ == 3) ? 4 : width_;
 
@@ -294,7 +293,7 @@ namespace {
 	    return WrappedFunction();
 	}
 
-	std::string ptrTypeStr = WebCLTypes::reduceType(instance, pointerArg->getType()).getAsString();
+	std::string ptrTypeStr = pointerArg->getType().getAsString();
 	unsigned origDataWidth = (aligned_ && width_ == 3) ? 4 : width_;
 	
 	AddressSpaceLimits &limits = kernelHandler.getDerefLimits(pointerArg);
@@ -504,12 +503,6 @@ bool WebCLTransformer::rewrite()
     return status;
 }
 
-void WebCLTransformer::createJsonHeader(std::set<clang::FunctionDecl*> &kernels)
-{
-    WebCLHeader header(instance_, cfg_);
-    header.emitHeader(jsonPrologue_, kernels);
-}
-
 std::stringstream& WebCLTransformer::functionPrologue(
     FunctionPrologueMap &prologues, const clang::FunctionDecl *kernel)
 {
@@ -652,7 +645,7 @@ std::string WebCLTransformer::addressSpaceLimitsInitializer(
             retVal << "&" << name
                    << "[0], "
                    << "&" << name
-                   << "[" << cfg_.getNameOfSizeParameter(decl) << "]";
+                   << "[" << cfg_.getNameOfSizeParameter(name) << "]";
         } else {
             retVal << "0, 0";
         }
@@ -1187,7 +1180,7 @@ void WebCLTransformer::addRecordArgument(clang::CallExpr *call)
 void WebCLTransformer::addSizeParameter(clang::ParmVarDecl *decl)
 {
     const std::string parameter =
-        cfg_.sizeParameterType_ + " " + cfg_.getNameOfSizeParameter(decl);
+        cfg_.sizeParameterType_ + " " + cfg_.getNameOfSizeParameter(decl->getName());
     const std::string replacement =
         wclRewriter_.getOriginalText(decl->getSourceRange()) + ", " + parameter;
     wclRewriter_.replaceText(
@@ -1311,7 +1304,6 @@ std::string WebCLTransformer::getWclAddrCheckMacroDefinition(unsigned aSpaceNum,
 
 void WebCLTransformer::emitPrologue(std::ostream &out)
 {
-    out << jsonPrologue_.str();
     out << preModulePrologue_.str();
     out << modulePrologue_.str();
     emitGeneralCode(out);

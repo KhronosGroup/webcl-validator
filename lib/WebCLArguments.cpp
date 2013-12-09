@@ -57,7 +57,7 @@ int mingwcompatible_mkstemp(char* tmplt) {
   return open(filename, O_RDWR | O_CREAT, 0600);
 }
 
-WebCLArguments::WebCLArguments(int argc, char const *argv[])
+WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char const *argv[])
     : preprocessorArgc_(0)
     , preprocessorArgv_(NULL)
     , validatorArgc_(0)
@@ -66,19 +66,12 @@ WebCLArguments::WebCLArguments(int argc, char const *argv[])
     , files_()
     , outputs_()
 {
-    char const *commandName = argv[0];
-    char const *inputFilename = argv[1];
-    char const *temporaryStdinCopy = NULL;
-    const int userOptionOffset = 2;
-    const int numUserOptions = argc - userOptionOffset;
-    assert((argc >= userOptionOffset) &&
-           "Expected at least executable name and input file in argv.");
-
-    if (strcmp(inputFilename, "-") == 0) {
-	temporaryStdinCopy = createCopiedTemporaryFile(0);
-	inputFilename = temporaryStdinCopy;
-	files_.push_back(TemporaryFile(-1, temporaryStdinCopy));
-    }
+    int inputDescriptor = -1;
+    char const *inputFilename = createFullTemporaryFile(inputDescriptor, &inputSource[0], inputSource.size());
+    if (!inputFilename)
+        return;
+    files_.push_back(TemporaryFile(-1, inputFilename));
+    close(inputDescriptor);
 
     char const *buffer = reinterpret_cast<char const*>(kernel_endlfix_cl);
     size_t length = kernel_endlfix_cl_len;
@@ -90,7 +83,7 @@ WebCLArguments::WebCLArguments(int argc, char const *argv[])
     close(headerDescriptor);
   
     char const *preprocessorInvocation[] = {
-        commandName, inputFilename, "--"
+        "libclv", inputFilename, "--"
     };
     const int preprocessorInvocationSize =
         sizeof(preprocessorInvocation) / sizeof(preprocessorInvocation[0]);
@@ -101,7 +94,7 @@ WebCLArguments::WebCLArguments(int argc, char const *argv[])
         sizeof(preprocessorOptions) / sizeof(preprocessorOptions[0]);
 
     char const *validatorInvocation[] = {
-        commandName, NULL, "--"
+        "libclv", NULL, "--"
     };
     const int validatorInvocationSize =
         sizeof(validatorInvocation) / sizeof(validatorInvocation[0]);
@@ -114,16 +107,16 @@ WebCLArguments::WebCLArguments(int argc, char const *argv[])
         sizeof(validatorOptions) / sizeof(validatorOptions[0]);
 
     std::set<char const *> userDefines;
-    for (int i = 0; i < numUserOptions; ++i) {
-        char const *option = argv[userOptionOffset + i];
+    for (int i = 0; i < argc; ++i) {
+        char const *option = argv[i];
         if (!std::string(option).substr(0, 2).compare("-D"))
             userDefines.insert(option);
     }
 
     preprocessorArgc_ =
-        preprocessorInvocationSize + userDefines.size() + numPreprocessorOptions;
+        preprocessorInvocationSize + userDefines.size() + numPreprocessorOptions + 1;
     validatorArgc_ =
-        validatorInvocationSize + numUserOptions + numValidatorOptions;
+        validatorInvocationSize + argc + numValidatorOptions + 3;
 
     preprocessorArgv_ = new char const *[preprocessorArgc_];
     if (!preprocessorArgv_) {
@@ -148,17 +141,21 @@ WebCLArguments::WebCLArguments(int argc, char const *argv[])
     std::copy(preprocessorOptions,
               preprocessorOptions + numPreprocessorOptions,
               preprocessorArgv_ + preprocessorInvocationSize + userDefines.size());
+    preprocessorArgv_[preprocessorArgc_ - 1] = "-ferror-limit=0";
 
     // validator arguments
     std::copy(validatorInvocation,
               validatorInvocation + validatorInvocationSize,
               validatorArgv_);
-    std::copy(argv + userOptionOffset,
-              argv + userOptionOffset + numUserOptions,
+    std::copy(argv,
+              argv + argc,
               validatorArgv_ + validatorInvocationSize);
     std::copy(validatorOptions,
               validatorOptions + numValidatorOptions,
-              validatorArgv_ + validatorInvocationSize + numUserOptions);
+              validatorArgv_ + validatorInvocationSize + argc);
+    validatorArgv_[validatorArgc_ - 1] = "-ferror-limit=0";
+    validatorArgv_[validatorArgc_ - 2] = "-fno-builtin";
+    validatorArgv_[validatorArgc_ - 3] = "-ffreestanding";
 }
 
 WebCLArguments::~WebCLArguments()

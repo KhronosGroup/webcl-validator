@@ -25,6 +25,7 @@
 */
 
 #include <cstring>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -38,8 +39,8 @@ class WebCLArguments
 public:
 
     /// Constructor. The command line options given by user should be
-    /// passed as arguments.
-    WebCLArguments(int argc, char const *argv[]);
+    /// passed as arguments, along with the contents of the input file.
+    WebCLArguments(const std::string &inputSource, int argc, char const *argv[]);
     ~WebCLArguments();
 
     /// \return Number of preprocessor tool arguments.

@@ -52,6 +52,11 @@ WebCLAction::~WebCLAction()
     reporter_ = NULL;
 }
 
+void WebCLAction::setExtensions(const std::set<std::string> &extensions)
+{
+    extensions_ = extensions;
+}
+
 bool WebCLAction::initialize(clang::CompilerInstance &instance)
 {
     reporter_ = new WebCLReporter(instance);
@@ -60,7 +65,7 @@ bool WebCLAction::initialize(clang::CompilerInstance &instance)
         return false;
     }
 
-    preprocessor_ = new WebCLPreprocessor(instance);
+    preprocessor_ = new WebCLPreprocessor(instance, extensions_);
     if (!preprocessor_) {
         reporter_->fatal("Internal error. Can't create preprocessor callbacks.\n");
         return false;
@@ -289,12 +294,14 @@ void WebCLMatcher2Action::ExecuteAction()
     }
 }
 
-WebCLValidatorAction::WebCLValidatorAction()
+WebCLValidatorAction::WebCLValidatorAction(std::string &validatedSource, WebCLAnalyser::KernelList &kernels)
     : WebCLAction()
     , consumer_(0)
     , transformer_(0)
     , rewriter_(0)
     , sema_(0)
+    , validatedSource_(validatedSource)
+    , kernels_(kernels)
 {
 }
 
@@ -321,6 +328,8 @@ void WebCLValidatorAction::ExecuteAction()
     // We will get assertions if sema_ isn't wrapped here.
     llvm::OwningPtr<clang::Sema> sema(sema_);
     ParseAST(*sema.get());
+    validatedSource_ = consumer_->getTransformedSource();
+    kernels_ = consumer_->getKernels();
 }
 
 bool WebCLValidatorAction::usesPreprocessorOnly() const
