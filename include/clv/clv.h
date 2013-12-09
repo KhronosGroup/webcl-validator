@@ -24,7 +24,11 @@
 #ifndef WEBCL_VALIDATOR_CLV_H
 #define WEBCL_VALIDATOR_CLV_H
 
+#ifdef __APPLE__
+#include <OpenCL/opencl.h>
+#else
 #include <CL/cl.h>
+#endif
 
 #ifdef __cplusplus
 extern "C"
