@@ -311,8 +311,6 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
     WebCLAnalyser::KernelList &kernels = analyser_.getKernelFunctions();
     for (WebCLAnalyser::KernelList::iterator i = kernels.begin();
         i != kernels.end(); ++i) {
-
-            clang::FunctionDecl *func = i->decl;
             for (std::vector<WebCLAnalyser::KernelArgInfo>::const_iterator j = i->args.begin();
                 j != i->args.end(); ++j) {
                     const WebCLAnalyser::KernelArgInfo &parm = *j;
