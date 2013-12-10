@@ -539,7 +539,7 @@ void WebCLMemoryAccessHandler::run(clang::ASTContext &context)
     }
 }
 
-WebCLBuiltinHandler::WebCLBuiltinHandler(
+WebCLFunctionCallHandler::WebCLFunctionCallHandler(
     clang::CompilerInstance &instance,
     WebCLAnalyser &analyser,
     WebCLTransformer &transformer,
@@ -550,32 +550,46 @@ WebCLBuiltinHandler::WebCLBuiltinHandler(
     // nothing
 }
 
-void WebCLBuiltinHandler::run(clang::ASTContext &context)
+void WebCLFunctionCallHandler::handle(clang::CallExpr *callExpr,
+    bool builtin,
+    unsigned& fnCounter)
+{
+    std::string origName = callExpr->getDirectCallee()->getNameInfo().getAsString();
+    std::string wrapperName = "_wcl_" + origName + "_" + stringify(fnCounter);
+
+    bool success = transformer_.wrapFunctionCall(wrapperName, callExpr, kernelHandler_);
+
+    if (success) {
+        ++fnCounter;
+    } else if (builtin && analyser_.hasUnsafeParameters(callExpr)) {
+        // error on unknown builtin functions involving pointer arguments
+        error((callExpr)->getLocStart(), "Builtin argument check is required.");
+    } else {
+        // pass other unknown functions through
+    }
+}
+
+void WebCLFunctionCallHandler::run(clang::ASTContext &context)
 {
     WebCLAnalyser::CallExprSet builtinCalls = analyser_.getBuiltinCalls();
+    WebCLAnalyser::CallExprSet internalCalls = analyser_.getInternalCalls();
 
     unsigned fnCounter = 0;
 
     for (WebCLAnalyser::CallExprSet::const_iterator builtinCallIt = builtinCalls.begin();
         builtinCallIt != builtinCalls.end();
         ++builtinCallIt) {
-            std::string origName = (*builtinCallIt)->getDirectCallee()->getNameInfo().getAsString();
-            std::string wrapperName = "_wcl_" + origName + "_" + stringify(fnCounter);
+        handle(*builtinCallIt, true, fnCounter);
+    }
 
-            bool success = transformer_.wrapBuiltinFunction(wrapperName, *builtinCallIt, kernelHandler_);
-
-            if (success) {
-                ++fnCounter;
-            } else if (analyser_.hasUnsafeParameters(*builtinCallIt)) {
-                // error on unknown builtin functions involving pointer arguments
-                error((*builtinCallIt)->getLocStart(), "Builtin argument check is required.");
-            } else {
-                // pass other unknown functions through
-            }
+    for (WebCLAnalyser::CallExprSet::const_iterator internalCallIt = internalCalls.begin();
+        internalCallIt != internalCalls.end();
+        ++internalCallIt) {
+        handle(*internalCallIt, false, fnCounter);
     }
 }
 
-WebCLBuiltinHandler::~WebCLBuiltinHandler()
+WebCLFunctionCallHandler::~WebCLFunctionCallHandler()
 {
     // nothing
 }

@@ -34,6 +34,7 @@ namespace clang {
     class ASTContext;
     class Expr;
     class VarDecl;
+    class CallExpr;
 }
 
 class WebCLAnalyser;
@@ -276,15 +277,15 @@ private:
 };
 
 /// Generates memory access checks.
-class WebCLBuiltinHandler : public WebCLPass
+class WebCLFunctionCallHandler : public WebCLPass
 {
 public:
-    WebCLBuiltinHandler(
+    WebCLFunctionCallHandler(
         clang::CompilerInstance &instance,
         WebCLAnalyser &analyser,
 	WebCLTransformer &transformer,
         WebCLKernelHandler &kernelHandler);
-    virtual ~WebCLBuiltinHandler();
+    virtual ~WebCLFunctionCallHandler();
 
     /// - Generates checks for pointer accesses.
     /// - Generates information about largest memory accesses.
@@ -295,6 +296,8 @@ public:
 private:
     /// Contains information about address space limits.
     WebCLKernelHandler &kernelHandler_;
+
+    void handle(clang::CallExpr *callExpr, bool builtin, unsigned& fnCounter);
 };
 
 /// Checks that image2d_t and sampler_t can only originate from function arguments

@@ -42,7 +42,7 @@ WebCLConsumer::WebCLConsumer(
     , memoryAccessHandler_(instance, analyser_, transformer, kernelHandler_)
     , printer_(instance, rewriter, analyser_, transformer)
     , imageSampleSafetyHandler_(instance, analyser_, transformer)
-    , builtinHandler_(instance, analyser_, transformer, kernelHandler_)
+    , functionCallHandler_(instance, analyser_, transformer, kernelHandler_)
     , passes_()
 {
     visitors_.push_back(&restrictor_);
@@ -78,7 +78,7 @@ WebCLConsumer::WebCLConsumer(
   
     // Replace calls to builtin functions with versions that check the arguments
     // before calling them. The functions that perform the check are generated.
-    passes_.push_back(&builtinHandler_);
+    passes_.push_back(&functionCallHandler_);
   
     // Prints out the final result.
     passes_.push_back(&printer_);
