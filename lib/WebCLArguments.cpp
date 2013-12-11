@@ -109,7 +109,6 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
         sizeof(validatorInvocation) / sizeof(validatorInvocation[0]);
     char const *validatorOptions[] = {
         "-x", "cl",
-        "-Wno-implicit-function-declaration",
         "-include", headerFilename, // has to be early (provides utility macros)
         "-include", builtinDeclFilename_ // has to be late (uses utility macros)
     };
