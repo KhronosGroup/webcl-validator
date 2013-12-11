@@ -26,6 +26,14 @@
 
 #include <set>
 #include <string>
+#include <vector>
+
+#include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/StringMap.h"
+
+namespace llvm {
+    class raw_ostream;
+}
 
 /// Holds information about OpenCL C builtin functions that require
 /// pointer arguments. The possibly unsafe builtins are partitioned
@@ -50,6 +58,11 @@ public:
     /// at all.
     bool isUnsupported(const std::string &builtin) const;
 
+    /// If the argument is the name of a builtin function not declared
+    /// in kernel.h, emit forward declarations for its overloads
+    // to the output stream; otherwise do nothing
+    void emitDeclarations(llvm::raw_ostream &os, const std::string &builtin);
+
 private:
 
     /// Data structure for builtin function names.
@@ -70,6 +83,15 @@ private:
     /// Calling is always safe for these, even if they have pointer
     /// arguments.
     BuiltinNames safeBuiltins_;
+    /// Known suffixes for the convert_x builtin functions
+    /// (must be in a specific order, so vector used)
+    std::vector<std::string> convertSuffixes_;
+    /// (Sub)set of rounding suffices we have already emitted the incredibly
+    /// expensive _CL_DECLARE_CONVERT_TYPE... macro for
+    BuiltinNames usedConvertSuffixes_;
+    /// Mapping from other known builtin function names to magic macro invocations
+    /// that declare them
+    llvm::StringMap<llvm::SmallVector<const char *, 2> > builtinDecls_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLBUILTINS

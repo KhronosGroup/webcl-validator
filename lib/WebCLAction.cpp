@@ -37,6 +37,7 @@
 #include "clang/Sema/Sema.h"
 
 #include "llvm/ADT/OwningPtr.h"
+#include "llvm/Support/raw_ostream.h"
 
 WebCLAction::WebCLAction(const char *output)
     : clang::FrontendAction()
@@ -124,8 +125,9 @@ void WebCLPreprocessorAction::ExecuteAction()
     out_->flush();
 
     // Iterate over all identifier tokens found in the source, to collect
-    // identifiers which might be calls to builtin functions, so that we can then
-    // forward-declare them
+    // identifiers which might be calls to builtin functions, and then
+    // forward-declare the builtin functions with that name, if any
+    WebCLBuiltins builtins;
     llvm::raw_string_ostream builtinOut(builtinDecls_);
     clang::IdentifierTable& identifiers = instance.getPreprocessor().getIdentifierTable();
     for (clang::IdentifierTable::const_iterator i = identifiers.begin(); i != identifiers.end(); ++i) {
@@ -135,9 +137,7 @@ void WebCLPreprocessorAction::ExecuteAction()
         // (The preprocessor has already done its magic and inserted the expansions to the
         //  identifier table at this point so we get them that way)
         if (!i->first().startswith("__") && !i->second->isHandleIdentifierCase()) {
-            // TODO: actually detect builtin function names and produce correct declarations
-            // (using WebCLBuiltins/WebCLTypes)
-            builtinOut << "#warning We might need to declare a builtin function called " << i->first() << "!\n";
+            builtins.emitDeclarations(builtinOut, i->first().str());
         }
     }
     builtinOut.flush();

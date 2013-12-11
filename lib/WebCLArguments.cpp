@@ -97,7 +97,7 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
     const int preprocessorInvocationSize =
         sizeof(preprocessorInvocation) / sizeof(preprocessorInvocation[0]);
     char const *preprocessorOptions[] = {
-        "-E", "-x", "cl"
+        "-E", "-x", "cl", "-fno-builtin", "-ffreestanding"
     };
     const int numPreprocessorOptions =
         sizeof(preprocessorOptions) / sizeof(preprocessorOptions[0]);
@@ -110,8 +110,8 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
     char const *validatorOptions[] = {
         "-x", "cl",
         "-Wno-implicit-function-declaration",
-        "-include", headerFilename,
-        "-include", builtinDeclFilename_
+        "-include", headerFilename, // has to be early (provides utility macros)
+        "-include", builtinDeclFilename_ // has to be late (uses utility macros)
     };
     const int numValidatorOptions =
         sizeof(validatorOptions) / sizeof(validatorOptions[0]);

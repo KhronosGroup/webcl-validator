@@ -22,6 +22,12 @@
 */
 
 #include "WebCLBuiltins.hpp"
+#include "WebCLDebug.hpp"
+
+#include <cstring>
+#include <iostream>
+
+#include "llvm/Support/raw_ostream.h"
 
 static const char *hashReplacements[] = {
     "2", "3", "4", "8", "16"
@@ -69,18 +75,205 @@ static const char *safeBuiltins[] = {
 static const int numSafeBuiltins =
     sizeof(safeBuiltins) / sizeof(safeBuiltins[0]);
 
+static const char *convertSuffixes[] = {
+    "_rtz", "_rte", "_rtp", "_rtn",
+    "" // must be last to avoid emitting by accident
+};
+static const int numConvertSuffixes =
+    sizeof(convertSuffixes) / sizeof(convertSuffixes[0]);
+
+static struct {
+    const char *name;
+    const char *decl;
+} builtinDecls[] = {
+    { "acos", "_CL_DECLARE_FUNC_V_V(acos)\n" },
+    { "acosh", "_CL_DECLARE_FUNC_V_V(acosh)\n" },
+    { "acospi", "_CL_DECLARE_FUNC_V_V(acospi)\n" },
+    { "asin", "_CL_DECLARE_FUNC_V_V(asin)\n" },
+    { "asinh", "_CL_DECLARE_FUNC_V_V(asinh)\n" },
+    { "asinpi", "_CL_DECLARE_FUNC_V_V(asinpi)\n" },
+    { "atan", "_CL_DECLARE_FUNC_V_V(atan)\n" },
+    { "atan2", "_CL_DECLARE_FUNC_V_VV(atan2)\n" },
+    { "atan2pi", "_CL_DECLARE_FUNC_V_VV(atan2pi)\n" },
+    { "atanh", "_CL_DECLARE_FUNC_V_V(atanh)\n" },
+    { "atanpi", "_CL_DECLARE_FUNC_V_V(atanpi)\n" },
+    { "cbrt", "_CL_DECLARE_FUNC_V_V(cbrt)\n" },
+    { "ceil", "_CL_DECLARE_FUNC_V_V(ceil)\n" },
+    { "copysign", "_CL_DECLARE_FUNC_V_VV(copysign)\n" },
+    { "cos", "_CL_DECLARE_FUNC_V_V(cos)\n" },
+    { "cosh", "_CL_DECLARE_FUNC_V_V(cosh)\n" },
+    { "cospi", "_CL_DECLARE_FUNC_V_V(cospi)\n" },
+    { "dot", "_CL_DECLARE_FUNC_S_VV(dot)\n" },
+    { "erfc", "_CL_DECLARE_FUNC_V_V(erfc)\n" },
+    { "erf", "_CL_DECLARE_FUNC_V_V(erf)\n" },
+    { "exp", "_CL_DECLARE_FUNC_V_V(exp)\n" },
+    { "exp2", "_CL_DECLARE_FUNC_V_V(exp2)\n" },
+    { "exp10", "_CL_DECLARE_FUNC_V_V(exp10)\n" },
+    { "expm1", "_CL_DECLARE_FUNC_V_V(expm1)\n" },
+    { "fabs", "_CL_DECLARE_FUNC_V_V(fabs)\n" },
+    { "fdim", "_CL_DECLARE_FUNC_V_VV(fdim)\n" },
+    { "floor", "_CL_DECLARE_FUNC_V_V(floor)\n" },
+    { "fma", "_CL_DECLARE_FUNC_V_VVV(fma)\n" },
+    { "fmax", "_CL_DECLARE_FUNC_V_VV(fmax)\n" },
+    { "fmax", "_CL_DECLARE_FUNC_V_VS(fmax)\n" },
+    { "fmin", "_CL_DECLARE_FUNC_V_VV(fmin)\n" },
+    { "fmin", "_CL_DECLARE_FUNC_V_VS(fmin)\n" },
+    { "fmod", "_CL_DECLARE_FUNC_V_VV(fmod)\n" },
+    { "fract", "_CL_DECLARE_FUNC_V_VPV(fract)\n" },
+    { "hypot", "_CL_DECLARE_FUNC_V_VV(hypot)\n" },
+    { "ilogb", "_CL_DECLARE_FUNC_K_V(ilogb)\n" },
+    { "ldexp", "_CL_DECLARE_FUNC_V_VJ(ldexp)\n" },
+    { "ldexp", "_CL_DECLARE_FUNC_V_VI(ldexp)\n" },
+    { "lgamma", "_CL_DECLARE_FUNC_V_V(lgamma)\n" },
+    { "log", "_CL_DECLARE_FUNC_V_V(log)\n" },
+    { "log2", "_CL_DECLARE_FUNC_V_V(log2)\n" },
+    { "log10", "_CL_DECLARE_FUNC_V_V(log10)\n" },
+    { "log1p", "_CL_DECLARE_FUNC_V_V(log1p)\n" },
+    { "logb", "_CL_DECLARE_FUNC_V_V(logb)\n" },
+    { "mad", "_CL_DECLARE_FUNC_V_VVV(mad)\n" },
+    { "maxmag", "_CL_DECLARE_FUNC_V_VV(maxmag)\n" },
+    { "minmag", "_CL_DECLARE_FUNC_V_VV(minmag)\n" },
+    { "nan", "_CL_DECLARE_FUNC_V_U(nan)\n" },
+    { "nextafter", "_CL_DECLARE_FUNC_V_VV(nextafter)\n" },
+    { "pow", "_CL_DECLARE_FUNC_V_VV(pow)\n" },
+    { "pown", "_CL_DECLARE_FUNC_V_VJ(pown)\n" },
+    { "pown", "_CL_DECLARE_FUNC_V_VI(pown)\n" },
+    { "powr", "_CL_DECLARE_FUNC_V_VV(powr)\n" },
+    { "remainder", "_CL_DECLARE_FUNC_V_VV(remainder)\n" },
+    { "rint", "_CL_DECLARE_FUNC_V_V(rint)\n" },
+    { "rootn", "_CL_DECLARE_FUNC_V_VJ(rootn)\n" },
+    { "rootn", "_CL_DECLARE_FUNC_V_VI(rootn)\n" },
+    { "round", "_CL_DECLARE_FUNC_V_V(round)\n" },
+    { "rsqrt", "_CL_DECLARE_FUNC_V_V(rsqrt)\n" },
+    { "sin", "_CL_DECLARE_FUNC_V_V(sin)\n" },
+    { "sincos", "_CL_DECLARE_FUNC_V_VPV(sincos)\n" },
+    { "sinh", "_CL_DECLARE_FUNC_V_V(sinh)\n" },
+    { "sinpi", "_CL_DECLARE_FUNC_V_V(sinpi)\n" },
+    { "sqrt", "_CL_DECLARE_FUNC_V_V(sqrt)\n" },
+    { "tan", "_CL_DECLARE_FUNC_V_V(tan)\n" },
+    { "tanh", "_CL_DECLARE_FUNC_V_V(tanh)\n" },
+    { "tanpi", "_CL_DECLARE_FUNC_V_V(tanpi)\n" },
+    { "tgamma", "_CL_DECLARE_FUNC_V_V(tgamma)\n" },
+    { "trunc", "_CL_DECLARE_FUNC_V_V(trunc)\n" },
+    { "half_cos", "_CL_DECLARE_FUNC_F_F(half_cos)\n" },
+    { "half_divide", "_CL_DECLARE_FUNC_F_FF(half_divide)\n" },
+    { "half_exp", "_CL_DECLARE_FUNC_F_F(half_exp)\n" },
+    { "half_exp2", "_CL_DECLARE_FUNC_F_F(half_exp2)\n" },
+    { "half_exp10", "_CL_DECLARE_FUNC_F_F(half_exp10)\n" },
+    { "half_log", "_CL_DECLARE_FUNC_F_F(half_log)\n" },
+    { "half_log2", "_CL_DECLARE_FUNC_F_F(half_log2)\n" },
+    { "half_log10", "_CL_DECLARE_FUNC_F_F(half_log10)\n" },
+    { "half_powr", "_CL_DECLARE_FUNC_F_FF(half_powr)\n" },
+    { "half_recip", "_CL_DECLARE_FUNC_F_F(half_recip)\n" },
+    { "half_rsqrt", "_CL_DECLARE_FUNC_F_F(half_rsqrt)\n" },
+    { "half_sin", "_CL_DECLARE_FUNC_F_F(half_sin)\n" },
+    { "half_sqrt", "_CL_DECLARE_FUNC_F_F(half_sqrt)\n" },
+    { "half_tan", "_CL_DECLARE_FUNC_F_F(half_tan)\n" },
+    { "native_cos", "_CL_DECLARE_FUNC_F_F(native_cos)\n" },
+    { "native_divide", "_CL_DECLARE_FUNC_F_FF(native_divide)\n" },
+    { "native_exp", "_CL_DECLARE_FUNC_F_F(native_exp)\n" },
+    { "native_exp2", "_CL_DECLARE_FUNC_F_F(native_exp2)\n" },
+    { "native_exp10", "_CL_DECLARE_FUNC_F_F(native_exp10)\n" },
+    { "native_log", "_CL_DECLARE_FUNC_F_F(native_log)\n" },
+    { "native_log2", "_CL_DECLARE_FUNC_F_F(native_log2)\n" },
+    { "native_log10", "_CL_DECLARE_FUNC_F_F(native_log10)\n" },
+    { "native_powr", "_CL_DECLARE_FUNC_F_FF(native_powr)\n" },
+    { "native_recip", "_CL_DECLARE_FUNC_F_F(native_recip)\n" },
+    { "native_rsqrt", "_CL_DECLARE_FUNC_F_F(native_rsqrt)\n" },
+    { "native_sin", "_CL_DECLARE_FUNC_F_F(native_sin)\n" },
+    { "native_sqrt", "_CL_DECLARE_FUNC_F_F(native_sqrt)\n" },
+    { "native_tan", "_CL_DECLARE_FUNC_F_F(native_tan)\n" },
+    { "abs", "_CL_DECLARE_FUNC_UG_G(abs)\n" },
+    { "abs_diff", "_CL_DECLARE_FUNC_UG_GG(abs_diff)\n" },
+    { "add_sat", "_CL_DECLARE_FUNC_G_GG(add_sat)\n" },
+    { "hadd", "_CL_DECLARE_FUNC_G_GG(hadd)\n" },
+    { "rhadd", "_CL_DECLARE_FUNC_G_GG(rhadd)\n" },
+    { "clamp", "_CL_DECLARE_FUNC_G_GGG(clamp)\n" },
+    { "clz", "_CL_DECLARE_FUNC_G_G(clz)\n" },
+    { "mad_hi", "_CL_DECLARE_FUNC_G_GGG(mad_hi)\n" },
+    { "mad_sat", "_CL_DECLARE_FUNC_G_GGG(mad_sat)\n" },
+    { "max", "_CL_DECLARE_FUNC_G_GG(max)\n" },
+    { "max", "_CL_DECLARE_FUNC_G_GS(max)\n" },
+    { "min", "_CL_DECLARE_FUNC_G_GG(min)\n" },
+    { "min", "_CL_DECLARE_FUNC_G_GS(min)\n" },
+    { "mul_hi", "_CL_DECLARE_FUNC_G_GG(mul_hi)\n" },
+    { "rotate", "_CL_DECLARE_FUNC_G_GG(rotate)\n" },
+    { "sub_sat", "_CL_DECLARE_FUNC_G_GG(sub_sat)\n" },
+    { "upsample", "_CL_DECLARE_FUNC_LG_GUG(upsample)\n" },
+    { "popcount", "_CL_DECLARE_FUNC_G_G(popcount)\n" },
+    { "mad24", "_CL_DECLARE_FUNC_J_JJJ(mad24)\n" },
+    { "mul24", "_CL_DECLARE_FUNC_J_JJ(mul24)\n" },
+    { "clamp", "_CL_DECLARE_FUNC_V_VVV(clamp)\n" },
+    { "clamp", "_CL_DECLARE_FUNC_V_VSS(clamp)\n" },
+    { "degrees", "_CL_DECLARE_FUNC_V_V(degrees)\n" },
+    { "max", "_CL_DECLARE_FUNC_V_VV(max)\n" },
+    { "max", "_CL_DECLARE_FUNC_V_VS(max)\n" },
+    { "min", "_CL_DECLARE_FUNC_V_VV(min)\n" },
+    { "min", "_CL_DECLARE_FUNC_V_VS(min)\n" },
+    { "mix", "_CL_DECLARE_FUNC_V_VVV(mix)\n" },
+    { "mix", "_CL_DECLARE_FUNC_V_VVS(mix)\n" },
+    { "radians", "_CL_DECLARE_FUNC_V_V(radians)\n" },
+    { "step", "_CL_DECLARE_FUNC_V_VV(step)\n" },
+    { "step", "_CL_DECLARE_FUNC_V_SV(step)\n" },
+    { "smoothstep", "_CL_DECLARE_FUNC_V_VVV(smoothstep)\n" },
+    { "smoothstep", "_CL_DECLARE_FUNC_V_SSV(smoothstep)\n" },
+    { "sign", "_CL_DECLARE_FUNC_V_V(sign)\n" },
+    { "dot", "_CL_DECLARE_FUNC_S_VV(dot)\n" },
+    { "distance", "_CL_DECLARE_FUNC_S_VV(distance)\n" },
+    { "length", "_CL_DECLARE_FUNC_S_V(length)\n" },
+    { "normalize", "_CL_DECLARE_FUNC_V_V(normalize)\n" },
+    { "fast_distance", "_CL_DECLARE_FUNC_S_VV(fast_distance)\n" },
+    { "fast_length", "_CL_DECLARE_FUNC_S_V(fast_length)\n" },
+    { "fast_normalize", "_CL_DECLARE_FUNC_V_V(fast_normalize)\n" },
+    { "isequal", "_CL_DECLARE_FUNC_J_VV(isequal)\n" },
+    { "isnotequal", "_CL_DECLARE_FUNC_J_VV(isnotequal)\n" },
+    { "isgreater", "_CL_DECLARE_FUNC_J_VV(isgreater)\n" },
+    { "isgreaterequal", "_CL_DECLARE_FUNC_J_VV(isgreaterequal)\n" },
+    { "isless", "_CL_DECLARE_FUNC_J_VV(isless)\n" },
+    { "islessequal", "_CL_DECLARE_FUNC_J_VV(islessequal)\n" },
+    { "islessgreater", "_CL_DECLARE_FUNC_J_VV(islessgreater)\n" },
+    { "isfinite", "_CL_DECLARE_FUNC_J_V(isfinite)\n" },
+    { "isinf", "_CL_DECLARE_FUNC_J_V(isinf)\n" },
+    { "isnan", "_CL_DECLARE_FUNC_J_V(isnan)\n" },
+    { "isnormal", "_CL_DECLARE_FUNC_J_V(isnormal)\n" },
+    { "isordered", "_CL_DECLARE_FUNC_J_VV(isordered)\n" },
+    { "isunordered", "_CL_DECLARE_FUNC_J_VV(isunordered)\n" },
+    { "signbit", "_CL_DECLARE_FUNC_J_V(signbit)\n" },
+    { "any", "_CL_DECLARE_FUNC_I_IG(any)\n" },
+    { "all", "_CL_DECLARE_FUNC_I_IG(all)\n" },
+    { "bitselect", "_CL_DECLARE_FUNC_G_GGG(bitselect)\n" },
+    { "bitselect", "_CL_DECLARE_FUNC_V_VVV(bitselect)\n" },
+    { "select", "_CL_DECLARE_FUNC_G_GGIG(select)\n" },
+    { "select", "_CL_DECLARE_FUNC_G_GGUG(select)\n" },
+    { "select", "_CL_DECLARE_FUNC_V_VVJ(select)\n" },
+    { "select", "_CL_DECLARE_FUNC_V_VVU(select)\n" },
+    { "cross", "float4 _CL_OVERLOADABLE cross(float4, float4);\n"
+               "float3 _CL_OVERLOADABLE cross(float3, float3);\n"
+                "#ifdef cl_khr_fp64\n"
+                "double4 _CL_OVERLOADABLE cross(double4, double4);\n"
+                "double3 _CL_OVERLOADABLE cross(double3, double3);\n"
+                "#endif\n" }
+};
+static const int numBuiltinDecls =
+    sizeof(builtinDecls) / sizeof(builtinDecls[0]);
+
 WebCLBuiltins::WebCLBuiltins()
     : unsafeMathBuiltins_()
     , unsafeVectorBuiltins_()
     , unsafeAtomicBuiltins_()
     , unsupportedBuiltins_()
     , safeBuiltins_()
+    , convertSuffixes_(convertSuffixes, convertSuffixes + numConvertSuffixes)
 {
     initialize(unsafeMathBuiltins_, unsafeMathBuiltins, numUnsafeMathBuiltins);
     initialize(unsafeVectorBuiltins_, unsafeVectorBuiltins, numUnsafeVectorBuiltins);
     initialize(unsafeAtomicBuiltins_, unsafeAtomicBuiltins, numUnsafeAtomicBuiltins);
     initialize(unsupportedBuiltins_, unsupportedBuiltins, numUnsupportedBuiltins);
     initialize(safeBuiltins_, safeBuiltins, numSafeBuiltins);
+
+    for (int i = 0; i < numBuiltinDecls; ++i) {
+        builtinDecls_[builtinDecls[i].name].push_back(builtinDecls[i].decl);
+    }
 }
 
 WebCLBuiltins::~WebCLBuiltins()
@@ -104,6 +297,38 @@ bool WebCLBuiltins::isUnsafe(const std::string &builtin) const
 bool WebCLBuiltins::isUnsupported(const std::string &builtin) const
 {
     return unsupportedBuiltins_.count(builtin);
+}
+
+void WebCLBuiltins::emitDeclarations(llvm::raw_ostream &os, const std::string &builtin)
+{
+    static const std::string convertPrefix = "convert_";
+    if (builtin.substr(0, convertPrefix.size()) == convertPrefix) {
+        // One of the convert_##DST##SIZE##INTSUFFIX##ROUNDINGSUFFIX overloads
+        for (unsigned i = 0; i < convertSuffixes_.size(); ++i) {
+            const std::string &suffix = convertSuffixes_[i];
+            if (!usedConvertSuffixes_.count(suffix) &&
+                builtin.size() >= suffix.size() &&
+                builtin.substr(builtin.size() - suffix.size()) == suffix) {
+                    DEBUG( std::cerr << "declaring for " << builtin << " builtin convert_..." << suffix << '\n'; );
+                    os << "_CL_DECLARE_CONVERT_TYPE_SRC_DST_SIZE(" << suffix << ")\n";
+                    usedConvertSuffixes_.insert(suffix);
+                    break; // do not move on to the empty suffix from earlier ones
+            }
+        }
+    } else {
+        if (builtinDecls_.count(builtin)) {
+            // Just your average run-off-the-mill builtin
+            const llvm::SmallVector<const char *, 2> &decls = builtinDecls_.lookup(builtin);
+            DEBUG( std::cerr << "declaring builtin " << builtin << '\n'; );
+            for (llvm::SmallVector<const char *, 2>::const_iterator i = decls.begin(); i != decls.end(); ++i) {
+                os << *i;
+            }
+        } else {
+            // No builtin at all; this is reached for all things like user kernel, parameter
+            // and variable names and even keywords. No way to differentiate until
+            // we are actually parsing the source, not just lexing and preprocessing!
+        }
+    }
 }
 
 void WebCLBuiltins::initialize(
