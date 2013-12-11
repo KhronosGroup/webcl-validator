@@ -28,6 +28,7 @@
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <set>
 #include <fcntl.h>
@@ -64,6 +65,7 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
     , validatorArgv_(NULL)
     , matcherArgv_()
     , files_()
+    , builtinDeclFilename_(NULL)
     , outputs_()
 {
     int inputDescriptor = -1;
@@ -81,7 +83,14 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
         return;
     files_.push_back(TemporaryFile(-1, headerFilename));
     close(headerDescriptor);
-  
+
+    int builtinDeclDescriptor = -1;
+    builtinDeclFilename_ = createEmptyTemporaryFile(builtinDeclDescriptor);
+    if (!builtinDeclFilename_)
+        return;
+    files_.push_back(TemporaryFile(-1, builtinDeclFilename_));
+    close(builtinDeclDescriptor);
+
     char const *preprocessorInvocation[] = {
         "libclv", inputFilename, "--"
     };
@@ -101,7 +110,8 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
     char const *validatorOptions[] = {
         "-x", "cl",
         "-Wno-implicit-function-declaration",
-        "-include", headerFilename
+        "-include", headerFilename,
+        "-include", builtinDeclFilename_
     };
     const int numValidatorOptions =
         sizeof(validatorOptions) / sizeof(validatorOptions[0]);
@@ -254,6 +264,12 @@ char const *WebCLArguments::getInput(int argc, char const **argv, bool createOut
     }
 
     return argv[1];
+}
+
+bool WebCLArguments::supplyBuiltinDecls(const std::string &decls)
+{
+    std::ofstream ofs(builtinDeclFilename_, std::ios::binary | std::ios::trunc);
+    return ofs.good() && ofs << decls;
 }
 
 bool WebCLArguments::areArgumentsOk(int argc, char const **argv) const

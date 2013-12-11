@@ -93,6 +93,14 @@ public:
 
     /// \see clang::tooling::FrontendActionFactory
     virtual clang::FrontendAction *create();
+
+    /// Gets builtin function declarations to include in later stages
+    const std::string &getBuiltinDecls() const { return builtinDecls_; }
+
+private:
+    /// Collects possibly required builtin function declarations to
+    /// be included for later stages
+    std::string builtinDecls_;
 };
 
 /// Runs first stage of AST matcher based transformations. Takes the

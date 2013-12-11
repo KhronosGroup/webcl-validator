@@ -80,7 +80,7 @@ class WebCLPreprocessorAction : public WebCLAction
 {
 public:
 
-    explicit WebCLPreprocessorAction(const char *output);
+    explicit WebCLPreprocessorAction(const char *output, std::string &builtinDecls);
     virtual ~WebCLPreprocessorAction();
 
     /// \see clang::FrontendAction
@@ -92,6 +92,12 @@ public:
 
     /// \see clang::FrontendAction
     virtual bool usesPreprocessorOnly() const;
+
+private:
+
+    /// Where to store additional builtin function forward declarations
+    /// needed by later AST parsing passes
+    std::string &builtinDecls_;
 };
 
 /// A base class for stages that use AST matchers for consuming ASTs.

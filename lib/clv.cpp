@@ -120,6 +120,11 @@ void WebCLValidator::run()
         return;
     }
 
+    if (!arguments.supplyBuiltinDecls(preprocessorTool.getBuiltinDecls())) {
+        exitStatus_ = EXIT_FAILURE;
+        return;
+    }
+
     WebCLMatcher1Tool matcher1Tool(matcher1Argc, matcher1Argv,
                                    matcher1Input, matcher2Input);
     matcher1Tool.setExtensions(extensions);

@@ -95,8 +95,8 @@ bool WebCLAction::initialize(clang::CompilerInstance &instance)
     return true;
 }
 
-WebCLPreprocessorAction::WebCLPreprocessorAction(const char *output)
-    : WebCLAction(output)
+WebCLPreprocessorAction::WebCLPreprocessorAction(const char *output, std::string &builtinDecls)
+    : WebCLAction(output), builtinDecls_(builtinDecls)
 {
 }
 
@@ -122,6 +122,25 @@ void WebCLPreprocessorAction::ExecuteAction()
     clang::DoPrintPreprocessedInput(
         instance.getPreprocessor(), out_, options);
     out_->flush();
+
+    // Iterate over all identifier tokens found in the source, to collect
+    // identifiers which might be calls to builtin functions, so that we can then
+    // forward-declare them
+    llvm::raw_string_ostream builtinOut(builtinDecls_);
+    clang::IdentifierTable& identifiers = instance.getPreprocessor().getIdentifierTable();
+    for (clang::IdentifierTable::const_iterator i = identifiers.begin(); i != identifiers.end(); ++i) {
+        // Ignore identifiers that start with __ (no OpenCL builtin is like that, but a lot of Clang
+        // internal misc are), and also identifiers the preprocessor has to handle in some way,
+        // e.g. macros to expand, trigraph sequences to normalize and so on.
+        // (The preprocessor has already done its magic and inserted the expansions to the
+        //  identifier table at this point so we get them that way)
+        if (!i->first().startswith("__") && !i->second->isHandleIdentifierCase()) {
+            // TODO: actually detect builtin function names and produce correct declarations
+            // (using WebCLBuiltins/WebCLTypes)
+            builtinOut << "#warning We might need to declare a builtin function called " << i->first() << "!\n";
+        }
+    }
+    builtinOut.flush();
 }
 
 bool WebCLPreprocessorAction::usesPreprocessorOnly() const
