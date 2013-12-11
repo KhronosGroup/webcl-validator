@@ -144,14 +144,16 @@ namespace {
             // #define CLK_FILTER_NEAREST                          0x00
             // #define CLK_FILTER_LINEAR                           0x10
             bool normalized = value & 0x08;
-            bool filter = value & 0x10;
-            int address = value & 0x07;
-            uint64_t remaining = value - (normalized * 0x08) - (filter * 0x10) - address;
-            if (address < 0 || address > 4 || remaining != 0) {
-                transformer.error(argExpr->getLocStart(), "%1 is not a valid constant value for %0") << stringify(value) << typeName;
-            } else {
-                std::stringstream d;
-                d << "/* transformed */ ";
+	    bool filter = value & 0x10;
+	    int address = value & 0x07;
+	    uint64_t remaining = value - (normalized * 0x08) - (filter * 0x10) - address;
+            if (address == 0) {
+                transformer.error(argExpr->getLocStart(), "CLK_ADDRESS_NONE is not a valid address mode for %0") << typeName;
+            } else if (address < 0 || address > 4 || remaining != 0) {
+                transformer.error(argExpr->getLocStart(), "%0 is not a valid constant value for %1") << stringify(value) << typeName;
+	    } else {
+		std::stringstream d;
+		d << "/* transformed */ ";
                 switch (address) {
                 case 0x00: d << "CLK_ADDRESS_NONE"; break;
                 case 0x01: d << "CLK_ADDRESS_MIRRORED_REPEAT"; break;

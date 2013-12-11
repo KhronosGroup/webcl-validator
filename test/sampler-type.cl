@@ -6,8 +6,8 @@ void foo(image2d_t image, sampler_t sampler)
     // CHECK: read_imagef(image, sampler, (float2)(0, 0));
     read_imagef(image, sampler, (float2)(0, 0));
     // this goes through transformed
-    // CHECK: read_imagef(image,/* transformed */ CLK_ADDRESS_NONE | CLK_FILTER_NEAREST | CLK_NORMALIZED_COORDS_FALSE, (float2)(0, 0));
-    read_imagef(image, 0, (float2)(0, 0));
+    // CHECK: read_imagef(image,/* transformed */ CLK_ADDRESS_MIRRORED_REPEAT | CLK_FILTER_NEAREST | CLK_NORMALIZED_COORDS_FALSE, (float2)(0, 0));
+    read_imagef(image, 1, (float2)(0, 0));
 }
 
 void foo2(sampler_t sampler1, sampler_t sampler2, sampler_t sampler3, sampler_t sampler4)
