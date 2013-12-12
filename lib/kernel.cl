@@ -1742,6 +1742,9 @@ __IF_FP16(_CL_DECLARE_ASYNC_COPY_FUNCS_SINGLE(half));
 _CL_DECLARE_ASYNC_COPY_FUNCS(float);
 __IF_FP64(_CL_DECLARE_ASYNC_COPY_FUNCS(double));
 
+// Fake prefetch declaration to let it be caught more informatively in WebCLAnalyser
+void prefetch(const __global void *, size_t);
+
 // Image support
 
 // Starting from Clang 3.3 the image and sampler are detected

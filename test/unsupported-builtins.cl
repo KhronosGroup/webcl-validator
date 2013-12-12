@@ -1,5 +1,8 @@
 // RUN: %webcl-validator %s 2>&1 | grep -v CHECK | %FileCheck %s
 
+// We should be declaring all builtins at the moment
+// CHECK-NOT: warning: implicit declaration of function
+
 __kernel void unsupported_builtins(
     const __global float4 *input,
     int input_stride,
