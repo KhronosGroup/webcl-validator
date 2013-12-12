@@ -34,6 +34,16 @@
 
 #include "WebCLHeader.hpp"
 
+namespace {
+    bool readAll(std::ifstream &from, std::string &to)
+    {
+        from.seekg(0, std::ios::end);
+        to.resize(from.tellg());
+        from.seekg(0, std::ios::beg);
+        return from.read(&to[0], to.size());
+    }
+}
+
 int main(int argc, char const* argv[])
 {
     std::set<std::string> help;
@@ -46,7 +56,56 @@ int main(int argc, char const* argv[])
         return EXIT_FAILURE;
     }
 
-    std::string inputSource;
+    std::string inputSource;    
+
+    // Handle -I and -include (these aren't allowed to be passed in the library API, so
+    // we do it here for the CLI use case, which is mostly testing the CLI validator)
+    //
+    // This is actually very sensible, as this way we avoid any possible system-specific
+    // default include paths where clang might start searching for included files.
+
+    std::vector<std::string> includePaths;
+    includePaths.push_back(".");
+    for (int i = 2; i < argc; ++i) {
+        char const *option = argv[i];
+        if (!std::string(option).substr(0, 2).compare("-I"))
+            includePaths.push_back(option + 2);
+    }
+
+    for (int i = 2; i < argc; ++i) {
+        char const *option = argv[i];
+        if (!std::string(option).compare("-include")) {
+            if (++i == argc) {
+                std::cerr << "Option requires an argument: -include; exiting\n";
+                return EXIT_FAILURE;
+            }
+
+            const std::string filename = argv[i];
+
+            bool success = false;
+            for (std::vector<std::string>::const_iterator i = includePaths.begin(); i != includePaths.end(); ++i) {
+                const std::string path = *i + "/" + filename;
+
+                std::ifstream ifs(path.c_str(), std::ios::binary);
+                if (ifs.good()) {
+                    std::string fileContents;
+                    if (readAll(ifs, fileContents)) {
+                        inputSource.append(fileContents);
+                        inputSource.append("\n"); // make sure there's a newline between each header
+                        success = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!success) {
+                std::cerr << "Failed to find include file " << filename << ", exiting\n";
+                return EXIT_FAILURE;
+            }
+        }
+    }
+
+    // Read the actual input file
     const std::string inputFilename(argv[1]);
 
     if (inputFilename == "-") {
@@ -56,7 +115,7 @@ int main(int argc, char const* argv[])
 
         std::istreambuf_iterator<char> begin(std::cin.rdbuf());
         std::istreambuf_iterator<char> end;
-        inputSource = std::string(begin, end);
+        inputSource.append(begin, end);
     } else {
         // input is a file
         std::ifstream ifs(inputFilename.c_str(), std::ios::binary);
@@ -66,10 +125,12 @@ int main(int argc, char const* argv[])
             return EXIT_FAILURE;
         }
 
-        ifs.seekg(0, std::ios::end);
-        inputSource.resize(ifs.tellg());
-        ifs.seekg(0, std::ios::beg);
-        ifs.read(&inputSource[0], inputSource.size());
+        std::string fileContents;
+        if (!readAll(ifs, fileContents)) {
+            std::cerr << "Failed to read from input file \"" << inputFilename << "\", exiting" << std::endl;
+            return EXIT_FAILURE;
+        }
+        inputSource.append(fileContents);
     }
 
     // Enable usual extensions

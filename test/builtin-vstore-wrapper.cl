@@ -7,6 +7,9 @@
 // RUN: sed 's/@SIZE@/8/g' %s | %webcl-validator - | %kernel-runner --webcl --kernel builtin_wrappers --global float 8 | grep '^1,2,3,4,5,6,7,8,0'
 // RUN: sed 's/@SIZE@/8/g' %s | %webcl-validator - | %kernel-runner --webcl --kernel builtin_wrappers --global float 16 | grep '^1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,0'
 
+// We should be declaring all builtins at the moment
+// CHECK-NOT: warning: implicit declaration of function
+
 __kernel void builtin_wrappers(__global char *output, 
                                __global float *input)
 {

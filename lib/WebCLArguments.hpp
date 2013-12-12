@@ -65,6 +65,11 @@ public:
     /// input file of the next tool in the pipeline.
     char const *getInput(int argc, char const **argv, bool createOutput = false);
 
+    /// Writes the given data into a file that is included as an input
+    /// by the matcher and validator tools due to their argv's
+    /// \return \c true on success, \c false on failure
+    bool supplyBuiltinDecls(const std::string &decls);
+
 private:
 
     /// Whether there is room for input file.
@@ -99,6 +104,10 @@ private:
     /// and remove them. Contains generated headers and output files.
     typedef std::vector<TemporaryFile> TemporaryFiles;
     TemporaryFiles files_;
+
+    /// Contains the name of a temporary header used to include
+    /// select builtin function declarations in matcher and validation stages
+    char const *builtinDeclFilename_;
 
     /// Save information about output files so that we can chain
     /// different tools properly. Contains only those files that are
