@@ -22,9 +22,13 @@ __kernel void builtin_wrappers(__global char *output,
 
     offset = 0;
 
+    // CHECK-NOT: warning: implicit declaration of function 'vload2'
     vload2(offset, f);
+    // CHECK-NOT: warning: implicit declaration of function 'vload4'
     vload4(offset, f);
+    // CHECK-NOT: warning: implicit declaration of function 'vload8'
     vload8(offset, f);
+    // CHECK-NOT: warning: implicit declaration of function 'vload16'
     vload16(offset, f);
 
 #ifdef cl_khr_fp16
@@ -47,9 +51,13 @@ __kernel void builtin_wrappers(__global char *output,
     vloada_half16(offset, h);
 #endif // fp16
 
+    // CHECK-NOT: warning: implicit declaration of function 'vstore2'
     vstore2((float2)(0, 0), offset, f);
+    // CHECK-NOT: warning: implicit declaration of function 'vstore4'
     vstore4((float4)(0, 0, 0, 0), offset, f);
+    // CHECK-NOT: warning: implicit declaration of function 'vstore8'
     vstore8((float8)(0, 0, 0, 0, 0, 0, 0, 0), offset, f);
+    // CHECK-NOT: warning: implicit declaration of function 'vstore16'
     vstore16((float16)(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), offset, f);
 
 #ifdef cl_khr_fp16
@@ -116,6 +124,9 @@ __kernel void builtin_wrappers(__global char *output,
 #endif // fp16
 
 #ifdef cl_khr_fp64
+    // These are already known to produce no implicit decl warnings, as the float overloads are used above,
+    // but try using them to verify that the double overloads exist (otherwise an error is produced)
+
     vload2(offset, d);
     vload4(offset, d);
     vload8(offset, d);

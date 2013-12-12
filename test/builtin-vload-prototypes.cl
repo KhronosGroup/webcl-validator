@@ -1,3 +1,4 @@
+// Check that the vload functions we declare on demand have the correct parameter lists
 // RUN: %webcl-validator %s 2>&1 | grep -v CHECK | %FileCheck %s
 
 __kernel void builtin_wrappers(__global char *output, 
@@ -5,9 +6,9 @@ __kernel void builtin_wrappers(__global char *output,
 {
     __local int offset;
 
-    // CHECK: error: vload4 argument number 2 must be a pointer
+    // CHECK: error: no matching function for call to 'vload4'
     vload4(input, offset);
 
-    // CHECK: error: Builtin argument check is required.
+    // CHECK: error: no matching function for call to 'vload4'
     vload4(input);
 }

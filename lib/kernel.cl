@@ -1446,6 +1446,49 @@ void barrier (cl_mem_fence_flags flags);
 
 /* Vector Functions */
 
+#define _CL_DECLARE_VLOAD_TYPE_WIDTH(TYPE, WIDTH)                                      \
+  TYPE##WIDTH _CL_OVERLOADABLE vload##WIDTH (size_t offset, const __global   TYPE *p); \
+  TYPE##WIDTH _CL_OVERLOADABLE vload##WIDTH (size_t offset, const __local    TYPE *p); \
+  TYPE##WIDTH _CL_OVERLOADABLE vload##WIDTH (size_t offset, const __constant TYPE *p); \
+  TYPE##WIDTH _CL_OVERLOADABLE vload##WIDTH (size_t offset, const __private  TYPE *p);
+
+#define _CL_DECLARE_VLOAD_WIDTH(WIDTH)                     \
+  _CL_DECLARE_VLOAD_TYPE_WIDTH(char,   WIDTH)              \
+  _CL_DECLARE_VLOAD_TYPE_WIDTH(uchar,  WIDTH)              \
+  _CL_DECLARE_VLOAD_TYPE_WIDTH(short,  WIDTH)              \
+  _CL_DECLARE_VLOAD_TYPE_WIDTH(ushort, WIDTH)              \
+  _CL_DECLARE_VLOAD_TYPE_WIDTH(int,    WIDTH)              \
+  _CL_DECLARE_VLOAD_TYPE_WIDTH(uint,   WIDTH)              \
+  __IF_INT64(                                              \
+              _CL_DECLARE_VLOAD_TYPE_WIDTH(long,  WIDTH)   \
+              _CL_DECLARE_VLOAD_TYPE_WIDTH(ulong, WIDTH)   \
+            )                                              \
+  __IF_FP64(                                               \
+             _CL_DECLARE_VLOAD_TYPE_WIDTH(double, WIDTH)   \
+           )                                               \
+  _CL_DECLARE_VLOAD_TYPE_WIDTH(float, WIDTH)
+
+#define _CL_DECLARE_VSTORE_TYPE_WIDTH(TYPE, WIDTH)                                           \
+  void _CL_OVERLOADABLE vstore##WIDTH (TYPE##WIDTH data, size_t offset, __global  TYPE *p);  \
+  void _CL_OVERLOADABLE vstore##WIDTH (TYPE##WIDTH data, size_t offset, __local   TYPE *p);  \
+  void _CL_OVERLOADABLE vstore##WIDTH (TYPE##WIDTH data, size_t offset, __private TYPE *p);
+
+#define _CL_DECLARE_VSTORE_WIDTH(WIDTH)                     \
+  _CL_DECLARE_VSTORE_TYPE_WIDTH(char,   WIDTH)              \
+  _CL_DECLARE_VSTORE_TYPE_WIDTH(uchar,  WIDTH)              \
+  _CL_DECLARE_VSTORE_TYPE_WIDTH(short,  WIDTH)              \
+  _CL_DECLARE_VSTORE_TYPE_WIDTH(ushort, WIDTH)              \
+  _CL_DECLARE_VSTORE_TYPE_WIDTH(int,    WIDTH)              \
+  _CL_DECLARE_VSTORE_TYPE_WIDTH(uint,   WIDTH)              \
+  __IF_INT64(                                               \
+              _CL_DECLARE_VSTORE_TYPE_WIDTH(long,  WIDTH)   \
+              _CL_DECLARE_VSTORE_TYPE_WIDTH(ulong, WIDTH)   \
+            )                                               \
+  __IF_FP64(                                                \
+             _CL_DECLARE_VSTORE_TYPE_WIDTH(double, WIDTH)   \
+           )                                                \
+  _CL_DECLARE_VSTORE_TYPE_WIDTH(float, WIDTH)
+
 #ifdef cl_khr_fp16
 
 #define _CL_DECLARE_VLOAD_HALF(MOD)                                     \

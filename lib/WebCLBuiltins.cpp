@@ -264,7 +264,17 @@ static struct {
     { "read_imageui", "uint4 _CL_OVERLOADABLE read_imageui (image2d_t image, sampler_t sampler, int2 coord);\n"
                       "uint4 _CL_OVERLOADABLE read_imageui (image2d_t image, sampler_t sampler, float2 coord);\n" },
     { "read_imagei", "int4 _CL_OVERLOADABLE read_imagei (image2d_t image, sampler_t sampler, int2 coord);\n"
-                     "int4 _CL_OVERLOADABLE read_imagei (image2d_t image, sampler_t sampler, float2 coord);\n" }
+                     "int4 _CL_OVERLOADABLE read_imagei (image2d_t image, sampler_t sampler, float2 coord);\n" },
+    { "vload2", "_CL_DECLARE_VLOAD_WIDTH(2)\n" },
+    { "vload3", "_CL_DECLARE_VLOAD_WIDTH(3)\n" },
+    { "vload4", "_CL_DECLARE_VLOAD_WIDTH(4)\n" },
+    { "vload8", "_CL_DECLARE_VLOAD_WIDTH(8)\n" },
+    { "vload16", "_CL_DECLARE_VLOAD_WIDTH(16)\n" },
+    { "vstore2", "_CL_DECLARE_VSTORE_WIDTH(2)\n" },
+    { "vstore3", "_CL_DECLARE_VSTORE_WIDTH(3)\n" },
+    { "vstore4", "_CL_DECLARE_VSTORE_WIDTH(4)\n" },
+    { "vstore8", "_CL_DECLARE_VSTORE_WIDTH(8)\n" },
+    { "vstore16", "_CL_DECLARE_VSTORE_WIDTH(16)\n" }
 };
 static const int numBuiltinDecls =
     sizeof(builtinDecls) / sizeof(builtinDecls[0]);
