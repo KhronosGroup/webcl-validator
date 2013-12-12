@@ -120,6 +120,9 @@ void WebCLValidator::run()
         return;
     }
 
+    // TODO: augment matcher/validator argv with -Dcl_khr_fp16 etc
+    // based on which extension enable #pragmas have been encountered in preprocessing
+
     /*
      * Feed the builtin declarations produced by the preprocessing stage
      * to be included when running the later stages. This fixes issues

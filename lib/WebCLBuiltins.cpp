@@ -75,12 +75,18 @@ static const char *safeBuiltins[] = {
 static const int numSafeBuiltins =
     sizeof(safeBuiltins) / sizeof(safeBuiltins[0]);
 
-static const char *convertSuffixes[] = {
+static const char *roundingSuffixes[] = {
     "_rtz", "_rte", "_rtp", "_rtn",
     "" // must be last to avoid emitting by accident
 };
-static const int numConvertSuffixes =
-    sizeof(convertSuffixes) / sizeof(convertSuffixes[0]);
+static const int numRoundingSuffixes =
+    sizeof(roundingSuffixes) / sizeof(roundingSuffixes[0]);
+
+static const char *vloadHalfPrefix = "vload_half";
+static const char *vloadaHalfPrefix = "vloada_half";
+
+static const char *vstoreHalfPrefix = "vstorea_half";
+static const char *vstoreaHalfPrefix = "vstorea_half";
 
 static struct {
     const char *name;
@@ -263,7 +269,8 @@ WebCLBuiltins::WebCLBuiltins()
     , unsafeAtomicBuiltins_()
     , unsupportedBuiltins_()
     , safeBuiltins_()
-    , convertSuffixes_(convertSuffixes, convertSuffixes + numConvertSuffixes)
+    , roundingSuffixes_(roundingSuffixes, roundingSuffixes + numRoundingSuffixes)
+    , vloadHalfDeclared(false)
 {
     initialize(unsafeMathBuiltins_, unsafeMathBuiltins, numUnsafeMathBuiltins);
     initialize(unsafeVectorBuiltins_, unsafeVectorBuiltins, numUnsafeVectorBuiltins);
@@ -299,21 +306,40 @@ bool WebCLBuiltins::isUnsupported(const std::string &builtin) const
     return unsupportedBuiltins_.count(builtin);
 }
 
+namespace
+{
+    bool hasPrefix(const std::string &str, const std::string &prefix)
+    {
+        return str.substr(0, prefix.size()) == prefix;
+    }
+
+    bool hasSuffix(const std::string &str, const std::string &suffix)
+    {
+        return str.size() >= suffix.size() && str.substr(str.size() - suffix.size()) == suffix;
+    }
+
+    std::string firstMatchingSuffix(
+        const std::string &str,
+        const std::vector<std::string> &suffixes)
+    {
+        for (std::vector<std::string>::const_iterator i = suffixes.begin(); i != suffixes.end(); ++i) {
+            if (hasSuffix(str, *i))
+                return *i;
+        }
+        return std::string();
+    }
+}
+
 void WebCLBuiltins::emitDeclarations(llvm::raw_ostream &os, const std::string &builtin)
 {
     static const std::string convertPrefix = "convert_";
     if (builtin.substr(0, convertPrefix.size()) == convertPrefix) {
         // One of the convert_##DST##SIZE##INTSUFFIX##ROUNDINGSUFFIX overloads
-        for (unsigned i = 0; i < convertSuffixes_.size(); ++i) {
-            const std::string &suffix = convertSuffixes_[i];
-            if (!usedConvertSuffixes_.count(suffix) &&
-                builtin.size() >= suffix.size() &&
-                builtin.substr(builtin.size() - suffix.size()) == suffix) {
-                    DEBUG( std::cerr << "declaring for " << builtin << " builtin convert_..." << suffix << '\n'; );
-                    os << "_CL_DECLARE_CONVERT_TYPE_SRC_DST_SIZE(" << suffix << ")\n";
-                    usedConvertSuffixes_.insert(suffix);
-                    break; // do not move on to the empty suffix from earlier ones
-            }
+        const std::string suffix = firstMatchingSuffix(builtin, roundingSuffixes_);
+        if (!usedConvertSuffixes_.count(suffix)) {
+            DEBUG( std::cerr << "declaring for " << builtin << " builtin convert_..." << suffix << '\n'; );
+            os << "_CL_DECLARE_CONVERT_TYPE_SRC_DST_SIZE(" << suffix << ")\n";
+            usedConvertSuffixes_.insert(suffix);
         }
     } else {
         if (builtinDecls_.count(builtin)) {
@@ -322,6 +348,26 @@ void WebCLBuiltins::emitDeclarations(llvm::raw_ostream &os, const std::string &b
             DEBUG( std::cerr << "declaring builtin " << builtin << '\n'; );
             for (llvm::SmallVector<const char *, 2>::const_iterator i = decls.begin(); i != decls.end(); ++i) {
                 os << *i;
+            }
+        } else if (hasPrefix(builtin, vloadHalfPrefix) || hasPrefix(builtin, vloadaHalfPrefix)) {
+            // One of the vload_half functions, declare them all (can't declare just one by name)
+            if (!vloadHalfDeclared) {
+                DEBUG( std::cerr << "declaring vloada?_half...(...)\n"; );
+                os << "_CL_DECLARE_VLOAD_HALF(__global)\n"
+                      "_CL_DECLARE_VLOAD_HALF(__local)\n"
+                      "_CL_DECLARE_VLOAD_HALF(__constant)\n"
+                      "_CL_DECLARE_VLOAD_HALF(__private)\n";
+                vloadHalfDeclared = true;
+            }
+        } else if (hasPrefix(builtin, vstoreHalfPrefix) || hasPrefix(builtin, vstoreaHalfPrefix)) {
+            // One of the vstore_half functions, declare all matching the rounding suffix
+            const std::string suffix = firstMatchingSuffix(builtin, roundingSuffixes_);
+            if (!usedVstoreHalfSuffixes_.count(suffix)) {
+                DEBUG( std::cerr << "declaring vstorea?_half_..." << suffix << "(...)\n"; );
+                os << "_CL_DECLARE_VSTORE_HALF(__global, " << suffix << ")\n"
+                      "_CL_DECLARE_VSTORE_HALF(__local, " << suffix << ")\n"
+                      "_CL_DECLARE_VSTORE_HALF(__private, " << suffix << ")\n";
+                usedVstoreHalfSuffixes_.insert(suffix);
             }
         } else {
             // No builtin at all; this is reached for all things like user kernel, parameter

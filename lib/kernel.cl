@@ -1444,6 +1444,45 @@ void barrier (cl_mem_fence_flags flags);
   uint8    _CL_OVERLOADABLE NAME(uint8   , uint8   , uint8   ); \
   uint16   _CL_OVERLOADABLE NAME(uint16  , uint16  , uint16  );
 
+/* Vector Functions */
+
+#ifdef cl_khr_fp16
+
+#define _CL_DECLARE_VLOAD_HALF(MOD)                                     \
+  float   _CL_OVERLOADABLE vload_half   (size_t offset, const MOD half *p); \
+  float2  _CL_OVERLOADABLE vload_half2  (size_t offset, const MOD half *p); \
+  float3  _CL_OVERLOADABLE vload_half3  (size_t offset, const MOD half *p); \
+  float4  _CL_OVERLOADABLE vload_half4  (size_t offset, const MOD half *p); \
+  float8  _CL_OVERLOADABLE vload_half8  (size_t offset, const MOD half *p); \
+  float16 _CL_OVERLOADABLE vload_half16 (size_t offset, const MOD half *p); \
+  float2  _CL_OVERLOADABLE vloada_half2 (size_t offset, const MOD half *p); \
+  float3  _CL_OVERLOADABLE vloada_half3 (size_t offset, const MOD half *p); \
+  float4  _CL_OVERLOADABLE vloada_half4 (size_t offset, const MOD half *p); \
+  float8  _CL_OVERLOADABLE vloada_half8 (size_t offset, const MOD half *p); \
+  float16 _CL_OVERLOADABLE vloada_half16(size_t offset, const MOD half *p);
+
+/* stores to half may have a suffix: _rte _rtz _rtp _rtn */
+#define _CL_DECLARE_VSTORE_HALF(MOD, SUFFIX)                            \
+  void _CL_OVERLOADABLE vstore_half##SUFFIX   (float   data, size_t offset, MOD half *p); \
+  void _CL_OVERLOADABLE vstore_half2##SUFFIX  (float2  data, size_t offset, MOD half *p); \
+  void _CL_OVERLOADABLE vstore_half3##SUFFIX  (float3  data, size_t offset, MOD half *p); \
+  void _CL_OVERLOADABLE vstore_half4##SUFFIX  (float4  data, size_t offset, MOD half *p); \
+  void _CL_OVERLOADABLE vstore_half8##SUFFIX  (float8  data, size_t offset, MOD half *p); \
+  void _CL_OVERLOADABLE vstore_half16##SUFFIX (float16 data, size_t offset, MOD half *p); \
+  void _CL_OVERLOADABLE vstorea_half2##SUFFIX (float2  data, size_t offset, MOD half *p); \
+  void _CL_OVERLOADABLE vstorea_half3##SUFFIX (float3  data, size_t offset, MOD half *p); \
+  void _CL_OVERLOADABLE vstorea_half4##SUFFIX (float4  data, size_t offset, MOD half *p); \
+  void _CL_OVERLOADABLE vstorea_half8##SUFFIX (float8  data, size_t offset, MOD half *p); \
+  void _CL_OVERLOADABLE vstorea_half16##SUFFIX(float16 data, size_t offset, MOD half *p);
+
+#else
+
+// cl_khr_fp16 not defined, define no-op macros
+#define _CL_DECLARE_VLOAD_HALF(MOD)
+#define _CL_DECLARE_VSTORE_HALF(MOD, SUFFIX)
+
+#endif
+
 /* Atomic operations */
 
 #define _CL_DECLARE_ATOMICS(MOD, TYPE)                                  \

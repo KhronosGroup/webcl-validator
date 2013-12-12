@@ -91,6 +91,9 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
     files_.push_back(TemporaryFile(-1, builtinDeclFilename_));
     close(builtinDeclDescriptor);
 
+    // TODO: add -Dcl_khr_fp16 etc definitions to preprocessor options
+    // based on extensions passed to clvValidate()
+
     char const *preprocessorInvocation[] = {
         "libclv", inputFilename, "--"
     };

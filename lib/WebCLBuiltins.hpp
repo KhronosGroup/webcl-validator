@@ -83,15 +83,19 @@ private:
     /// Calling is always safe for these, even if they have pointer
     /// arguments.
     BuiltinNames safeBuiltins_;
-    /// Known suffixes for the convert_x builtin functions
+    /// Known rounding suffixes for the convert_x, vstore_x etc builtin functions
     /// (must be in a specific order, so vector used)
-    std::vector<std::string> convertSuffixes_;
-    /// (Sub)set of rounding suffices we have already emitted the incredibly
+    std::vector<std::string> roundingSuffixes_;
+    /// (Sub)set of rounding suffixes we have already emitted the incredibly
     /// expensive _CL_DECLARE_CONVERT_TYPE... macro for
     BuiltinNames usedConvertSuffixes_;
+    /// Ditto for _CL_DECLARE_VSTORE_HALF...
+    BuiltinNames usedVstoreHalfSuffixes_;
     /// Mapping from other known builtin function names to magic macro invocations
     /// that declare them
     llvm::StringMap<llvm::SmallVector<const char *, 2> > builtinDecls_;
+    /// Have the vload_half functions been declared
+    bool vloadHalfDeclared;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLBUILTINS
