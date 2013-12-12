@@ -326,6 +326,16 @@ _CL_STATIC_ASSERT(double16, sizeof(double16) == 16*sizeof(double));
 
 /* Conversion functions */
 
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//
+// TODO: Only declare these if used
+// This could be an 25% performance improvement!
+//
+// (Just #if 0'ing them all makes test suite complete
+//  in 33s instead of 45s but is obviously incorrect)
+//
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 #define _CL_DECLARE_AS_TYPE(SRC, DST)           \
   DST _CL_OVERLOADABLE as_##DST(SRC a);
 
@@ -1528,6 +1538,8 @@ void barrier (cl_mem_fence_flags flags);
 
 /* Atomic operations */
 
+// TODO: only declare these if used
+
 #define _CL_DECLARE_ATOMICS(MOD, TYPE)                                  \
   _CL_OVERLOADABLE TYPE atomic_add    (volatile MOD TYPE *p, TYPE val); \
   _CL_OVERLOADABLE TYPE atomic_sub    (volatile MOD TYPE *p, TYPE val); \
@@ -1689,58 +1701,37 @@ int printf(const /*constant*/ char * restrict format, ...)
 /* Async Copies from Global to Local Memory, Local to
    Global Memory, and Prefetch */
 
+// TODO: only declare these if used
+
 #ifndef _CL_HAS_EVENT_T
 typedef uint event_t;
 #endif
 
-#define _CL_DECLARE_ASYNC_COPY_FUNCS_SINGLE(GENTYPE)            \
-  _CL_OVERLOADABLE                                              \
-  event_t async_work_group_copy (__local GENTYPE *dst,          \
-                                 const __global GENTYPE *src,   \
-                                 size_t num_gentypes,           \
-                                 event_t event);                \
-                                                                \
-  _CL_OVERLOADABLE                                              \
-  event_t async_work_group_copy (__global GENTYPE *dst,         \
-                                 const __local GENTYPE *src,    \
-                                 size_t num_gentypes,           \
-                                 event_t event);                \
-  _CL_OVERLOADABLE                                              \
-  event_t async_work_group_strided_copy (__local GENTYPE *dst,        \
-                                         const __global GENTYPE *src, \
-                                         size_t num_gentypes,         \
-                                         size_t src_stride,           \
-                                         event_t event);              \
-  _CL_OVERLOADABLE                                                    \
-  event_t async_work_group_strided_copy (__global GENTYPE *dst,       \
-                                         const __local GENTYPE *src,  \
-                                         size_t num_gentypes,         \
-                                         size_t dst_stride,           \
-                                         event_t event);              \
-                                                                
+_CL_OVERLOADABLE
+event_t async_work_group_copy (__local void *dst,
+                                const __global void *src,
+                                size_t num_gentypes,
+                                event_t event);
+_CL_OVERLOADABLE
+event_t async_work_group_copy (__global void *dst,
+                                const __local void *src,
+                                size_t num_gentypes,
+                                event_t event);
+_CL_OVERLOADABLE
+event_t async_work_group_strided_copy (__local void *dst,
+                                        const __global void *src,
+                                        size_t num_gentypes,
+                                        size_t src_stride,
+                                        event_t event);
+_CL_OVERLOADABLE
+event_t async_work_group_strided_copy (__global void *dst,
+                                        const __local void *src,
+                                        size_t num_gentypes,
+                                        size_t dst_stride,
+                                        event_t event);
+
 void wait_group_events (int num_events,                      
                         event_t *event_list);                 
-
-#define _CL_DECLARE_ASYNC_COPY_FUNCS(GENTYPE)      \
-  _CL_DECLARE_ASYNC_COPY_FUNCS_SINGLE(GENTYPE)     \
-  _CL_DECLARE_ASYNC_COPY_FUNCS_SINGLE(GENTYPE##2)   \
-  _CL_DECLARE_ASYNC_COPY_FUNCS_SINGLE(GENTYPE##3)   \
-  _CL_DECLARE_ASYNC_COPY_FUNCS_SINGLE(GENTYPE##4)   \
-  _CL_DECLARE_ASYNC_COPY_FUNCS_SINGLE(GENTYPE##8)   \
-  _CL_DECLARE_ASYNC_COPY_FUNCS_SINGLE(GENTYPE##16)  \
-
-_CL_DECLARE_ASYNC_COPY_FUNCS(char);
-_CL_DECLARE_ASYNC_COPY_FUNCS(uchar);
-_CL_DECLARE_ASYNC_COPY_FUNCS(short);
-_CL_DECLARE_ASYNC_COPY_FUNCS(ushort);
-_CL_DECLARE_ASYNC_COPY_FUNCS(int);
-_CL_DECLARE_ASYNC_COPY_FUNCS(uint);
-__IF_INT64(_CL_DECLARE_ASYNC_COPY_FUNCS(long));
-__IF_INT64(_CL_DECLARE_ASYNC_COPY_FUNCS(ulong));
-
-__IF_FP16(_CL_DECLARE_ASYNC_COPY_FUNCS_SINGLE(half));
-_CL_DECLARE_ASYNC_COPY_FUNCS(float);
-__IF_FP64(_CL_DECLARE_ASYNC_COPY_FUNCS(double));
 
 // Fake prefetch declaration to let it be caught more informatively in WebCLAnalyser
 void prefetch(const __global void *, size_t);
