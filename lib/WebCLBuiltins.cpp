@@ -258,7 +258,13 @@ static struct {
                 "#ifdef cl_khr_fp64\n"
                 "double4 _CL_OVERLOADABLE cross(double4, double4);\n"
                 "double3 _CL_OVERLOADABLE cross(double3, double3);\n"
-                "#endif\n" }
+                "#endif\n" },
+    { "read_imagef", "float4 _CL_OVERLOADABLE read_imagef (image2d_t image, sampler_t sampler, int2 coord);\n"
+                     "float4 _CL_OVERLOADABLE read_imagef (image2d_t image, sampler_t sampler, float2 coord);\n" },
+    { "read_imageui", "uint4 _CL_OVERLOADABLE read_imageui (image2d_t image, sampler_t sampler, int2 coord);\n"
+                      "uint4 _CL_OVERLOADABLE read_imageui (image2d_t image, sampler_t sampler, float2 coord);\n" },
+    { "read_imagei", "int4 _CL_OVERLOADABLE read_imagei (image2d_t image, sampler_t sampler, int2 coord);\n"
+                     "int4 _CL_OVERLOADABLE read_imagei (image2d_t image, sampler_t sampler, float2 coord);\n" }
 };
 static const int numBuiltinDecls =
     sizeof(builtinDecls) / sizeof(builtinDecls[0]);
