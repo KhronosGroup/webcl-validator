@@ -271,6 +271,10 @@ public:
     /// definitions and the bitwise or operator.
     bool wrapFunctionCall(std::string wrapperName, clang::CallExpr *expr, WebCLKernelHandler &kernelHandler);
 
+    /// Same, but for variable declarations. For variable declarations no helper functions
+    /// are currently generated, so it doesn't use a name argument for that.
+    bool wrapVariableDeclaration(clang::VarDecl *varDecl, WebCLKernelHandler &kernelHandler);
+
     /// Used for implementing function wrappers
     class FunctionCallWrapper;
 

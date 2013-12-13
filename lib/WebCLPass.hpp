@@ -307,7 +307,8 @@ public:
     WebCLImageSamplerSafetyHandler(
         clang::CompilerInstance &instance,
         WebCLAnalyser &analyser,
-	WebCLTransformer &transformer);
+	WebCLTransformer &transformer,
+        WebCLKernelHandler &kernelHandler);
     virtual ~WebCLImageSamplerSafetyHandler();
 
     /// - Goes through all function calls and checks that their image2d_t
@@ -323,6 +324,7 @@ private:
 
     typedef std::map<std::string, TypeAccessChecker*> TypeAccessCheckerMap;
 
+    WebCLKernelHandler &kernelHandler_;
     TypeAccessCheckerMap checkedTypes_;
 };
 

@@ -41,7 +41,7 @@ WebCLConsumer::WebCLConsumer(
     , kernelHandler_(instance, analyser_, transformer, addressSpaceHandler_)
     , memoryAccessHandler_(instance, analyser_, transformer, kernelHandler_)
     , printer_(instance, rewriter, analyser_, transformer)
-    , imageSampleSafetyHandler_(instance, analyser_, transformer)
+    , imageSampleSafetyHandler_(instance, analyser_, transformer, kernelHandler_)
     , functionCallHandler_(instance, analyser_, transformer, kernelHandler_)
     , passes_()
 {
