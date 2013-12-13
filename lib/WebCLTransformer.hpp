@@ -47,7 +47,7 @@ namespace clang {
     class DeclRefExpr;
 }
 
-class WebCLKernelHandler; // used by wrapBuiltinFunction
+class WebCLKernelHandler; // used by wrapFunctionCall
 
 /// Performs transformations that need to be done by the memory access
 /// validation algorithm. Doesn't decide what transformations should
@@ -254,23 +254,29 @@ public:
     /// Modify a function call to call a function of another name
     void changeFunctionCallee(clang::CallExpr *expr, std::string newName);
 
-    /// Modify a builtin function call to a generated builtin replacement.  The
-    /// replacement function is generated if required.  if wrapping was
-    /// performed the function returns true. otherwise (ie. an unknown builtin)
+    /// Modify a function call to a generated replacement if applicaple. The
+    /// replacement function is generated if required. if wrapping was
+    /// performed the function returns true. otherwise (ie. an unknown builtin or 
+    /// functions without dangerous arguments like image2d_t or sampler_t)
     /// false is returned. 
     /// Functions such as vloadn and vstoren generate a wrapping function that
     /// performs the check of arguments and do nothing if the limits are
     /// exceeded.
-    /// Functions such ad read_imagef and read_imagei are only checked for their
+    /// Functions with sampler_t argument such as read_imagef and read_imagei or
+    /// user-defined functions accepting sampler_t are only checked for their
     /// sampler_t argument. For those functions no wrapper function is
     /// generated: instead, the second argument is deconstructed from the value
     /// of its integer constant expression and then reconstructed by generating
     /// an expression that builds the desired value by using the related macro
     /// definitions and the bitwise or operator.
-    bool wrapBuiltinFunction(std::string wrapperName, clang::CallExpr *expr, WebCLKernelHandler &kernelHandler);
+    bool wrapFunctionCall(std::string wrapperName, clang::CallExpr *expr, WebCLKernelHandler &kernelHandler);
 
-    /// Used for implementing builtin wrappers
-    class BuiltinBase;
+    /// Same, but for variable declarations. For variable declarations no helper functions
+    /// are currently generated, so it doesn't use a name argument for that.
+    bool wrapVariableDeclaration(clang::VarDecl *varDecl, WebCLKernelHandler &kernelHandler);
+
+    /// Used for implementing function wrappers
+    class FunctionCallWrapper;
 
     enum MacroKind {
 	MACRO_CLAMP,
@@ -402,10 +408,10 @@ private:
     /// Generates recurring names.
     WebCLConfiguration cfg_;
 
-    typedef std::map<std::string, BuiltinBase*> BuiltinBaseMap;
+    typedef std::list<FunctionCallWrapper*> FunctionCallWrapperList;
 
-    /// Map from a builtin name to a wrapping handler
-    BuiltinBaseMap builtinHandlers_;
+    /// Map from a function name to a wrapping handler
+    FunctionCallWrapperList functionWrappers_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLTRANSFORMER

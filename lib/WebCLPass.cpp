@@ -311,8 +311,6 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
     WebCLAnalyser::KernelList &kernels = analyser_.getKernelFunctions();
     for (WebCLAnalyser::KernelList::iterator i = kernels.begin();
         i != kernels.end(); ++i) {
-
-            clang::FunctionDecl *func = i->decl;
             for (std::vector<WebCLAnalyser::KernelArgInfo>::const_iterator j = i->args.begin();
                 j != i->args.end(); ++j) {
                     const WebCLAnalyser::KernelArgInfo &parm = *j;
@@ -541,7 +539,7 @@ void WebCLMemoryAccessHandler::run(clang::ASTContext &context)
     }
 }
 
-WebCLBuiltinHandler::WebCLBuiltinHandler(
+WebCLFunctionCallHandler::WebCLFunctionCallHandler(
     clang::CompilerInstance &instance,
     WebCLAnalyser &analyser,
     WebCLTransformer &transformer,
@@ -552,46 +550,180 @@ WebCLBuiltinHandler::WebCLBuiltinHandler(
     // nothing
 }
 
-void WebCLBuiltinHandler::run(clang::ASTContext &context)
+void WebCLFunctionCallHandler::handle(clang::CallExpr *callExpr,
+    bool builtin,
+    unsigned& fnCounter)
+{
+    std::string origName = callExpr->getDirectCallee()->getNameInfo().getAsString();
+    std::string wrapperName = "_wcl_" + origName + "_" + stringify(fnCounter);
+
+    bool success = transformer_.wrapFunctionCall(wrapperName, callExpr, kernelHandler_);
+
+    if (success) {
+        ++fnCounter;
+    } else if (builtin && analyser_.hasUnsafeParameters(callExpr)) {
+        // error on unknown builtin functions involving pointer arguments
+        error((callExpr)->getLocStart(), "Builtin argument check is required.");
+    } else {
+        // pass other unknown functions through
+    }
+}
+
+void WebCLFunctionCallHandler::run(clang::ASTContext &context)
 {
     WebCLAnalyser::CallExprSet builtinCalls = analyser_.getBuiltinCalls();
+    WebCLAnalyser::CallExprSet internalCalls = analyser_.getInternalCalls();
 
     unsigned fnCounter = 0;
 
     for (WebCLAnalyser::CallExprSet::const_iterator builtinCallIt = builtinCalls.begin();
         builtinCallIt != builtinCalls.end();
         ++builtinCallIt) {
-            std::string origName = (*builtinCallIt)->getDirectCallee()->getNameInfo().getAsString();
-            std::string wrapperName = "_wcl_" + origName + "_" + stringify(fnCounter);
+        handle(*builtinCallIt, true, fnCounter);
+    }
 
-            bool success = transformer_.wrapBuiltinFunction(wrapperName, *builtinCallIt, kernelHandler_);
-
-            if (success) {
-                ++fnCounter;
-            } else if (analyser_.hasUnsafeParameters(*builtinCallIt)) {
-                // error on unknown builtin functions involving pointer arguments
-                error((*builtinCallIt)->getLocStart(), "Builtin argument check is required.");
-            } else {
-                // pass other unknown functions through
-            }
+    for (WebCLAnalyser::CallExprSet::const_iterator internalCallIt = internalCalls.begin();
+        internalCallIt != internalCalls.end();
+        ++internalCallIt) {
+        handle(*internalCallIt, false, fnCounter);
     }
 }
 
-WebCLBuiltinHandler::~WebCLBuiltinHandler()
+WebCLFunctionCallHandler::~WebCLFunctionCallHandler()
 {
     // nothing
 }
 
-WebCLImageSafetyHandler::WebCLImageSafetyHandler(
+class WebCLImageSamplerSafetyHandler::TypeAccessChecker {
+public:
+    TypeAccessChecker();
+
+    /* Is it OK to access this parameter? Used for image2d_t readwrite etc restrictions. */
+    virtual bool validateParmVarAccess(const clang::ValueDecl &valueDecl, std::string &error) const = 0;
+
+    /* Is it OK to access this variable? Used for image2d_t and sampler_t restrictions */
+    virtual bool validateVarAccess(const clang::ValueDecl &valueDecl, std::string &error) const = 0;
+
+    /* Is it OK to use this variable as an argument or an initializer? Used for image2d_t and sampler_t restrictions.
+
+       @param isArgument indicates whether the value is being used as an argument either directly or via an implicit cast
+       @param isInitializer indicates whether the value is being used as an initializer -"-
+     */
+    virtual bool validateDeclRefExpr(clang::DeclRefExpr &declRefExpr, bool isArgument, bool isInitializer,
+        std::string &error) const = 0;
+
+    /* Is this a valid declaration? If it's not a valid decaration, rewriteDeclaration will be called upon it. */
+    virtual bool isValidDeclaration(const clang::VarDecl &varDecl) const = 0;
+
+    /* Rewrite a declaration. Return false if it cannot be rewritten. */
+    virtual bool rewriteDeclaration(WebCLTransformer &transformer, WebCLKernelHandler &kernelHandler, 
+        clang::VarDecl &varDecl) const;
+
+    virtual ~TypeAccessChecker();
+};
+
+WebCLImageSamplerSafetyHandler::TypeAccessChecker::TypeAccessChecker()
+{
+    // nothing
+}
+
+WebCLImageSamplerSafetyHandler::TypeAccessChecker::~TypeAccessChecker()
+{
+    // nothing
+}
+
+bool WebCLImageSamplerSafetyHandler::TypeAccessChecker::rewriteDeclaration(WebCLTransformer &transformer, WebCLKernelHandler &kernelHandler, 
+        clang::VarDecl &varDecl) const
+{
+    return false;
+}
+
+class WebCLImageSamplerSafetyHandler::TypeAccessCheckerImage2d: public WebCLImageSamplerSafetyHandler::TypeAccessChecker {
+public:
+    TypeAccessCheckerImage2d() {}
+    ~TypeAccessCheckerImage2d() {}
+
+    virtual bool validateParmVarAccess(const clang::ValueDecl &valueDecl, std::string &error) const {
+        // Further check that the parameter access qualifier is supported, if present
+        error = "image2d_t parameters can only have read_only or write_only access qualifier";
+        const clang::OpenCLImageAccess qualifier = valueDecl.getType().getAccess();
+        return (!qualifier || qualifier == clang::CLIA_read_only || qualifier == clang::CLIA_write_only);
+    }
+
+    virtual bool validateVarAccess(const clang::ValueDecl &valueDecl, std::string &error) const {
+        // image2d_t cannot be accessed via a variable
+        error = "image2d_t must always originate from parameters";
+        return false;
+    }
+
+    virtual bool validateDeclRefExpr(clang::DeclRefExpr &declRefExpr, bool isArgument, bool isInitializer,
+        std::string &error) const {
+        error = "image2d_t must always be used as a function argument";
+        return isArgument;
+    }
+
+    virtual bool isValidDeclaration(const clang::VarDecl &varDecl) const {
+        return false;
+    }
+};
+
+class WebCLImageSamplerSafetyHandler::TypeAccessCheckerSampler: public WebCLImageSamplerSafetyHandler::TypeAccessChecker {
+public:
+    TypeAccessCheckerSampler() {}
+    ~TypeAccessCheckerSampler() {}
+
+    virtual bool validateParmVarAccess(const clang::ValueDecl &valueDecl, std::string &error) const {
+        // sampler_t can always be accessed via an argument
+        return true;
+    }
+
+    virtual bool validateVarAccess(const clang::ValueDecl &valueDecl, std::string &error) const {
+        // sampler_t can always be accessed via a local parameter
+        return true;
+    }
+
+    virtual bool validateDeclRefExpr(clang::DeclRefExpr &declRefExpr, bool isArgument, bool isInitializer,
+        std::string &error) const {
+        error = "sampler_t must always be used as a function argument of a variable initializer";
+        return isArgument || isInitializer;
+    }
+
+    virtual bool isValidDeclaration(const clang::VarDecl &varDecl) const {
+        return false;
+    }
+
+    virtual bool rewriteDeclaration(WebCLTransformer &transformer, WebCLKernelHandler &kernelHandler, 
+        clang::VarDecl &varDecl) const {
+        return transformer.wrapVariableDeclaration(&varDecl, kernelHandler);
+    }
+};
+
+WebCLImageSamplerSafetyHandler::WebCLImageSamplerSafetyHandler(
     clang::CompilerInstance &instance,
     WebCLAnalyser &analyser,
-    WebCLTransformer &transformer)
-    : WebCLPass(instance, analyser, transformer)
+    WebCLTransformer &transformer,
+    WebCLKernelHandler &kernelHandler)
+    : WebCLPass(instance, analyser, transformer),
+      kernelHandler_(kernelHandler)
 {
-    // nothing
+    checkedTypes_["image2d_t"] = new TypeAccessCheckerImage2d;
+    checkedTypes_["sampler_t"] = new TypeAccessCheckerSampler;
 }
 
-void WebCLImageSafetyHandler::run(clang::ASTContext &context)
+namespace {
+    clang::DeclRefExpr *declRefExprViaImplicit(clang::Expr *expr)
+    {
+        clang::DeclRefExpr *declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(expr);
+        if (!declRefExpr) {
+            if (clang::ImplicitCastExpr *implicitCastExpr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)) {
+                declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(*implicitCastExpr->child_begin());
+            }
+        }
+        return declRefExpr;
+    }
+}
+
+void WebCLImageSamplerSafetyHandler::run(clang::ASTContext &context)
 {
     WebCLAnalyser::CallExprSet calls = analyser_.getBuiltinCalls();
     std::set<clang::DeclRefExpr*> usedAsArgument;
@@ -599,79 +731,126 @@ void WebCLImageSafetyHandler::run(clang::ASTContext &context)
     calls.insert(analyser_.getInternalCalls().begin(), analyser_.getInternalCalls().end());
 
     for (WebCLAnalyser::CallExprSet::const_iterator callExprIt = calls.begin();
-        callExprIt != calls.end();
-        ++callExprIt) {
-            clang::CallExpr *callExpr = *callExprIt;
-            for (unsigned argIdx = 0; argIdx < callExpr->getNumArgs(); ++argIdx) {
-                clang::Expr *expr = callExpr->getArg(argIdx);
-                clang::QualType type = WebCLTypes::reduceType(instance_, expr->getType());
-                if (type.getAsString() == "image2d_t") {
-                    enum {
-                        // The corresponding param has not been found (yet)
-                        PARAM_NOT_FOUND,
-                        // The parameter was found but the type was wrong
-                        TYPE_MISMATCH,
-                        // The parameter was found but it had an illegal access qualifier
-                        ILLEGAL_ACCESS,
-                        // Everything is OK
-                        SAFE
-                    } safety = PARAM_NOT_FOUND;
+         callExprIt != calls.end();
+         ++callExprIt) {
+        clang::CallExpr *callExpr = *callExprIt;
+        for (unsigned argIdx = 0; argIdx < callExpr->getNumArgs(); ++argIdx) {
+            clang::Expr *expr = callExpr->getArg(argIdx);
+            clang::QualType type = WebCLTypes::reduceType(instance_, expr->getType());
+            TypeAccessCheckerMap::const_iterator checkedTypeIt = checkedTypes_.find(type.getAsString());
+            if (checkedTypeIt != checkedTypes_.end()) {
+                const std::string& checkedTypeName = checkedTypeIt->first;
+                const TypeAccessChecker* checkedTypeChecker = checkedTypeIt->second;
 
-                    clang::DeclRefExpr *declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(expr);
-                    if (!declRefExpr) {
-                        if (clang::ImplicitCastExpr *implicitCastExpr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)) {
-                            declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(*implicitCastExpr->child_begin());
-                        }
-                    }
+                enum {
+                    // The corresponding reference has not been found (yet)
+                    REFERENCE_NOT_FOUND,
+                    // The parameter was found but the type was wrong
+                    TYPE_MISMATCH,
+                    // The parameter was found but it had an illegal access qualifier
+                    ILLEGAL_ACCESS,
+                    // Everything is OK
+                    SAFE
+                } safety = REFERENCE_NOT_FOUND;
 
+                clang::DeclRefExpr *declRefExpr = declRefExprViaImplicit(expr);
+
+                std::string errorMessage;
+                if (declRefExpr) {
                     usedAsArgument.insert(declRefExpr);
-
-                    if (declRefExpr) {
-                        const clang::ValueDecl *valueDecl = declRefExpr->getDecl();
-                        if (clang::isa<clang::ParmVarDecl>(valueDecl)) {
-                            clang::QualType paramType = WebCLTypes::reduceType(instance_, valueDecl->getType());
-                            if (paramType == type) {
-                                // Further check that the parameter access qualifier is supported, if present
-                                const clang::OpenCLImageAccess qualifier = valueDecl->getType().getAccess();
-                                if (!qualifier || qualifier == clang::CLIA_read_only || qualifier == clang::CLIA_write_only) {
-                                    safety = SAFE;
-                                } else {
-                                    safety = ILLEGAL_ACCESS;
-                                }
+                    const clang::ValueDecl *valueDecl = declRefExpr->getDecl();
+                    if (clang::isa<clang::ParmVarDecl>(valueDecl)) {
+                        clang::QualType paramType = WebCLTypes::reduceType(instance_, valueDecl->getType());
+                        if (paramType == type) {
+                            if (checkedTypeChecker->validateParmVarAccess(*valueDecl, errorMessage)) {
+                                safety = SAFE;
                             } else {
-                                // can this case ever happen?
-                                safety = TYPE_MISMATCH;
+                                safety = ILLEGAL_ACCESS;
                             }
+                        } else {
+                            // can this case ever happen?
+                            safety = TYPE_MISMATCH;
+                        }
+                    } else if (clang::isa<clang::VarDecl>(valueDecl)) {
+                        clang::QualType paramType = WebCLTypes::reduceType(instance_, valueDecl->getType());
+                        if (paramType == type) {
+                            if (checkedTypeChecker->validateVarAccess(*valueDecl, errorMessage)) {
+                                safety = SAFE;
+                            } else {
+                                safety = ILLEGAL_ACCESS;
+                            }
+                        } else {
+                            // can this case ever happen?
+                            safety = TYPE_MISMATCH;
                         }
                     }
+                }
 
-
+                if (safety != SAFE) {
                     if (safety == TYPE_MISMATCH) {
-                        error(expr->getLocStart(), "image2d_t must always originate from parameters with its original type");
+                        error(expr->getLocStart(), "%0 must always originate from parameters with its original type") << checkedTypeName;
                     } else if (safety == ILLEGAL_ACCESS) {
-                        error(declRefExpr->getLocStart(), "image2d_t parameters can only have read_only or write_only access qualifier");
-                    } else if (safety == PARAM_NOT_FOUND) {
-                        error(expr->getLocStart(), "image2d_t must always originate from parameters, unchanged");
+                        error(declRefExpr->getLocStart(), "%0") << errorMessage;
+                    } else if (safety == REFERENCE_NOT_FOUND) {
+                        error(expr->getLocStart(), "%0 must always originate from parameters or local variables") << checkedTypeName;
                     }
                 }
             }
+        }
+    }
+
+    std::set<clang::DeclRefExpr*> usedAsInitializer;
+
+    WebCLAnalyser::VarDeclSet varDecls = analyser_.getLocalVariables();
+    varDecls.insert(analyser_.getConstantVariables().begin(), analyser_.getConstantVariables().end());
+    varDecls.insert(analyser_.getPrivateVariables().begin(), analyser_.getPrivateVariables().end());
+    for (WebCLAnalyser::VarDeclSet::const_iterator varDeclIt = varDecls.begin();
+         varDeclIt != varDecls.end();
+         ++varDeclIt) {
+        clang::VarDecl *varDecl = *varDeclIt;
+        clang::Expr *expr = varDecl->getInit();
+        if (expr) {
+            clang::DeclRefExpr *declRefExpr = declRefExprViaImplicit(expr);
+            if (declRefExpr) {
+                usedAsInitializer.insert(declRefExpr);
+            }
+        }
     }
 
     const WebCLAnalyser::DeclRefExprSet uses = analyser_.getVariableUses();
     for (WebCLAnalyser::DeclRefExprSet::const_iterator useIt = uses.begin();
-        useIt != uses.end();
-        ++useIt) {
-            clang::DeclRefExpr *expr = *useIt;
-            clang::QualType type = WebCLTypes::reduceType(instance_, expr->getType());
-            if (type.getAsString() == "image2d_t") {
-                if (!usedAsArgument.count(expr)) {
-                    error((expr)->getLocStart(), "image2d_t must always be used as a function argument");
+         useIt != uses.end();
+         ++useIt) {
+        clang::DeclRefExpr *expr = *useIt;
+        clang::QualType type = WebCLTypes::reduceType(instance_, expr->getType());
+        TypeAccessCheckerMap::const_iterator checkedTypeIt = checkedTypes_.find(type.getAsString());
+        if (checkedTypeIt != checkedTypes_.end()) {
+            std::string errorMessage;
+            if (!checkedTypeIt->second->validateDeclRefExpr(*expr, usedAsArgument.count(expr), usedAsInitializer.count(expr),
+                                                        errorMessage)) {
+                error((expr)->getLocStart(), "%0") << errorMessage;
+            }
+        }
+    }
+
+    for (WebCLAnalyser::VarDeclSet::const_iterator varDeclIt = varDecls.begin();
+         varDeclIt != varDecls.end();
+         ++varDeclIt) {
+        clang::VarDecl *varDecl = *varDeclIt;
+        if (!clang::isa<clang::ParmVarDecl>(varDecl)) {
+            clang::QualType type = WebCLTypes::reduceType(instance_, varDecl->getType());
+            TypeAccessCheckerMap::const_iterator checkedTypeIt = checkedTypes_.find(type.getAsString());
+            if (checkedTypeIt != checkedTypes_.end() &&
+                !checkedTypeIt->second->isValidDeclaration(*varDecl)) {
+                if (!checkedTypeIt->second->rewriteDeclaration(transformer_, kernelHandler_, *varDecl)) {
+                    error(varDecl->getLocStart(), "%0 is not initialized properly") << checkedTypeIt->first;
                 }
             }
+        }
     }
 }
 
-WebCLImageSafetyHandler::~WebCLImageSafetyHandler()
+WebCLImageSamplerSafetyHandler::~WebCLImageSamplerSafetyHandler()
 {
     // nothing
 }
