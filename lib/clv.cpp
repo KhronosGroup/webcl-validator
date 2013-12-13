@@ -120,6 +120,35 @@ void WebCLValidator::run()
         return;
     }
 
+    // TODO: augment matcher/validator argv with -Dcl_khr_fp16 etc
+    // based on which extension enable #pragmas have been encountered in preprocessing
+
+    /*
+     * Feed the builtin declarations produced by the preprocessing stage
+     * to be included when running the later stages. This fixes issues
+     * stemming from builtin functions being assumed to return int by default, etc.
+     *
+     * Not all builtin functions are declared, but only those which the preprocessing
+     * stage detects as possibly having been called by the code being validated.
+     *
+     * TODO: profile, most importantly to see if:
+     *
+     *  1) expanding the _CL_DECLARE... macros takes a significant amount of
+     *     time in the usual cases. In this case, we could capture the preprocessed
+     *     version of the header produced during the first matcher stage and reuse it
+     *     in the remaining matcher and validation stages.
+     *
+     * 2) parsing the literal function declarations produced by macro expansion
+     *    is still expensive. The preprocessing stage can only narrow down the set
+     *    of functions to declare by textual matching; this can provide false positives
+     *    which we could eliminate by looking at the actual function calls in the AST
+     *    once parsed.
+     */
+    if (!arguments.supplyBuiltinDecls(preprocessorTool.getBuiltinDecls())) {
+        exitStatus_ = EXIT_FAILURE;
+        return;
+    }
+
     WebCLMatcher1Tool matcher1Tool(matcher1Argc, matcher1Argv,
                                    matcher1Input, matcher2Input);
     matcher1Tool.setExtensions(extensions);

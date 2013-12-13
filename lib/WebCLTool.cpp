@@ -79,7 +79,7 @@ WebCLPreprocessorTool::~WebCLPreprocessorTool()
 
 clang::FrontendAction *WebCLPreprocessorTool::create()
 {
-    WebCLAction *action = new WebCLPreprocessorAction(output_);
+    WebCLAction *action = new WebCLPreprocessorAction(output_, builtinDecls_);
     action->setExtensions(extensions_);
     return action;
 }

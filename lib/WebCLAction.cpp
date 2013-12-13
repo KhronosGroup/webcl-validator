@@ -37,6 +37,7 @@
 #include "clang/Sema/Sema.h"
 
 #include "llvm/ADT/OwningPtr.h"
+#include "llvm/Support/raw_ostream.h"
 
 WebCLAction::WebCLAction(const char *output)
     : clang::FrontendAction()
@@ -95,8 +96,8 @@ bool WebCLAction::initialize(clang::CompilerInstance &instance)
     return true;
 }
 
-WebCLPreprocessorAction::WebCLPreprocessorAction(const char *output)
-    : WebCLAction(output)
+WebCLPreprocessorAction::WebCLPreprocessorAction(const char *output, std::string &builtinDecls)
+    : WebCLAction(output), builtinDecls_(builtinDecls)
 {
 }
 
@@ -122,6 +123,24 @@ void WebCLPreprocessorAction::ExecuteAction()
     clang::DoPrintPreprocessedInput(
         instance.getPreprocessor(), out_, options);
     out_->flush();
+
+    // Iterate over all identifier tokens found in the source, to collect
+    // identifiers which might be calls to builtin functions, and then
+    // forward-declare the builtin functions with that name, if any
+    WebCLBuiltins builtins;
+    llvm::raw_string_ostream builtinOut(builtinDecls_);
+    clang::IdentifierTable& identifiers = instance.getPreprocessor().getIdentifierTable();
+    for (clang::IdentifierTable::const_iterator i = identifiers.begin(); i != identifiers.end(); ++i) {
+        // Ignore identifiers that start with __ (no OpenCL builtin is like that, but a lot of Clang
+        // internal misc are), and also identifiers the preprocessor has to handle in some way,
+        // e.g. macros to expand, trigraph sequences to normalize and so on.
+        // (The preprocessor has already done its magic and inserted the expansions to the
+        //  identifier table at this point so we get them that way)
+        if (!i->first().startswith("__") && !i->second->isHandleIdentifierCase()) {
+            builtins.emitDeclarations(builtinOut, i->first().str());
+        }
+    }
+    builtinOut.flush();
 }
 
 bool WebCLPreprocessorAction::usesPreprocessorOnly() const

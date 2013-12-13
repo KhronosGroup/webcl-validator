@@ -28,6 +28,7 @@
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <set>
 #include <fcntl.h>
@@ -64,6 +65,7 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
     , validatorArgv_(NULL)
     , matcherArgv_()
     , files_()
+    , builtinDeclFilename_(NULL)
     , outputs_()
 {
     int inputDescriptor = -1;
@@ -81,14 +83,24 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
         return;
     files_.push_back(TemporaryFile(-1, headerFilename));
     close(headerDescriptor);
-  
+
+    int builtinDeclDescriptor = -1;
+    builtinDeclFilename_ = createEmptyTemporaryFile(builtinDeclDescriptor);
+    if (!builtinDeclFilename_)
+        return;
+    files_.push_back(TemporaryFile(-1, builtinDeclFilename_));
+    close(builtinDeclDescriptor);
+
+    // TODO: add -Dcl_khr_fp16 etc definitions to preprocessor options
+    // based on extensions passed to clvValidate()
+
     char const *preprocessorInvocation[] = {
         "libclv", inputFilename, "--"
     };
     const int preprocessorInvocationSize =
         sizeof(preprocessorInvocation) / sizeof(preprocessorInvocation[0]);
     char const *preprocessorOptions[] = {
-        "-E", "-x", "cl"
+        "-E", "-x", "cl", "-fno-builtin", "-ffreestanding"
     };
     const int numPreprocessorOptions =
         sizeof(preprocessorOptions) / sizeof(preprocessorOptions[0]);
@@ -100,8 +112,8 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
         sizeof(validatorInvocation) / sizeof(validatorInvocation[0]);
     char const *validatorOptions[] = {
         "-x", "cl",
-        "-Wno-implicit-function-declaration",
-        "-include", headerFilename
+        "-include", headerFilename, // has to be early (provides utility macros)
+        "-include", builtinDeclFilename_ // has to be late (uses utility macros)
     };
     const int numValidatorOptions =
         sizeof(validatorOptions) / sizeof(validatorOptions[0]);
@@ -254,6 +266,12 @@ char const *WebCLArguments::getInput(int argc, char const **argv, bool createOut
     }
 
     return argv[1];
+}
+
+bool WebCLArguments::supplyBuiltinDecls(const std::string &decls)
+{
+    std::ofstream ofs(builtinDeclFilename_, std::ios::binary | std::ios::trunc);
+    return ofs.good() && ofs << decls;
 }
 
 bool WebCLArguments::areArgumentsOk(int argc, char const **argv) const
