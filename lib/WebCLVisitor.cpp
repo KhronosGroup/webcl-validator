@@ -285,6 +285,9 @@ bool WebCLAnalyser::handleVarDecl(clang::VarDecl *decl)
       break;
     case clang::LangAS::opencl_constant:
       info(decl->getLocStart(), "Constant variable declaration. Collect!");
+      if (!decl->getInit()) {
+          error(decl->getLocStart(), "Constant address space variables must be initialized.");
+      }
       collectVariable(decl);
       break;
     case clang::LangAS::opencl_global:
@@ -296,6 +299,8 @@ bool WebCLAnalyser::handleVarDecl(clang::VarDecl *decl)
       if (decl->isFunctionOrMethodVarDecl()) {
         info(decl->getLocStart(), "Private variable declaration. Collect!");
         collectVariable(decl);
+      } else if (decl->hasGlobalStorage()) {
+        error(decl->getLocStart(), "Global scope variables must be in constant address space.");
       } else {
         info(decl->getLocStart(), "Function parameter... skip for now.");
       }
