@@ -50,7 +50,7 @@ __constant int * __constant removed_constant_pointer_f11 = &removed_constant_f11
 __constant int removed_constant_array_f11[1] = { 11 }, removed_constant_array_m11[1] = { 11 }, removed_constant_array_l11[1] = { 11 };
 
 __kernel void remove_variables(
-    // CHECK: __global int *result, unsigned long wcl_result_size)
+    // CHECK: __global int *result, ulong _wcl_result_size)
     __global int *result)
 {
     __local int removed_local_1;
