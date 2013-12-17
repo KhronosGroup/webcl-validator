@@ -77,7 +77,7 @@ clang::DiagnosticBuilder WebCLReporter::fatal(const char *format)
 
 bool WebCLReporter::isFromMainFile(clang::SourceLocation location) const
 {
-    return location.isValid() && instance_.getSourceManager().isFromMainFile(location);
+    return location.isValid() && instance_.getSourceManager().isWrittenInMainFile(location);
 }
 
 clang::DiagnosticBuilder WebCLReporter::message(
