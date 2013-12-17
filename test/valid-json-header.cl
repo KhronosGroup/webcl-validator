@@ -35,8 +35,6 @@ typedef sampler_t wcl_sampler_t;
 
 __kernel void json_builtins(
     wcl_image2d_t image_arg, // __read_only
-    __read_only wcl_image2d_t read_image_arg,
-    __write_only wcl_image2d_t write_image_arg,
     wcl_sampler_t sampler_arg
 #ifdef QUALDEFS
     ,
@@ -123,32 +121,20 @@ __kernel void json_vectors(
 // CHECK:                            "type" : "image2d_t",
 // CHECK:                            "access" : "read_only"
 // CHECK:                        },
-// CHECK:                    "read_image_arg" :
-// CHECK:                        {
-// CHECK:                            "index" : 1,
-// CHECK:                            "type" : "image2d_t",
-// CHECK:                            "access" : "read_only"
-// CHECK:                        },
-// CHECK:                    "write_image_arg" :
-// CHECK:                        {
-// CHECK:                            "index" : 2,
-// CHECK:                            "type" : "image2d_t",
-// CHECK:                            "access" : "write_only"
-// CHECK:                        },
 // CHECK:                    "sampler_arg" :
 // CHECK:                        {
-// CHECK:                            "index" : 3,
+// CHECK:                            "index" : 1,
 // CHECK:                            "type" : "sampler_t"
 // CHECK:                        },
 // CHECK:                    "read_image_arg2" :
 // CHECK:                        {
-// CHECK:                            "index" : 4,
+// CHECK:                            "index" : 2,
 // CHECK:                            "type" : "image2d_t",
 // CHECK:                            "access" : "read_only"
 // CHECK:                        },
 // CHECK:                    "write_image_arg2" :
 // CHECK:                        {
-// CHECK:                            "index" : 5,
+// CHECK:                            "index" : 3,
 // CHECK:                            "type" : "image2d_t",
 // CHECK:                            "access" : "write_only"
 // CHECK:                        }

@@ -25,9 +25,11 @@
 #include "WebCLDebug.hpp"
 #include "WebCLTypes.hpp"
 
+#include "clang/AST/Attr.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
 #include "clang/Frontend/CompilerInstance.h"
+#include "clang/Basic/OpenCL.h"
 
 // WebCLVisitor
 
@@ -431,48 +433,32 @@ WebCLAnalyser::KernelArgInfo::KernelArgInfo(clang::CompilerInstance &instance, c
     : decl(decl)
     , name(decl->getName().str())
     , reducedTypeName(WebCLTypes::reduceType(instance, decl->getType()).getAsString())
-    , pointerKind(NOT_POINTER)
-    , imageKind(NOT_IMAGE)
+    , pointerKind(WebCLTypes::NOT_POINTER)
+    , imageKind(WebCLTypes::NOT_IMAGE)
 {
     if (typeShorthands().count(reducedTypeName)) {
         reducedTypeName = typeShorthands()[reducedTypeName];
     }
 
-    if (decl->getType().getTypePtr()->isPointerType()) {
-        switch (decl->getType().getTypePtr()->getPointeeType().getAddressSpace()) {
+    const clang::Type *type = decl->getType().getTypePtr();
+
+    // matches image3d_t as well, but that's handled elsewhere
+    imageKind = WebCLTypes::imageKind(type, decl);
+    if (imageKind != WebCLTypes::NOT_IMAGE) {
+        pointerKind = WebCLTypes::IMAGE_HANDLE;
+    } else if (type->isPointerType()) {
+        switch (type->getPointeeType().getAddressSpace()) {
         case clang::LangAS::opencl_global:
-            pointerKind = GLOBAL_POINTER;
+            pointerKind = WebCLTypes::GLOBAL_POINTER;
             break;
         case clang::LangAS::opencl_constant:
-            pointerKind = CONSTANT_POINTER;
+            pointerKind = WebCLTypes::CONSTANT_POINTER;
             break;
         case clang::LangAS::opencl_local:
-            pointerKind = LOCAL_POINTER;
+            pointerKind = WebCLTypes::LOCAL_POINTER;
             break;
         default:
-            if (WebCLTypes::supportedBuiltinTypes().count(reducedTypeName) > 0) {
-                pointerKind = IMAGE_HANDLE;
-
-                switch (decl->getType().getAccess()) {
-                case 0:
-                    // no access qualifier, fall through to the default of read-only
-                case clang::CLIA_read_only:
-                    imageKind = READABLE_IMAGE;
-                    break;
-                case clang::CLIA_write_only:
-                    imageKind = WRITABLE_IMAGE;
-                    break;
-                case clang::CLIA_read_write:
-                    // This will cause an error later on
-                    imageKind = RW_IMAGE;
-                    break;
-                default:
-                    imageKind = UNKNOWN_ACCESS_IMAGE;
-                    break;
-                }
-            } else {
-                pointerKind = PRIVATE_POINTER;
-            }
+            pointerKind = WebCLTypes::PRIVATE_POINTER;
         }
     }
 }
@@ -495,6 +481,16 @@ bool WebCLAnalyser::handleFunctionDecl(clang::FunctionDecl *decl)
   if (decl->hasAttr<clang::OpenCLKernelAttr>()) {
     info(decl->getLocStart(), "This is kernel, go through arguments to collect pointers etc.");
     kernelFunctions_.push_back(KernelInfo(instance_, decl));
+
+    // Check image typedefs here, so WebCLAnalyzer reference doesn't need to be passed everywhere
+    const std::vector<KernelArgInfo>& kernelArgInfo = kernelFunctions_.back().args;
+    for (std::vector<KernelArgInfo>::const_iterator kernelArgInfoIt = kernelArgInfo.begin();
+         kernelArgInfoIt != kernelArgInfo.end();
+         ++kernelArgInfoIt) {
+        if (kernelArgInfoIt->imageKind == WebCLTypes::INVALID_TYPEDEF_ACCESS) {
+            error(kernelArgInfoIt->decl->getLocStart(), "Invalid qualifier for typedef type");
+        }
+    }
   } else {
     info(decl->getLocStart(), "This is prototype/function, add to list to add wcl_allocs arg and add to list to recognize internal functions for call conversion.");
     helperFunctions_.insert(decl);

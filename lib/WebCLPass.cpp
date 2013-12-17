@@ -29,6 +29,8 @@
 #include "WebCLCommon.hpp"
 
 #include "clang/AST/ASTContext.h"
+#include "clang/AST/Attr.h"
+#include "clang/Basic/OpenCL.h"
 
 WebCLPass::WebCLPass(
     clang::CompilerInstance &instance,
@@ -314,7 +316,7 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
             for (std::vector<WebCLAnalyser::KernelArgInfo>::const_iterator j = i->args.begin();
                 j != i->args.end(); ++j) {
                     const WebCLAnalyser::KernelArgInfo &parm = *j;
-                    if (parm.pointerKind != WebCLAnalyser::NOT_POINTER) {
+                    if (parm.pointerKind != WebCLTypes::NOT_POINTER) {
 
                         transformer_.addSizeParameter(parm.decl);
 
@@ -324,19 +326,19 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
                             << " arg:" << parm.name << "\n"; );
 
                         switch (parm.pointerKind) {
-                        case WebCLAnalyser::GLOBAL_POINTER:
+                        case WebCLTypes::GLOBAL_POINTER:
                             DEBUG( std::cerr << "Global address space!\n"; );
                             globalLimits_.insert(parm.decl);
                             break;
-                        case WebCLAnalyser::CONSTANT_POINTER:
+                        case WebCLTypes::CONSTANT_POINTER:
                             DEBUG( std::cerr << "Constant address space!\n"; );
                             constantLimits_.insert(parm.decl);
                             break;
-                        case WebCLAnalyser::LOCAL_POINTER:
+                        case WebCLTypes::LOCAL_POINTER:
                             DEBUG( std::cerr << "Local address space!\n"; );
                             localLimits_.insert(parm.decl);
                             break;
-                        case WebCLAnalyser::IMAGE_HANDLE:
+                        case WebCLTypes::IMAGE_HANDLE:
                             DEBUG( std::cerr << "Image or sampler argument!\n"; );
                             break;
                         default:
@@ -644,10 +646,13 @@ public:
     ~TypeAccessCheckerImage2d() {}
 
     virtual bool validateParmVarAccess(const clang::ValueDecl &valueDecl, std::string &error) const {
-        // Further check that the parameter access qualifier is supported, if present
         error = "image2d_t parameters can only have read_only or write_only access qualifier";
-        const clang::OpenCLImageAccess qualifier = valueDecl.getType().getAccess();
-        return (!qualifier || qualifier == clang::CLIA_read_only || qualifier == clang::CLIA_write_only);
+        if (!parmVarDecl.hasAttr<clang::OpenCLImageAccessAttr>()) {
+            return true;
+        } else {
+            int qualifier = parmVarDecl.getAttr<clang::OpenCLImageAccessAttr>()->getAccess();
+            return qualifier == clang::CLIA_read_only || qualifier == clang::CLIA_write_only;
+        }
     }
 
     virtual bool validateVarAccess(const clang::ValueDecl &valueDecl, std::string &error) const {

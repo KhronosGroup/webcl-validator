@@ -26,7 +26,28 @@
 
 #include "clang/AST/Decl.h"
 
+#include <map>
+#include <set>
+
 namespace WebCLTypes {
+    enum PointerKind {
+        NOT_POINTER,
+        PRIVATE_POINTER,
+        LOCAL_POINTER,
+        CONSTANT_POINTER,
+        GLOBAL_POINTER,
+        IMAGE_HANDLE
+    };
+
+    enum ImageKind {
+        NOT_IMAGE,
+        READABLE_IMAGE,
+        WRITABLE_IMAGE,
+        RW_IMAGE,
+        UNKNOWN_ACCESS_IMAGE,
+        INVALID_TYPEDEF_ACCESS // a typedef was used with qualifiers. We don't allow that.
+    };
+
     /// Maps OpenCL C types to host types: int -> cl_int.
     typedef std::map<std::string, std::string> HostTypes;
 
@@ -61,6 +82,8 @@ namespace WebCLTypes {
     ///
     /// my_image -> image2d_t
     clang::QualType reduceType(const clang::CompilerInstance &instance, clang::QualType type);
+
+    ImageKind imageKind(const clang::Type* type, const clang::Decl* decl);
 
     /// \return Correct address space for the type of given
     /// expression.

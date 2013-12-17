@@ -347,7 +347,7 @@ CLV_API extern "C" cl_bool CLV_CALL clvKernelArgIsPointer(
     if (arg >= kernels[kernel].args.size())
         return CL_FALSE;
 
-    return kernels[kernel].args[arg].pointerKind == WebCLAnalyser::NOT_POINTER ? CL_FALSE : CL_TRUE;
+    return kernels[kernel].args[arg].pointerKind == WebCLTypes::NOT_POINTER ? CL_FALSE : CL_TRUE;
 }
 
 CLV_API extern "C" cl_kernel_arg_address_qualifier CLV_CALL clvGetKernelArgAddressQual(
@@ -368,13 +368,13 @@ CLV_API extern "C" cl_kernel_arg_address_qualifier CLV_CALL clvGetKernelArgAddre
 
     switch (kernels[kernel].args[arg].pointerKind) {
     default:
-    case WebCLAnalyser::NOT_POINTER:
+    case WebCLTypes::NOT_POINTER:
         return CL_KERNEL_ARG_ADDRESS_PRIVATE;
-    case WebCLAnalyser::LOCAL_POINTER:
+    case WebCLTypes::LOCAL_POINTER:
         return CL_KERNEL_ARG_ADDRESS_LOCAL;
-    case WebCLAnalyser::CONSTANT_POINTER:
+    case WebCLTypes::CONSTANT_POINTER:
         return CL_KERNEL_ARG_ADDRESS_CONSTANT;
-    case WebCLAnalyser::GLOBAL_POINTER:
+    case WebCLTypes::GLOBAL_POINTER:
         return CL_KERNEL_ARG_ADDRESS_GLOBAL;
     }
 }
@@ -395,7 +395,7 @@ CLV_API extern "C" cl_bool CLV_CALL clvKernelArgIsImage(
     if (arg >= kernels[kernel].args.size())
         return CL_FALSE;
 
-    return kernels[kernel].args[arg].imageKind == WebCLAnalyser::NOT_IMAGE ? CL_FALSE : CL_TRUE;
+    return kernels[kernel].args[arg].imageKind == WebCLTypes::NOT_IMAGE ? CL_FALSE : CL_TRUE;
 }
 
 CLV_API extern "C" cl_kernel_arg_access_qualifier CLV_CALL clvGetKernelArgAccessQual(
@@ -416,13 +416,13 @@ CLV_API extern "C" cl_kernel_arg_access_qualifier CLV_CALL clvGetKernelArgAccess
 
     switch (kernels[kernel].args[arg].imageKind) {
     default:
-    case WebCLAnalyser::NOT_IMAGE:
+    case WebCLTypes::NOT_IMAGE:
         return CL_KERNEL_ARG_ACCESS_NONE;
-    case WebCLAnalyser::READABLE_IMAGE:
+    case WebCLTypes::READABLE_IMAGE:
         return CL_KERNEL_ARG_ACCESS_READ_ONLY;
-    case WebCLAnalyser::WRITABLE_IMAGE:
+    case WebCLTypes::WRITABLE_IMAGE:
         return CL_KERNEL_ARG_ACCESS_WRITE_ONLY;
-    case WebCLAnalyser::RW_IMAGE:
+    case WebCLTypes::RW_IMAGE:
         return CL_KERNEL_ARG_ACCESS_READ_WRITE;
     }
 }

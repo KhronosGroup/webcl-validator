@@ -26,6 +26,7 @@
 
 #include "WebCLBuiltins.hpp"
 #include "WebCLReporter.hpp"
+#include "WebCLTypes.hpp"
 
 #include <map>
 #include <set>
@@ -214,23 +215,6 @@ public:
   ///         have been normalized.
   virtual bool handleForStmt(clang::ForStmt *stmt);
 
-  enum PointerKind {
-      NOT_POINTER,
-      PRIVATE_POINTER,
-      LOCAL_POINTER,
-      CONSTANT_POINTER,
-      GLOBAL_POINTER,
-      IMAGE_HANDLE
-  };
-
-  enum ImageKind {
-      NOT_IMAGE,
-      READABLE_IMAGE,
-      WRITABLE_IMAGE,
-      RW_IMAGE,
-      UNKNOWN_ACCESS_IMAGE
-  };
-
   /// Collected nodes.
   struct KernelArgInfo {
       /// Not exposed outside the library
@@ -241,9 +225,9 @@ public:
       /// Type name, cleaned of qualifiers and non-standard typedefs
       std::string reducedTypeName;
       /// Is this a pointer arg, and if so, to which address space
-      PointerKind pointerKind;
+      WebCLTypes::PointerKind pointerKind;
       /// Is this an image arg, and if so, with which access qualifiers
-      ImageKind imageKind;
+      WebCLTypes::ImageKind imageKind;
 
       KernelArgInfo(clang::CompilerInstance &instance, clang::ParmVarDecl *decl);
   };
