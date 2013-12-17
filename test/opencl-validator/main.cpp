@@ -24,6 +24,8 @@
 #include "validator.hpp"
 #include "builder.hpp"
 
+#include <stdlib.h>
+
 #include <set>
 
 int main(int argc, char const* argv[])

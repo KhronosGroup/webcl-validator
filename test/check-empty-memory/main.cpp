@@ -23,6 +23,8 @@
 
 #include "kernelargs.hpp"
 
+#include <stdlib.h>
+
 #include <set>
 #include <string>
 #include <vector>
