@@ -23,6 +23,8 @@
 
 #include <clv/clv.h>
 
+#include <stdlib.h>
+
 #include <cassert>
 #include <fstream>
 #include <iomanip>

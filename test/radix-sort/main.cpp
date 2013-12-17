@@ -24,6 +24,8 @@
 #include "sorter.hpp"
 #include "verifier.hpp"
 
+#include <stdlib.h>
+
 #include <set>
 
 int main(int argc, char const* argv[])
