@@ -43,16 +43,6 @@ typedef ulong uintptr_t;
 
 #define cles_khr_int64 1
 
-// we need to be able to find canonical type of image3d_t
-#define _CL_HAS_IMAGE_ACCESS 1
-typedef int sampler_t;
-typedef struct dev_image_t* image2d_t;
-typedef struct image3d_t_* image3d_t;
-typedef struct dev_image_t* image1d_t;
-typedef struct dev_image_t* image1d_buffer_t;
-typedef struct dev_image_t* image2d_array_t;
-typedef struct dev_image_t* image1d_array_t;
-
 /* Enable double precision. This should really only be done when
    building the run-time library; when building application code, we
    should instead check a macro to see whether the application has
