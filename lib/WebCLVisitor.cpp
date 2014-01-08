@@ -242,13 +242,8 @@ void WebCLRestrictor::check3dImageParameter(
         return;
 
     clang::QualType canonical = type->getCanonicalTypeInternal();
-    type = canonical.getTypePtrOrNull();
-    if (!type) {
-        error(typeLocation, "Invalid canonical type.");
-    } else if (type->isPointerType()) {
-        clang::QualType pointee = type->getPointeeType();
-        if (pointee.getAsString() == "struct image3d_t_")
-            error(typeLocation, "WebCL doesn't support 3D images.\n");
+    if (canonical.getAsString() == "image3d_t") {
+        error(typeLocation, "WebCL doesn't support 3D images.\n");
     }
 }
 
