@@ -601,7 +601,7 @@ public:
     TypeAccessChecker();
 
     /* Is it OK to access this parameter? Used for image2d_t readwrite etc restrictions. */
-    virtual bool validateParmVarAccess(const clang::ValueDecl &valueDecl, std::string &error) const = 0;
+    virtual bool validateParmVarAccess(const clang::ParmVarDecl &parmVarDecl, std::string &error) const = 0;
 
     /* Is it OK to access this variable? Used for image2d_t and sampler_t restrictions */
     virtual bool validateVarAccess(const clang::ValueDecl &valueDecl, std::string &error) const = 0;
@@ -645,7 +645,7 @@ public:
     TypeAccessCheckerImage2d() {}
     ~TypeAccessCheckerImage2d() {}
 
-    virtual bool validateParmVarAccess(const clang::ValueDecl &valueDecl, std::string &error) const {
+    virtual bool validateParmVarAccess(const clang::ParmVarDecl &parmVarDecl, std::string &error) const {
         error = "image2d_t parameters can only have read_only or write_only access qualifier";
         if (!parmVarDecl.hasAttr<clang::OpenCLImageAccessAttr>()) {
             return true;
@@ -677,7 +677,7 @@ public:
     TypeAccessCheckerSampler() {}
     ~TypeAccessCheckerSampler() {}
 
-    virtual bool validateParmVarAccess(const clang::ValueDecl &valueDecl, std::string &error) const {
+    virtual bool validateParmVarAccess(const clang::ParmVarDecl &parmVarDecl, std::string &error) const {
         // sampler_t can always be accessed via an argument
         return true;
     }
@@ -767,7 +767,7 @@ void WebCLImageSamplerSafetyHandler::run(clang::ASTContext &context)
                     if (clang::isa<clang::ParmVarDecl>(valueDecl)) {
                         clang::QualType paramType = WebCLTypes::reduceType(instance_, valueDecl->getType());
                         if (paramType == type) {
-                            if (checkedTypeChecker->validateParmVarAccess(*valueDecl, errorMessage)) {
+                            if (checkedTypeChecker->validateParmVarAccess(*clang::cast<clang::ParmVarDecl>(valueDecl), errorMessage)) {
                                 safety = SAFE;
                             } else {
                                 safety = ILLEGAL_ACCESS;
