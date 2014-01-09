@@ -28,3 +28,7 @@ config.substitutions.append(
 config.substitutions.append(
     ('%include', "@WEBCL_VALIDATOR_TEST_DIR@/include"))
 lit_config.load_config(config, "@WEBCL_VALIDATOR_TEST_DIR@/lit.cfg")
+
+# disable pipefail (ie. it's ok one command in a test pipeline to fail, we only care
+# about the last one)
+config.pipefail = False
