@@ -689,7 +689,7 @@ public:
 
     virtual bool validateDeclRefExpr(clang::DeclRefExpr &declRefExpr, bool isArgument, bool isInitializer,
         std::string &error) const {
-        error = "sampler_t must always be used as a function argument of a variable initializer";
+        error = "sampler_t must always be used as a function argument or a variable initializer";
         return isArgument || isInitializer;
     }
 
