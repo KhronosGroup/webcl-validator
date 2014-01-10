@@ -28,6 +28,8 @@
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
+#include "clang/AST/Attr.h"
+#include "clang/Basic/OpenCL.h"
 
 #include "WebCLConfiguration.hpp"
 #include "WebCLCommon.hpp"
@@ -251,5 +253,45 @@ namespace WebCLTypes {
             vecExpr->getBase()->getType().getTypePtr()->getPointeeType() :
             expr->getType();
         return exprType.getAddressSpace();
+    }
+
+    ImageKind imageKind(const clang::Type* type, const clang::Decl* decl)
+    {
+        ImageKind kind = NOT_IMAGE;
+        if (type->isImageType()) {
+            if (const clang::TypedefType *typedefType = clang::dyn_cast<clang::TypedefType>(type)) {
+                if (decl->hasAttr<clang::OpenCLImageAccessAttr>()) {
+                    kind = INVALID_TYPEDEF_ACCESS;
+                } else {
+                    kind = imageKind(
+                        typedefType->getDecl()->getUnderlyingType().getTypePtr(),
+                        typedefType->getDecl());
+                }
+            } else {
+                // matches image3d_t as well, but that's handled elsewhere
+                if (decl->hasAttr<clang::OpenCLImageAccessAttr>()) {
+                    switch (decl->getAttr<clang::OpenCLImageAccessAttr>()->getAccess()) {
+                    case 0:
+                        // no access qualifier, fall through to the default of read-only
+                    case clang::CLIA_read_only:
+                        kind = READABLE_IMAGE;
+                        break;
+                    case clang::CLIA_write_only:
+                        kind = WRITABLE_IMAGE;
+                        break;
+                    case clang::CLIA_read_write:
+                        // This will cause an error later on
+                        kind = RW_IMAGE;
+                        break;
+                    default:
+                        kind = UNKNOWN_ACCESS_IMAGE;
+                        break;
+                    }
+                } else {
+                    kind = UNKNOWN_ACCESS_IMAGE;
+                }
+            }
+        }
+        return kind;
     }
 }

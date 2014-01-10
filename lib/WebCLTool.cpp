@@ -28,16 +28,31 @@
 
 #include <iostream>
 
+#include <unistd.h>
+
+
+namespace {
+    // TODO: use clang::tooling::FixedCompilationDatabase::loadFromCommandLine.
+    // This is a copy of an older version of it from the 3.2 release.
+    clang::tooling::FixedCompilationDatabase *
+    loadFromCommandLine(int &Argc,
+        const char **Argv,
+        clang::Twine Directory = clang::Twine(".")) {
+        const char **DoubleDash = std::find(Argv, Argv + Argc, clang::StringRef("--"));
+
+        if (DoubleDash == Argv + Argc)
+            return NULL;
+        std::vector<std::string> CommandLine(DoubleDash + 1, Argv + Argc);
+        Argc = DoubleDash - Argv;
+        return new clang::tooling::FixedCompilationDatabase(Directory, CommandLine);
+    }
+}
+
 WebCLTool::WebCLTool(int argc, char const **argv,
                      char const *input, char const *output)
     : compilations_(NULL), paths_(), tool_(NULL), output_(output)
 {
-    compilations_ =
-        clang::tooling::FixedCompilationDatabase::loadFromCommandLine(argc, argv);
-    if (!compilations_) {
-        std::cerr << "Internal error. Can't create compilation database." << std::endl;
-        return;
-    }
+    compilations_ = loadFromCommandLine(argc, argv);
 
     paths_.push_back(input);
     tool_ = new clang::tooling::ClangTool(*compilations_, paths_);

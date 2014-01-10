@@ -29,6 +29,8 @@
 #include "WebCLCommon.hpp"
 
 #include "clang/AST/ASTContext.h"
+#include "clang/AST/Attr.h"
+#include "clang/Basic/OpenCL.h"
 
 WebCLPass::WebCLPass(
     clang::CompilerInstance &instance,
@@ -314,7 +316,7 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
             for (std::vector<WebCLAnalyser::KernelArgInfo>::const_iterator j = i->args.begin();
                 j != i->args.end(); ++j) {
                     const WebCLAnalyser::KernelArgInfo &parm = *j;
-                    if (parm.pointerKind != WebCLAnalyser::NOT_POINTER) {
+                    if (parm.pointerKind != WebCLTypes::NOT_POINTER) {
 
                         transformer_.addSizeParameter(parm.decl);
 
@@ -324,19 +326,19 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
                             << " arg:" << parm.name << "\n"; );
 
                         switch (parm.pointerKind) {
-                        case WebCLAnalyser::GLOBAL_POINTER:
+                        case WebCLTypes::GLOBAL_POINTER:
                             DEBUG( std::cerr << "Global address space!\n"; );
                             globalLimits_.insert(parm.decl);
                             break;
-                        case WebCLAnalyser::CONSTANT_POINTER:
+                        case WebCLTypes::CONSTANT_POINTER:
                             DEBUG( std::cerr << "Constant address space!\n"; );
                             constantLimits_.insert(parm.decl);
                             break;
-                        case WebCLAnalyser::LOCAL_POINTER:
+                        case WebCLTypes::LOCAL_POINTER:
                             DEBUG( std::cerr << "Local address space!\n"; );
                             localLimits_.insert(parm.decl);
                             break;
-                        case WebCLAnalyser::IMAGE_HANDLE:
+                        case WebCLTypes::IMAGE_HANDLE:
                             DEBUG( std::cerr << "Image or sampler argument!\n"; );
                             break;
                         default:
@@ -599,7 +601,7 @@ public:
     TypeAccessChecker();
 
     /* Is it OK to access this parameter? Used for image2d_t readwrite etc restrictions. */
-    virtual bool validateParmVarAccess(const clang::ValueDecl &valueDecl, std::string &error) const = 0;
+    virtual bool validateParmVarAccess(const clang::ParmVarDecl &parmVarDecl, std::string &error) const = 0;
 
     /* Is it OK to access this variable? Used for image2d_t and sampler_t restrictions */
     virtual bool validateVarAccess(const clang::ValueDecl &valueDecl, std::string &error) const = 0;
@@ -643,11 +645,14 @@ public:
     TypeAccessCheckerImage2d() {}
     ~TypeAccessCheckerImage2d() {}
 
-    virtual bool validateParmVarAccess(const clang::ValueDecl &valueDecl, std::string &error) const {
-        // Further check that the parameter access qualifier is supported, if present
+    virtual bool validateParmVarAccess(const clang::ParmVarDecl &parmVarDecl, std::string &error) const {
         error = "image2d_t parameters can only have read_only or write_only access qualifier";
-        const clang::OpenCLImageAccess qualifier = valueDecl.getType().getAccess();
-        return (!qualifier || qualifier == clang::CLIA_read_only || qualifier == clang::CLIA_write_only);
+        if (!parmVarDecl.hasAttr<clang::OpenCLImageAccessAttr>()) {
+            return true;
+        } else {
+            int qualifier = parmVarDecl.getAttr<clang::OpenCLImageAccessAttr>()->getAccess();
+            return qualifier == clang::CLIA_read_only || qualifier == clang::CLIA_write_only;
+        }
     }
 
     virtual bool validateVarAccess(const clang::ValueDecl &valueDecl, std::string &error) const {
@@ -672,7 +677,7 @@ public:
     TypeAccessCheckerSampler() {}
     ~TypeAccessCheckerSampler() {}
 
-    virtual bool validateParmVarAccess(const clang::ValueDecl &valueDecl, std::string &error) const {
+    virtual bool validateParmVarAccess(const clang::ParmVarDecl &parmVarDecl, std::string &error) const {
         // sampler_t can always be accessed via an argument
         return true;
     }
@@ -684,7 +689,7 @@ public:
 
     virtual bool validateDeclRefExpr(clang::DeclRefExpr &declRefExpr, bool isArgument, bool isInitializer,
         std::string &error) const {
-        error = "sampler_t must always be used as a function argument of a variable initializer";
+        error = "sampler_t must always be used as a function argument or a variable initializer";
         return isArgument || isInitializer;
     }
 
@@ -762,7 +767,7 @@ void WebCLImageSamplerSafetyHandler::run(clang::ASTContext &context)
                     if (clang::isa<clang::ParmVarDecl>(valueDecl)) {
                         clang::QualType paramType = WebCLTypes::reduceType(instance_, valueDecl->getType());
                         if (paramType == type) {
-                            if (checkedTypeChecker->validateParmVarAccess(*valueDecl, errorMessage)) {
+                            if (checkedTypeChecker->validateParmVarAccess(*clang::cast<clang::ParmVarDecl>(valueDecl), errorMessage)) {
                                 safety = SAFE;
                             } else {
                                 safety = ILLEGAL_ACCESS;

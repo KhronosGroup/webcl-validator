@@ -8,14 +8,6 @@ void foo(image2d_t image, sampler_t sampler)
     // this goes through unmodified
     // CHECK: read_imagef(image, sampler, (float2)(0, 0));
     read_imagef(image, sampler, (float2)(0, 0));
-    // this goes through transformed
-    // CHECK: read_imagef(image,/* transformed */ CLK_ADDRESS_MIRRORED_REPEAT | CLK_FILTER_NEAREST | CLK_NORMALIZED_COORDS_FALSE, (float2)(0, 0));
-    read_imagef(image, 1, (float2)(0, 0));
-}
-
-void foo2(sampler_t sampler1, sampler_t sampler2, sampler_t sampler3, sampler_t sampler4)
-{
-    // nothing
 }
 
 void foo_const(image2d_t image, sampler_t sampler)
@@ -34,6 +26,4 @@ __kernel void unsafe_builtins(image2d_t image,
     foo(image, sampler);
     // CHECK: foo(_wcl_allocs, image, _wcl_constant_allocations.global_sampler);
     foo(image, global_sampler);
-    // CHECK: foo2(_wcl_allocs, /* transformed */ CLK_ADDRESS_MIRRORED_REPEAT | CLK_FILTER_NEAREST | CLK_NORMALIZED_COORDS_FALSE,/* transformed */ CLK_ADDRESS_MIRRORED_REPEAT | CLK_FILTER_NEAREST | CLK_NORMALIZED_COORDS_FALSE, sampler,/* transformed */ CLK_ADDRESS_MIRRORED_REPEAT | CLK_FILTER_NEAREST | CLK_NORMALIZED_COORDS_FALSE);
-    foo2(1, 1, sampler, 1);
 }

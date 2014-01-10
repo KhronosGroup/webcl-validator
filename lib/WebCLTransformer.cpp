@@ -1308,11 +1308,9 @@ void WebCLTransformer::addRecordParameter(clang::FunctionDecl *decl)
       std::string replacement = wclRewriter_.getOriginalText(addRange) + parameter + ", ";
       wclRewriter_.replaceText(addRange, replacement);
     } else {
-      // in case of empty args, we need to replcace content inside parenthesis
-      // empty params might be e.g. (void)
       clang::TypeLoc typeLoc = decl->getTypeSourceInfo()->getTypeLoc();
-      clang::FunctionTypeLoc *funTypeLoc = llvm::dyn_cast<clang::FunctionTypeLoc>(&typeLoc);
-      clang::SourceRange addRange(funTypeLoc->getLParenLoc(), funTypeLoc->getRParenLoc());
+      clang::FunctionTypeLoc funTypeLoc = typeLoc.castAs<clang::FunctionTypeLoc>();
+      clang::SourceRange addRange(funTypeLoc.getLParenLoc(), funTypeLoc.getRParenLoc());
       wclRewriter_.replaceText(addRange, "(" + parameter + ")");
     }
 }
