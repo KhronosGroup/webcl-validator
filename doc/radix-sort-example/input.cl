@@ -11,7 +11,9 @@
 //
 // We have modified the code to better suit WebCL validation, which
 // means that we don't care about performance anymore. Use the
-// original code if you need fast radix sort implementation.
+// original code if you need fast radix sort implementation. The code
+// has been formatted on purpose so that it's easy to compare input
+// and output source with a merge tool.
 
 ////////////////////////////
 // PHASE 1: Count values. //
@@ -62,7 +64,7 @@ void inc_histogram(
 
 __kernel __attribute__((reqd_work_group_size(STREAM_COUNT_WORKGROUP_SIZE, 1, 1)))
 void stream_count_kernel(
-    __global const uint *unsorted_elements,
+    __constant uint *unsorted_elements,
     __global uint *element_counts,
     const int bit_offset,
     const int num_elements,
