@@ -34,7 +34,6 @@
 #include "../lib/WebCLArguments.hpp"
 #include "../lib/WebCLVisitor.hpp"
 
-// Proof of concept library API for the library+executable build system
 struct WebCLValidator
 {
 public:
