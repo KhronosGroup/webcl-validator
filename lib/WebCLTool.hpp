@@ -32,6 +32,8 @@
 #include <vector>
 
 namespace clang {
+    class DiagnosticConsumer;
+
     namespace tooling {
         class FixedCompilationDatabase;
     }
@@ -59,6 +61,7 @@ public:
               char const *input, char const *output = NULL);
     virtual ~WebCLTool();
 
+    void setDiagnosticConsumer(clang::DiagnosticConsumer *diag);
     void setExtensions(const std::set<std::string> &extensions);
 
     /// \see clang::tooling::FrontendActionFactory

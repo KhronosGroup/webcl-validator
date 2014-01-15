@@ -31,6 +31,12 @@
 #include <string>
 #include <vector>
 
+#include "llvm/ADT/IntrusiveRefCntPtr.h"
+
+#include "clang/Basic/Diagnostic.h"
+#include "clang/Basic/DiagnosticOptions.h"
+#include "clang/Frontend/TextDiagnosticPrinter.h"
+
 #include "../lib/WebCLArguments.hpp"
 #include "../lib/WebCLVisitor.hpp"
 
@@ -43,6 +49,7 @@ public:
         const std::set<std::string> &extensions,
         int argc,
         char const* argv[]);
+    ~WebCLValidator();
     void run();
     int getExitStatus() const { return exitStatus_; }
 
@@ -54,6 +61,8 @@ public:
 private:
 
     WebCLArguments arguments;
+    llvm::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagOpts;
+    clang::DiagnosticConsumer *diag;
     std::set<std::string> extensions;
 
     // Exit status for run()
@@ -69,8 +78,16 @@ WebCLValidator::WebCLValidator(
     const std::set<std::string> &extensions,
     int argc,
     char const* argv[])
-    : arguments(inputSource, argc, argv), extensions(extensions), exitStatus_(-1)
+    : arguments(inputSource, argc, argv)
+    , diagOpts(new clang::DiagnosticOptions())
+    , diag(new clang::TextDiagnosticPrinter(llvm::errs(), diagOpts.getPtr()))
+    , extensions(extensions), exitStatus_(-1)
 {
+}
+
+WebCLValidator::~WebCLValidator()
+{
+    delete diag;
 }
 
 void WebCLValidator::run()
@@ -112,6 +129,7 @@ void WebCLValidator::run()
 
     WebCLPreprocessorTool preprocessorTool(preprocessorArgc, preprocessorArgv,
                                            preprocessorInput, matcher1Input);
+    preprocessorTool.setDiagnosticConsumer(diag);
     preprocessorTool.setExtensions(extensions);
     const int preprocessorStatus = preprocessorTool.run();
     if (preprocessorStatus) {
@@ -150,6 +168,7 @@ void WebCLValidator::run()
 
     WebCLMatcher1Tool matcher1Tool(matcher1Argc, matcher1Argv,
                                    matcher1Input, matcher2Input);
+    matcher1Tool.setDiagnosticConsumer(diag);
     matcher1Tool.setExtensions(extensions);
     const int matcher1Status = matcher1Tool.run();
     if (matcher1Status) {
@@ -159,6 +178,7 @@ void WebCLValidator::run()
 
     WebCLMatcher2Tool matcher2Tool(matcher2Argc, matcher2Argv,
                                    matcher2Input, validatorInput);
+    matcher2Tool.setDiagnosticConsumer(diag);
     matcher2Tool.setExtensions(extensions);
     const int matcher2Status = matcher2Tool.run();
     if (matcher2Status) {
@@ -168,6 +188,7 @@ void WebCLValidator::run()
 
     WebCLValidatorTool validatorTool(validatorArgc, validatorArgv,
                                      validatorInput);
+    validatorTool.setDiagnosticConsumer(diag);
     validatorTool.setExtensions(extensions);
     const int validatorStatus = validatorTool.run();
     validatedSource_ = validatorTool.getValidatedSource();

@@ -2,7 +2,7 @@
 
 void foo(image2d_t image, int i)
 {
-    // CHECK: warning: implicit declaration of function 'nonexisting' is invalid in C99 [-Wimplicit-function-declaration]
+    // CHECK: warning: implicit declaration of function 'nonexisting'
     // CHECK-NOT: error: image2d_t must always originate from parameters
     nonexisting(image); // 1
 }
