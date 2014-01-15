@@ -18,22 +18,23 @@ Checkout the required repositories into following locations:
 
 This can be done as follows:
 
-        # Get LLVM 3.2 source
+        # Get LLVM 3.4 source
 
         cd /path/
-        git clone http://llvm.org/git/llvm.git
+        git clone --single-branch http://llvm.org/git/llvm.git -b release_34
         cd /path/llvm/
-        git checkout release_32
 
-        # Get Clang source (with minor changes required by the WebCL Validator)
+        # Get Clang 3.4
         
         cd /path/llvm/tools
-        git clone https://github.com/KhronosGroup/webcl-clang-dev.git clang
+        git clone --single-branch http://llvm.org/git/clang.git -b release_34
         
-        # Get WebCL Validator source
+
+        # Get WebCL Validator source and add it to CMakeLists.txt for compiling
 
         cd /path/llvm/tools/clang/tools
         git clone https://github.com/KhronosGroup/webcl-validator.git
+        echo "add_subdirectory(webcl-validator)" >> CMakeLists.txt
 
 Depending on your OS/configuration, you may need to install some additional tools:
 
@@ -88,7 +89,7 @@ use the *.cl* suffix. Option *-include FILE* automatically includes
 helper code, such as OpenCL type and builtin definitions.
 
 
-Building with Windows MinGW + MSYS
+Building with Windows MinGW + MSYS (not tested recently since we changed to Visual Studio express)
 ----------------------------------
 
 Get CMake for Windows
@@ -149,3 +150,22 @@ Then open VS2012 developer command prompt, go to a suitable build dir and do
 Open the generated llvm.sln file. Build by building the "ALL_BUILD" project, don't use Build Solution / F7.
 
 Run tests by building "check-webcl-validator" project, found under "WebCL Validator Tests" in the Solution Explorer.
+
+
+Building with Xcode
+--------------------
+
+1. Generate xcode project:
+        
+        cmake -G Xcode /path/llvm
+
+or if want to compile test bench against pocl driver:
+        
+        USE_POCL=1 cmake -G Xcode /path/llvm
+        
+
+2. Open and build in Xcode or from commandline
+
+        xcodebuild -configuration MinSizeRel -target check-webcl-validator
+
+
