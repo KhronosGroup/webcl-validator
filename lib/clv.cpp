@@ -25,6 +25,7 @@
 
 #include "WebCLTool.hpp"
 
+#include <cassert>
 #include <cstdlib>
 #include <iostream>
 #include <set>
@@ -58,11 +59,16 @@ public:
     /// Ditto for kernel info
     const WebCLAnalyser::KernelList &getKernels() const { return kernels_; }
 
+    unsigned getNumWarnings() const { return diag->getNumWarnings(); }
+    unsigned getNumErrors() const { return diag->getNumErrors(); }
+
+    const std::vector<WebCLDiag::Message> getLogMessages() const { return diag->messages; }
+
 private:
 
     WebCLArguments arguments;
     llvm::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagOpts;
-    clang::DiagnosticConsumer *diag;
+    WebCLDiag *diag;
     std::set<std::string> extensions;
 
     // Exit status for run()
@@ -237,20 +243,18 @@ CLV_API extern "C" clv_program CLV_CALL clvValidate(
 CLV_API extern "C" clv_program_status CLV_CALL clvGetProgramStatus(
     clv_program program)
 {
-    // TODO: make consider callback not yet called, errors, warnings
-    return program->getExitStatus() == EXIT_SUCCESS ? CLV_PROGRAM_ACCEPTED : CLV_PROGRAM_ILLEGAL;
-}
+    // TODO: make consider callback not yet called
 
-CLV_API extern "C" cl_int CLV_CALL clvGetProgramKernelCount(
-    clv_program program)
-{
-    if (!program)
-        return CL_INVALID_PROGRAM;
+    if (program->getExitStatus() == EXIT_SUCCESS) {
+        assert(program->getNumErrors() == 0);
 
-    if (program->getExitStatus() != EXIT_SUCCESS)
-        return 0;
-
-    return program->getKernels().size();
+        if (program->getNumWarnings() > 0)
+            return CLV_PROGRAM_ACCEPTED_WITH_WARNINGS;
+        else
+            return CLV_PROGRAM_ACCEPTED;
+    } else {
+        return CLV_PROGRAM_ILLEGAL;
+    }
 }
 
 namespace
@@ -270,6 +274,71 @@ namespace
 
         return CL_SUCCESS;
     }
+}
+
+CLV_API extern "C" cl_int CLV_CALL clvGetProgramLogMessageCount(
+    clv_program program)
+{
+    if (!program)
+        return CL_INVALID_PROGRAM;
+
+    return program->getLogMessages().size();
+}
+
+CLV_API extern "C" clv_program_log_level CLV_CALL clvGetProgramLogMessageLevel(
+    clv_program program,
+    cl_uint n)
+{
+    if (!program)
+        return CLV_LOG_MESSAGE_ERROR;
+
+    const std::vector<WebCLDiag::Message> &messages = program->getLogMessages();
+
+    if (n >= messages.size())
+        return CLV_LOG_MESSAGE_ERROR;
+
+    assert(messages[n].level != clang::DiagnosticsEngine::Ignored);
+
+    switch (messages[n].level) {
+    case clang::DiagnosticsEngine::Note:
+        return CLV_LOG_MESSAGE_NOTE;
+    case clang::DiagnosticsEngine::Warning:
+        return CLV_LOG_MESSAGE_WARNING;
+    case clang::DiagnosticsEngine::Error:
+    case clang::DiagnosticsEngine::Fatal:
+    default:
+        return CLV_LOG_MESSAGE_ERROR;
+    }
+}
+
+CLV_API extern "C" cl_int CLV_CALL clvGetProgramLogMessageText(
+    clv_program program,
+    cl_uint n,
+    size_t buf_size,
+    char *buf,
+    size_t *size_ret)
+{
+    if (!program)
+        return CL_INVALID_PROGRAM;
+
+    const std::vector<WebCLDiag::Message> &messages = program->getLogMessages();
+
+    if (n >= messages.size())
+        return CL_INVALID_VALUE;
+
+    return returnString(messages[n].text, buf_size, buf, size_ret);
+}
+
+CLV_API extern "C" cl_int CLV_CALL clvGetProgramKernelCount(
+    clv_program program)
+{
+    if (!program)
+        return CL_INVALID_PROGRAM;
+
+    if (program->getExitStatus() != EXIT_SUCCESS)
+        return 0;
+
+    return program->getKernels().size();
 }
 
 CLV_API extern "C" cl_int CLV_CALL clvGetProgramKernelName(

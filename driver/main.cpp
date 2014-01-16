@@ -162,12 +162,29 @@ int main(int argc, char const* argv[])
         return EXIT_FAILURE;
     }
 
+    for (cl_int i = 0; i < clvGetProgramLogMessageCount(prog); i++) {
+        // TODO: print line n/o info
+        // TODO: print level
+
+        // Determine message text size
+        size_t textSize = 0;
+        err = clvGetProgramLogMessageText(prog, i, 0, NULL, &textSize);
+        assert(err == CL_SUCCESS);
+
+        // Get and print message text
+        std::string text(textSize, '\0');
+        err = clvGetProgramLogMessageText(prog, i, text.size(), &text[0], &textSize);
+        assert(err == CL_SUCCESS);
+        text.erase(text.size() - 1); // erase NUL
+        std::cerr << text;
+
+        // TODO: print caret
+    }
+
     int exitStatus = EXIT_SUCCESS;
     if (clvGetProgramStatus(prog) == CLV_PROGRAM_ACCEPTED ||
         clvGetProgramStatus(prog) == CLV_PROGRAM_ACCEPTED_WITH_WARNINGS) {
         // Success, print output
-
-        // TODO: print warnings, if any
 
         // Print JSON header
         WebCLHeader header;
@@ -191,8 +208,6 @@ int main(int argc, char const* argv[])
         std::cout << validatedSource;
     } else {
         // Validation failed
-
-        // TODO: print errors
 
         exitStatus = EXIT_FAILURE;
     }

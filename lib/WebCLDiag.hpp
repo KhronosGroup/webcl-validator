@@ -27,6 +27,9 @@
 #include "llvm/ADT/IntrusiveRefCntPtr.h"
 #include "llvm/ADT/OwningPtr.h"
 
+#include <string>
+#include <vector>
+
 namespace clang {
     class DiagnosticOptions;
     class LangOptions;
@@ -46,6 +49,18 @@ public:
     void BeginSourceFile(const clang::LangOptions &LO, const clang::Preprocessor *PP);
     void EndSourceFile();
     void HandleDiagnostic(clang::DiagnosticsEngine::Level Level, const clang::Diagnostic &Info);
+
+    struct Message {
+        clang::DiagnosticsEngine::Level level;
+        std::string text;
+
+        Message(clang::DiagnosticsEngine::Level level)
+            : level(level)
+        {
+        }
+    };
+
+    std::vector<Message> messages;
 
 private:
 

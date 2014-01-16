@@ -53,33 +53,26 @@ void WebCLDiag::HandleDiagnostic(clang::DiagnosticsEngine::Level level, const cl
     // Updates the warning/error counts, which is what ultimately causes the tools to abort on error
     DiagnosticConsumer::HandleDiagnostic(level, info);
 
-    /// TODO: don't print, but capture the details for exposing through the API
-    /// vvv is adapted from clang::TextDiagnosticPrinter
+    Message message(level);
+    llvm::raw_string_ostream os(message.text);
 
-    llvm::raw_ostream &OS = llvm::errs();
-
-    // Render the diagnostic message into a temporary buffer eagerly. We'll use
-    // this later as we print out the diagnostic to the terminal.
     llvm::SmallString<100> OutStr;
     info.FormatDiagnostic(OutStr);
 
-    // Use a dedicated, simpler path for diagnostics without a valid location.
-    // This is important as if the location is missing, we may be emitting
-    // diagnostics in a context that lacks language options, a source manager, or
-    // other infrastructure necessary when emitting more rich diagnostics.
-    if (!info.getLocation().isValid()) {
-        clang::TextDiagnostic::printDiagnosticLevel(OS, level, opts->ShowColors, opts->CLFallbackMode);
-        clang::TextDiagnostic::printDiagnosticMessage(OS, level, OutStr,
+    // TODO: omit level from text
+    // TODO: capture source and offsets, omit location and caret from text
+
+    if (info.getLocation().isValid()) {
+        clang::TextDiagnostic formatter(os, langOpts, opts.getPtr());
+        formatter.emitDiagnostic(info.getLocation(), level, OutStr,
+            info.getRanges(), llvm::ArrayRef<clang::FixItHint>(),
+            &info.getSourceManager());
+    } else {
+        clang::TextDiagnostic::printDiagnosticLevel(os, level, opts->ShowColors, opts->CLFallbackMode);
+        clang::TextDiagnostic::printDiagnosticMessage(os, level, OutStr,
             /* irrelevant as there is ... */ 0, /* ... no word wrap */ 0, opts->ShowColors);
-        OS.flush();
-        return;
     }
 
-    clang::TextDiagnostic formatter(OS, langOpts, opts.getPtr());
-
-    formatter.emitDiagnostic(info.getLocation(), level, OutStr,
-        info.getRanges(), llvm::ArrayRef<clang::FixItHint>(),
-        &info.getSourceManager());
-
-    OS.flush();
+    os.flush();
+    messages.push_back(message);
 }
