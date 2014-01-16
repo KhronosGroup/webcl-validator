@@ -35,10 +35,10 @@
 
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/DiagnosticOptions.h"
-#include "clang/Frontend/TextDiagnosticPrinter.h"
 
-#include "../lib/WebCLArguments.hpp"
-#include "../lib/WebCLVisitor.hpp"
+#include "WebCLArguments.hpp"
+#include "WebCLDiag.hpp"
+#include "WebCLVisitor.hpp"
 
 struct WebCLValidator
 {
@@ -80,7 +80,7 @@ WebCLValidator::WebCLValidator(
     char const* argv[])
     : arguments(inputSource, argc, argv)
     , diagOpts(new clang::DiagnosticOptions())
-    , diag(new clang::TextDiagnosticPrinter(llvm::errs(), diagOpts.getPtr()))
+    , diag(new WebCLDiag(diagOpts.getPtr()))
     , extensions(extensions), exitStatus_(-1)
 {
     diagOpts->ShowFixits = false;
