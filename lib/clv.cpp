@@ -83,6 +83,7 @@ WebCLValidator::WebCLValidator(
     , diag(new clang::TextDiagnosticPrinter(llvm::errs(), diagOpts.getPtr()))
     , extensions(extensions), exitStatus_(-1)
 {
+    diagOpts->ShowFixits = false;
 }
 
 WebCLValidator::~WebCLValidator()
