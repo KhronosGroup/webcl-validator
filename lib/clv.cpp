@@ -32,11 +32,6 @@
 #include <string>
 #include <vector>
 
-#include "llvm/ADT/IntrusiveRefCntPtr.h"
-
-#include "clang/Basic/Diagnostic.h"
-#include "clang/Basic/DiagnosticOptions.h"
-
 #include "WebCLArguments.hpp"
 #include "WebCLDiag.hpp"
 #include "WebCLVisitor.hpp"
@@ -67,7 +62,6 @@ public:
 private:
 
     WebCLArguments arguments;
-    llvm::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagOpts;
     WebCLDiag *diag;
     std::set<std::string> extensions;
 
@@ -85,13 +79,9 @@ WebCLValidator::WebCLValidator(
     int argc,
     char const* argv[])
     : arguments(inputSource, argc, argv)
-    , diagOpts(new clang::DiagnosticOptions())
-    , diag(new WebCLDiag(diagOpts.getPtr()))
+    , diag(new WebCLDiag())
     , extensions(extensions), exitStatus_(-1)
 {
-    diagOpts->ShowLocation = false;
-    diagOpts->ShowCarets = false;
-    diagOpts->ShowFixits = false;
 }
 
 WebCLValidator::~WebCLValidator()

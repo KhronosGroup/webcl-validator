@@ -29,8 +29,8 @@
 
 #include "clang/Basic/SourceManager.h"
 
-WebCLDiag::WebCLDiag(clang::DiagnosticOptions *opts)
-    : opts(opts), pp(NULL)
+WebCLDiag::WebCLDiag()
+    : pp(NULL)
 {
 }
 

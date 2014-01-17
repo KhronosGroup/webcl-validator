@@ -24,29 +24,23 @@
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/LangOptions.h"
 
-#include "llvm/ADT/IntrusiveRefCntPtr.h"
-#include "llvm/ADT/OwningPtr.h"
-
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
 namespace clang {
-    class DiagnosticOptions;
     class FileID;
     class LangOptions;
     class Preprocessor;
-    class TextDiagnostic;
 }
 
 /// Captures Clang warning/error output
-/// Partially based on Clang TextDiagnosticPrinter
 class WebCLDiag : public clang::DiagnosticConsumer
 {
 public:
 
-    WebCLDiag(clang::DiagnosticOptions *opts);
+    WebCLDiag();
     ~WebCLDiag();
 
     void BeginSourceFile(const clang::LangOptions &LO, const clang::Preprocessor *PP);
@@ -72,7 +66,6 @@ public:
 
 private:
 
-    clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> opts;
     clang::LangOptions langOpts;
     const clang::Preprocessor *pp;
     std::map<clang::FileID, std::shared_ptr<std::string> > sources;
