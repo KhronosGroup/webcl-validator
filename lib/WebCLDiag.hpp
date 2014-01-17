@@ -27,11 +27,14 @@
 #include "llvm/ADT/IntrusiveRefCntPtr.h"
 #include "llvm/ADT/OwningPtr.h"
 
+#include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace clang {
     class DiagnosticOptions;
+    class FileID;
     class LangOptions;
     class Preprocessor;
     class TextDiagnostic;
@@ -54,8 +57,13 @@ public:
         clang::DiagnosticsEngine::Level level;
         std::string text;
 
+        std::shared_ptr<std::string> source;
+        std::string::size_type sourceOffset;
+        std::string::size_type sourceLen;
+
         Message(clang::DiagnosticsEngine::Level level)
             : level(level)
+            , source(NULL), sourceOffset(std::string::npos), sourceLen(std::string::npos)
         {
         }
     };
@@ -67,4 +75,5 @@ private:
     clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> opts;
     clang::LangOptions langOpts;
     const clang::Preprocessor *pp;
+    std::map<clang::FileID, std::shared_ptr<std::string> > sources;
 };

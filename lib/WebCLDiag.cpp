@@ -23,9 +23,12 @@
 
 #include "WebCLDiag.hpp"
 
+#include <utility>
+
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/ADT/SmallString.h"
 
+#include "clang/Basic/SourceManager.h"
 #include "clang/Frontend/TextDiagnostic.h"
 
 WebCLDiag::WebCLDiag(clang::DiagnosticOptions *opts)
@@ -41,11 +44,53 @@ void WebCLDiag::BeginSourceFile(const clang::LangOptions &langOpts, const clang:
 {
     this->langOpts = langOpts;
     this->pp = pp;
+
+    // There might be a new SourceManager, existing FileIDs are bound to get reused with different source
+    sources.clear();
 }
 
 void WebCLDiag::EndSourceFile()
 {
     this->pp = NULL;
+}
+
+namespace
+{
+    bool collectSourceLocation(
+        const clang::Diagnostic &info,
+        std::map<clang::FileID, std::shared_ptr<std::string> > &sources,
+        WebCLDiag::Message &message)
+    {
+        clang::SourceLocation loc = info.getLocation();
+        if (!loc.isValid())
+            return false;
+
+        clang::SourceManager &sm = info.getSourceManager();
+
+        std::pair<clang::FileID, unsigned> filePosPair = sm.getDecomposedLoc(loc);
+        const clang::FileID &file = filePosPair.first;
+        const unsigned pos = filePosPair.second;
+
+        if (sources.find(file) == sources.end()) {
+            bool invalid = false;
+            llvm::StringRef source = sm.getBufferData(file, &invalid);
+
+            if (invalid)
+                return false;
+
+            sources[file] = std::shared_ptr<std::string>(new std::string(source));
+        }
+
+        message.source = sources[file];
+        message.sourceOffset = pos - sm.getColumnNumber(file, pos) + 1;
+
+        std::string::const_iterator endIter = message.source->begin() + pos;
+        while (endIter != message.source->end() && *endIter != '\r' && *endIter != '\n')
+            ++endIter;
+        message.sourceLen = endIter - message.source->begin() - message.sourceOffset;
+
+        return true;
+    }
 }
 
 void WebCLDiag::HandleDiagnostic(clang::DiagnosticsEngine::Level level, const clang::Diagnostic &info)
@@ -60,9 +105,8 @@ void WebCLDiag::HandleDiagnostic(clang::DiagnosticsEngine::Level level, const cl
     info.FormatDiagnostic(OutStr);
 
     // TODO: omit level from text
-    // TODO: capture source and offsets, omit location and caret from text
 
-    if (info.getLocation().isValid()) {
+    if (collectSourceLocation(info, this->sources, message)) {
         clang::TextDiagnostic formatter(os, langOpts, opts.getPtr());
         formatter.emitDiagnostic(info.getLocation(), level, OutStr,
             info.getRanges(), llvm::ArrayRef<clang::FixItHint>(),

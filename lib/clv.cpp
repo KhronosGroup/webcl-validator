@@ -62,7 +62,7 @@ public:
     unsigned getNumWarnings() const { return diag->getNumWarnings(); }
     unsigned getNumErrors() const { return diag->getNumErrors(); }
 
-    const std::vector<WebCLDiag::Message> getLogMessages() const { return diag->messages; }
+    const std::vector<WebCLDiag::Message> &getLogMessages() const { return diag->messages; }
 
 private:
 
@@ -89,6 +89,7 @@ WebCLValidator::WebCLValidator(
     , diag(new WebCLDiag(diagOpts.getPtr()))
     , extensions(extensions), exitStatus_(-1)
 {
+    diagOpts->ShowCarets = false;
     diagOpts->ShowFixits = false;
 }
 
@@ -327,6 +328,84 @@ CLV_API extern "C" cl_int CLV_CALL clvGetProgramLogMessageText(
         return CL_INVALID_VALUE;
 
     return returnString(messages[n].text, buf_size, buf, size_ret);
+}
+
+CLV_API extern "C" cl_bool CLV_CALL clvProgramLogMessageHasSource(
+    clv_program program,
+    cl_uint n)
+{
+    if (!program)
+        return CL_FALSE;
+
+    const std::vector<WebCLDiag::Message> &messages = program->getLogMessages();
+
+    if (n >= messages.size())
+        return CL_FALSE;
+
+    return messages[n].source.get() != NULL;
+}
+
+CLV_API extern "C" cl_long CLV_CALL clvGetProgramLogMessageSourceOffset(
+    clv_program program,
+    cl_uint n)
+{
+    if (!program)
+        return CL_INVALID_PROGRAM;
+
+    const std::vector<WebCLDiag::Message> &messages = program->getLogMessages();
+
+    if (n >= messages.size())
+        return CL_INVALID_VALUE;
+
+    if (!clvProgramLogMessageHasSource(program, n))
+        return CL_INVALID_OPERATION;
+
+    return messages[n].sourceOffset;
+}
+
+CLV_API extern "C" size_t CLV_CALL clvGetProgramLogMessageSourceLen(
+    clv_program program,
+    cl_uint n)
+{
+    if (!program)
+        return CL_INVALID_PROGRAM;
+
+    const std::vector<WebCLDiag::Message> &messages = program->getLogMessages();
+
+    if (n >= messages.size())
+        return CL_INVALID_VALUE;
+
+    if (!clvProgramLogMessageHasSource(program, n))
+        return CL_INVALID_OPERATION;
+
+    return messages[n].sourceLen;
+}
+
+CLV_API extern "C" cl_int CLV_CALL clvGetProgramLogMessageSourceText(
+    clv_program program,
+    cl_uint n,
+    cl_long offset,
+    size_t len,
+    size_t buf_size,
+    char *buf,
+    size_t *size_ret)
+{
+    if (!program)
+        return CL_INVALID_PROGRAM;
+
+    const std::vector<WebCLDiag::Message> &messages = program->getLogMessages();
+
+    if (n >= messages.size())
+        return CL_INVALID_VALUE;
+
+    if (!clvProgramLogMessageHasSource(program, n))
+        return CL_INVALID_OPERATION;
+
+    std::string::size_type sourceSize = messages[n].source->size();
+    std::string sourceText =
+        messages[n].source->substr(offset > sourceSize ? sourceSize : offset, len);
+
+    return returnString(sourceText, buf_size, buf, size_ret);
 }
 
 CLV_API extern "C" cl_int CLV_CALL clvGetProgramKernelCount(

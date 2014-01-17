@@ -178,7 +178,17 @@ int main(int argc, char const* argv[])
         text.erase(text.size() - 1); // erase NUL
         std::cerr << text;
 
-        // TODO: print caret
+        // Print relevant source code
+        if (clvProgramLogMessageHasSource(prog, i)) {
+            std::string source(clvGetProgramLogMessageSourceLen(prog, i) + 1, '\0');
+            err = clvGetProgramLogMessageSourceText(
+                prog, i,
+                clvGetProgramLogMessageSourceOffset(prog, i), source.size() - 1,
+                source.size(), &source[0], NULL);
+            assert(err == CL_SUCCESS);
+            source.erase(source.size() - 1); // erase NUL
+            std::cerr << source << '\n';
+        }
     }
 
     int exitStatus = EXIT_SUCCESS;
