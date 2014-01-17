@@ -30,7 +30,6 @@
 #include "clang/Basic/SourceManager.h"
 
 WebCLDiag::WebCLDiag()
-    : pp(NULL)
 {
 }
 
@@ -40,16 +39,12 @@ WebCLDiag::~WebCLDiag()
 
 void WebCLDiag::BeginSourceFile(const clang::LangOptions &langOpts, const clang::Preprocessor *pp)
 {
-    this->langOpts = langOpts;
-    this->pp = pp;
-
     // There might be a new SourceManager, existing FileIDs are bound to get reused with different source
     sources.clear();
 }
 
 void WebCLDiag::EndSourceFile()
 {
-    this->pp = NULL;
 }
 
 namespace

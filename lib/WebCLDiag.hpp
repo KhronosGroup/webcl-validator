@@ -22,7 +22,6 @@
 */
 
 #include "clang/Basic/Diagnostic.h"
-#include "clang/Basic/LangOptions.h"
 
 #include <map>
 #include <memory>
@@ -66,7 +65,5 @@ public:
 
 private:
 
-    clang::LangOptions langOpts;
-    const clang::Preprocessor *pp;
     std::map<clang::FileID, std::shared_ptr<std::string> > sources;
 };
