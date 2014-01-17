@@ -25,11 +25,9 @@
 
 #include <utility>
 
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/ADT/SmallString.h"
 
 #include "clang/Basic/SourceManager.h"
-#include "clang/Frontend/TextDiagnostic.h"
 
 WebCLDiag::WebCLDiag(clang::DiagnosticOptions *opts)
     : opts(opts), pp(NULL)
@@ -99,24 +97,12 @@ void WebCLDiag::HandleDiagnostic(clang::DiagnosticsEngine::Level level, const cl
     DiagnosticConsumer::HandleDiagnostic(level, info);
 
     Message message(level);
-    llvm::raw_string_ostream os(message.text);
 
-    llvm::SmallString<100> OutStr;
-    info.FormatDiagnostic(OutStr);
+    llvm::SmallString<100> formatted;
+    info.FormatDiagnostic(formatted);
+    message.text = formatted.str();
 
-    // TODO: omit level from text
+    collectSourceLocation(info, this->sources, message);
 
-    if (collectSourceLocation(info, this->sources, message)) {
-        clang::TextDiagnostic formatter(os, langOpts, opts.getPtr());
-        formatter.emitDiagnostic(info.getLocation(), level, OutStr,
-            info.getRanges(), llvm::ArrayRef<clang::FixItHint>(),
-            &info.getSourceManager());
-    } else {
-        clang::TextDiagnostic::printDiagnosticLevel(os, level, opts->ShowColors, opts->CLFallbackMode);
-        clang::TextDiagnostic::printDiagnosticMessage(os, level, OutStr,
-            /* irrelevant as there is ... */ 0, /* ... no word wrap */ 0, opts->ShowColors);
-    }
-
-    os.flush();
     messages.push_back(message);
 }

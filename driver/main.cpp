@@ -162,9 +162,22 @@ int main(int argc, char const* argv[])
         return EXIT_FAILURE;
     }
 
+    // Print validation log
     for (cl_int i = 0; i < clvGetProgramLogMessageCount(prog); i++) {
         // TODO: print line n/o info once we can reasonably map source lines
-        // TODO: print level
+
+        // Print severity
+        switch (clvGetProgramLogMessageLevel(prog, i)) {
+        case CLV_LOG_MESSAGE_NOTE:
+            std::cerr << "note: ";
+            break;
+        case CLV_LOG_MESSAGE_WARNING:
+            std::cerr << "warning: ";
+            break;
+        case CLV_LOG_MESSAGE_ERROR:
+            std::cerr << "error: ";
+            break;
+        }
 
         // Determine message text size
         size_t textSize = 0;
@@ -176,7 +189,7 @@ int main(int argc, char const* argv[])
         err = clvGetProgramLogMessageText(prog, i, text.size(), &text[0], &textSize);
         assert(err == CL_SUCCESS);
         text.erase(text.size() - 1); // erase NUL
-        std::cerr << text;
+        std::cerr << text << '\n';
 
         // Print relevant source code
         if (clvProgramLogMessageHasSource(prog, i)) {
