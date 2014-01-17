@@ -89,6 +89,7 @@ WebCLValidator::WebCLValidator(
     , diag(new WebCLDiag(diagOpts.getPtr()))
     , extensions(extensions), exitStatus_(-1)
 {
+    diagOpts->ShowLocation = false;
     diagOpts->ShowCarets = false;
     diagOpts->ShowFixits = false;
 }

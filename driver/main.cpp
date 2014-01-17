@@ -163,7 +163,7 @@ int main(int argc, char const* argv[])
     }
 
     for (cl_int i = 0; i < clvGetProgramLogMessageCount(prog); i++) {
-        // TODO: print line n/o info
+        // TODO: print line n/o info once we can reasonably map source lines
         // TODO: print level
 
         // Determine message text size
