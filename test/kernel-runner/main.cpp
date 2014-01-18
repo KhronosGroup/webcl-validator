@@ -22,6 +22,7 @@
 */
 
 #include "kernelargs.hpp"
+#include "driver_blacklist.hpp"
 
 #include <stdlib.h>
 
@@ -38,10 +39,6 @@
 #define SCALAR 0
 
 #define DEVICE_TYPE CL_DEVICE_TYPE_ALL
-#ifdef __APPLE__
-// Maverics HD4000 driver crashes OS
-#define DEVICE_TYPE CL_DEVICE_TYPE_CPU
-#endif
 
 
 namespace
@@ -85,13 +82,15 @@ device_vector getDevices(cl_platform_id const& platformId)
     return devices;
 }
 
-void printDevInfo(cl_device_id device)
+bool checkDevInfo(cl_device_id device)
 {
     char devbuf[128];
     char verbuf[128];
     clGetDeviceInfo(device, CL_DEVICE_NAME, 128, devbuf, NULL);
     clGetDeviceInfo(device, CL_DEVICE_VERSION, 128, verbuf, NULL);
     std::cout << "Device " << devbuf << ", version " << verbuf << std::endl;
+
+    return is_blacklisted(devbuf);
 }
 
 std::string readAllInput()
@@ -457,10 +456,13 @@ int main(int argc, char const* argv[])
         for (device_vector::const_iterator device = devices.begin();
              device != devices.end(); ++device)
         {        
-            printDevInfo(*device);
-            if (!testSource(id, *device, source, kernel, globalWorkItemCount, loopCount, buffers, useWebCL, &retVal[0], printDebug, addOutput))
-            {
-                return EXIT_FAILURE;
+            if (!checkDevInfo(*device)) {
+                if (!testSource(id, *device, source, kernel, globalWorkItemCount, loopCount, buffers, useWebCL, &retVal[0], printDebug, addOutput))
+                {
+                    return EXIT_FAILURE;
+                }
+            } else {
+                std::cout << "Driver blacklisted... skipping\n";
             }
             id++;
         }

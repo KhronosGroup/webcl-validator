@@ -26,12 +26,13 @@
 
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
-// Maverics HD4000 driver crashes OS
-#define DEVICE_TYPE CL_DEVICE_TYPE_CPU
 #else
 #include <CL/cl.h>
-#define DEVICE_TYPE CL_DEVICE_TYPE_ALL
 #endif
+
+#define DEVICE_TYPE CL_DEVICE_TYPE_ALL
+
+#include "driver_blacklist.hpp"
 
 #include <iostream>
 #include <iterator>

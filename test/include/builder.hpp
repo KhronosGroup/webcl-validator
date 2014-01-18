@@ -24,6 +24,7 @@
 ** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 */
 
+#include "driver_blacklist.hpp"
 #include "validator.hpp"
 
 #include <iostream>
@@ -63,6 +64,10 @@ public:
                       << validator.getPlatformName() << "/"
                       << validator.getDeviceName() << "." << std::endl;
 
+            if (is_blacklisted(validator.getDeviceName())) {
+                std::cout << "Skipping blacklisted driver\n";
+                continue;         
+            }
             if (!compileInputOnCurrentPlatformAndDevice(validator, options))
                 return false;
         }
