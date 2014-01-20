@@ -42,7 +42,7 @@ namespace {
     }
 
     template<typename Container, typename T>
-    Container addValue(const Container& list, T value)
+    Container operator+(const Container& list, T value)
     {
 	Container l(list);
 	l.push_back(value);
@@ -98,9 +98,8 @@ WebCLConfiguration::WebCLConfiguration()
 
     , localRangeZeroingMacro_(macroPrefix_ + "_LOCAL_RANGE_INIT")
 
-    , dataWidths_(addValue(generateWidths(2, 16), 3))
-    // this may be a little bit ridiculous but at least we get a constant list initialized
-    , roundingModes_(addValue(addValue(addValue(addValue(StringList(), "rte"), "rtz"), "rtp"), "rtn"))
+    , dataWidths_(generateWidths(2, 16) + 3)
+    , roundingModes_(StringList() + "rte" + "rtz" + "rtp" + "rtn")
 
     , localVariableRenamer_(variablePrefix_ + "_", "_")
     , privateVariableRenamer_(variablePrefix_ + "_", "_")
