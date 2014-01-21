@@ -206,6 +206,15 @@ public:
     /// List of rounding modes for vstore_half: rte, rtz, rpt, rtn
     const StringList roundingModes_;
 
+    /// List of single-argument atomic (not atom) operations (inc, dec)
+    const StringList atomicOperations1_;
+
+    /// List of two-argument atomic operations (not atom) (add, sub, xchg, min, max, and, or, xor)
+    const StringList atomicOperations2_;
+
+    /// List of three-argument atomic operations (not atom) (cmpxchg)
+    const StringList atomicOperations3_;
+
 private:
 
     /// Renamer of variables relocated to local address space

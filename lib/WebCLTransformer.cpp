@@ -662,9 +662,24 @@ WebCLTransformer::WebCLTransformer(
     functionWrappers_.push_back(new ReadImage("f"));
     functionWrappers_.push_back(new ReadImage("i"));
 
+    addGenericWrappers(cfg_.atomicOperations1_, 1, 0);
+    addGenericWrappers(cfg_.atomicOperations2_, 2, 0);
+    addGenericWrappers(cfg_.atomicOperations3_, 3, 0);
+
     // note: needs to be inserted after other, more specific, wrappers, as only the first matching handler is
     // executed. In this case this needs to be before ReadImage.
     functionWrappers_.push_back(new SamplerType());
+}
+
+void WebCLTransformer::addGenericWrappers(const StringList& list, 
+    unsigned numArgs,
+    unsigned ptrArgIndex)
+{
+    for (StringList::const_iterator operationIt = list.begin();
+         operationIt != list.end();
+         ++operationIt) {
+        functionWrappers_.push_back(new GenericWrapper(*operationIt, numArgs, ptrArgIndex, ptrArgIndex));
+    }
 }
 
 WebCLTransformer::~WebCLTransformer()

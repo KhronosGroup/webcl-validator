@@ -101,6 +101,10 @@ WebCLConfiguration::WebCLConfiguration()
     , dataWidths_(generateWidths(2, 16) + 3)
     , roundingModes_(StringList() + "rte" + "rtz" + "rtp" + "rtn")
 
+    , atomicOperations1_(StringList() + "atomic_inc" + "atomic_dec")
+    , atomicOperations2_(StringList() + "atomic_add" + "atomic_sub" + "atomic_xchg" + "atomic_min" + "atomic_max" + "atomic_and" + "atomic_or" + "atomic_xor")
+    , atomicOperations3_(StringList() + "atomic_cmpxchg")
+
     , localVariableRenamer_(variablePrefix_ + "_", "_")
     , privateVariableRenamer_(variablePrefix_ + "_", "_")
     , typedefRenamer_("", "")

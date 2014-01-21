@@ -52,16 +52,6 @@ static const char *unsafeVectorBuiltins[] = {
 static const int numUnsafeVectorBuiltins =
     sizeof(unsafeVectorBuiltins) / sizeof(unsafeVectorBuiltins[0]);
 
-static const char *unsafeAtomicBuiltins[] = {
-    "atomic_add", "atomic_sub",
-    "atomic_inc", "atomic_dec",
-    "atomic_xchg", "atomic_cmpxchg",
-    "atomic_min", "atomic_max",
-    "atomic_and", "atomic_or", "atomic_xor"
-};
-static const int numUnsafeAtomicBuiltins =
-    sizeof(unsafeAtomicBuiltins) / sizeof(unsafeAtomicBuiltins[0]);
-
 static const char *unsupportedBuiltins[] = {
     "async_work_group_copy", "async_work_group_strided_copy",
     "wait_group_events", "prefetch"
@@ -70,7 +60,12 @@ static const int numUnsupportedBuiltins =
     sizeof(unsupportedBuiltins) / sizeof(unsupportedBuiltins[0]);
 
 static const char *safeBuiltins[] = {
-  "get_image_width", "get_image_height"
+    "get_image_width", "get_image_height",
+    "atomic_add", "atomic_sub",
+    "atomic_inc", "atomic_dec",
+    "atomic_xchg", "atomic_cmpxchg",
+    "atomic_min", "atomic_max",
+    "atomic_and", "atomic_or", "atomic_xor"
 };
 static const int numSafeBuiltins =
     sizeof(safeBuiltins) / sizeof(safeBuiltins[0]);
@@ -282,7 +277,6 @@ static const int numBuiltinDecls =
 WebCLBuiltins::WebCLBuiltins()
     : unsafeMathBuiltins_()
     , unsafeVectorBuiltins_()
-    , unsafeAtomicBuiltins_()
     , unsupportedBuiltins_()
     , safeBuiltins_()
     , roundingSuffixes_(roundingSuffixes, roundingSuffixes + numRoundingSuffixes)
@@ -290,7 +284,6 @@ WebCLBuiltins::WebCLBuiltins()
 {
     initialize(unsafeMathBuiltins_, unsafeMathBuiltins, numUnsafeMathBuiltins);
     initialize(unsafeVectorBuiltins_, unsafeVectorBuiltins, numUnsafeVectorBuiltins);
-    initialize(unsafeAtomicBuiltins_, unsafeAtomicBuiltins, numUnsafeAtomicBuiltins);
     initialize(unsupportedBuiltins_, unsupportedBuiltins, numUnsupportedBuiltins);
     initialize(safeBuiltins_, safeBuiltins, numSafeBuiltins);
 
@@ -313,8 +306,7 @@ bool WebCLBuiltins::isUnsafe(const std::string &builtin) const
 {
     return
         unsafeMathBuiltins_.count(builtin) ||
-        unsafeVectorBuiltins_.count(builtin) ||
-        unsafeAtomicBuiltins_.count(builtin);
+        unsafeVectorBuiltins_.count(builtin);
 }
 
 bool WebCLBuiltins::isUnsupported(const std::string &builtin) const

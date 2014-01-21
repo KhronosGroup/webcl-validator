@@ -354,6 +354,11 @@ private:
     /// \brief Inserts kernel prologue to start of kernel body.
     bool rewriteKernelPrologue(const clang::FunctionDecl *kernel);
 
+    /// Adds generic wrappers from a sequence; reduces code duplication
+    void addGenericWrappers(const StringList& list,
+        unsigned numArgs,
+        unsigned ptrArgIndex);
+
     /// Writes a variable declaration to a stream in the form it
     /// should be declared inside an address space structure.
     ///
