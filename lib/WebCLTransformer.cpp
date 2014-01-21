@@ -666,6 +666,13 @@ WebCLTransformer::WebCLTransformer(
     addGenericWrappers(cfg_.atomicOperations2_, 2, 0);
     addGenericWrappers(cfg_.atomicOperations3_, 3, 0);
 
+    functionWrappers_.push_back(new GenericWrapper("fract", 2, 1, 0));
+    functionWrappers_.push_back(new GenericWrapper("frexp", 2, 1, 0));
+    functionWrappers_.push_back(new GenericWrapper("modf", 2, 1, 0));
+    functionWrappers_.push_back(new GenericWrapper("lgamma_r", 2, 1, 0));
+    functionWrappers_.push_back(new GenericWrapper("remquo", 3, 2, 0));
+    functionWrappers_.push_back(new GenericWrapper("sincos", 2, 1, 0));
+
     // note: needs to be inserted after other, more specific, wrappers, as only the first matching handler is
     // executed. In this case this needs to be before ReadImage.
     functionWrappers_.push_back(new SamplerType());
