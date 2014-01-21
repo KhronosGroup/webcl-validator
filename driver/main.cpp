@@ -162,12 +162,52 @@ int main(int argc, char const* argv[])
         return EXIT_FAILURE;
     }
 
+    // Print validation log
+    for (cl_int i = 0; i < clvGetProgramLogMessageCount(prog); i++) {
+        // TODO: print line n/o info once we can reasonably map source lines
+
+        // Print severity
+        switch (clvGetProgramLogMessageLevel(prog, i)) {
+        case CLV_LOG_MESSAGE_NOTE:
+            std::cerr << "note: ";
+            break;
+        case CLV_LOG_MESSAGE_WARNING:
+            std::cerr << "warning: ";
+            break;
+        case CLV_LOG_MESSAGE_ERROR:
+            std::cerr << "error: ";
+            break;
+        }
+
+        // Determine message text size
+        size_t textSize = 0;
+        err = clvGetProgramLogMessageText(prog, i, 0, NULL, &textSize);
+        assert(err == CL_SUCCESS);
+
+        // Get and print message text
+        std::string text(textSize, '\0');
+        err = clvGetProgramLogMessageText(prog, i, text.size(), &text[0], &textSize);
+        assert(err == CL_SUCCESS);
+        text.erase(text.size() - 1); // erase NUL
+        std::cerr << text << '\n';
+
+        // Print relevant source code
+        if (clvProgramLogMessageHasSource(prog, i)) {
+            std::string source(clvGetProgramLogMessageSourceLen(prog, i) + 1, '\0');
+            err = clvGetProgramLogMessageSourceText(
+                prog, i,
+                clvGetProgramLogMessageSourceOffset(prog, i), source.size() - 1,
+                source.size(), &source[0], NULL);
+            assert(err == CL_SUCCESS);
+            source.erase(source.size() - 1); // erase NUL
+            std::cerr << source << '\n';
+        }
+    }
+
     int exitStatus = EXIT_SUCCESS;
     if (clvGetProgramStatus(prog) == CLV_PROGRAM_ACCEPTED ||
         clvGetProgramStatus(prog) == CLV_PROGRAM_ACCEPTED_WITH_WARNINGS) {
         // Success, print output
-
-        // TODO: print warnings, if any
 
         // Print JSON header
         WebCLHeader header;
@@ -191,8 +231,6 @@ int main(int argc, char const* argv[])
         std::cout << validatedSource;
     } else {
         // Validation failed
-
-        // TODO: print errors
 
         exitStatus = EXIT_FAILURE;
     }

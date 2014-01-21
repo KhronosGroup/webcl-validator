@@ -70,6 +70,58 @@ typedef enum {
 CLV_API clv_program_status CLV_CALL clvGetProgramStatus(
     clv_program program);
 
+// Get number of validation log messages (notes, warnings, errors)
+CLV_API cl_int CLV_CALL clvGetProgramLogMessageCount(
+    clv_program program);
+
+// Severity level of a validation log message
+typedef enum {
+    // Informative note
+    CLV_LOG_MESSAGE_NOTE,
+    // Warning
+    CLV_LOG_MESSAGE_WARNING,
+    // Error
+    CLV_LOG_MESSAGE_ERROR
+} clv_program_log_level;
+
+// Get severity level of a validation log message
+CLV_API clv_program_log_level CLV_CALL clvGetProgramLogMessageLevel(
+    clv_program program,
+    cl_uint n);
+
+// Get text of a validation log message
+CLV_API cl_int CLV_CALL clvGetProgramLogMessageText(
+    clv_program program,
+    cl_uint n,
+    size_t buf_size,
+    char *buf,
+    size_t *size_ret);
+
+// Determine if the given validation log message has associated source code
+CLV_API cl_bool CLV_CALL clvProgramLogMessageHasSource(
+    clv_program program,
+    cl_uint n);
+
+// Get the start offset of the relevant part of the source code
+CLV_API cl_long CLV_CALL clvGetProgramLogMessageSourceOffset(
+    clv_program program,
+    cl_uint n);
+
+// Get the length of relevant part of the source code
+CLV_API size_t CLV_CALL clvGetProgramLogMessageSourceLen(
+    clv_program program,
+    cl_uint n);
+
+// Get (a substring of) the source code associated with the log message
+CLV_API cl_int CLV_CALL clvGetProgramLogMessageSourceText(
+    clv_program program,
+    cl_uint n,
+    cl_long offset, // 0 for full source
+    size_t len, // size_t(-1) for full source
+    size_t buf_size,
+    char *buf,
+    size_t *size_ret);
+
 // Get number of kernels found in program
 CLV_API cl_int CLV_CALL clvGetProgramKernelCount(
     clv_program program);

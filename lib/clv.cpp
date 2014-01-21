@@ -25,16 +25,17 @@
 
 #include "WebCLTool.hpp"
 
+#include <cassert>
 #include <cstdlib>
 #include <iostream>
 #include <set>
 #include <string>
 #include <vector>
 
-#include "../lib/WebCLArguments.hpp"
-#include "../lib/WebCLVisitor.hpp"
+#include "WebCLArguments.hpp"
+#include "WebCLDiag.hpp"
+#include "WebCLVisitor.hpp"
 
-// Proof of concept library API for the library+executable build system
 struct WebCLValidator
 {
 public:
@@ -44,6 +45,7 @@ public:
         const std::set<std::string> &extensions,
         int argc,
         char const* argv[]);
+    ~WebCLValidator();
     void run();
     int getExitStatus() const { return exitStatus_; }
 
@@ -52,9 +54,15 @@ public:
     /// Ditto for kernel info
     const WebCLAnalyser::KernelList &getKernels() const { return kernels_; }
 
+    unsigned getNumWarnings() const { return diag->getNumWarnings(); }
+    unsigned getNumErrors() const { return diag->getNumErrors(); }
+
+    const std::vector<WebCLDiag::Message> &getLogMessages() const { return diag->messages; }
+
 private:
 
     WebCLArguments arguments;
+    WebCLDiag *diag;
     std::set<std::string> extensions;
 
     // Exit status for run()
@@ -70,8 +78,15 @@ WebCLValidator::WebCLValidator(
     const std::set<std::string> &extensions,
     int argc,
     char const* argv[])
-    : arguments(inputSource, argc, argv), extensions(extensions), exitStatus_(-1)
+    : arguments(inputSource, argc, argv)
+    , diag(new WebCLDiag())
+    , extensions(extensions), exitStatus_(-1)
 {
+}
+
+WebCLValidator::~WebCLValidator()
+{
+    delete diag;
 }
 
 void WebCLValidator::run()
@@ -113,6 +128,7 @@ void WebCLValidator::run()
 
     WebCLPreprocessorTool preprocessorTool(preprocessorArgc, preprocessorArgv,
                                            preprocessorInput, matcher1Input);
+    preprocessorTool.setDiagnosticConsumer(diag);
     preprocessorTool.setExtensions(extensions);
     const int preprocessorStatus = preprocessorTool.run();
     if (preprocessorStatus) {
@@ -151,6 +167,7 @@ void WebCLValidator::run()
 
     WebCLMatcher1Tool matcher1Tool(matcher1Argc, matcher1Argv,
                                    matcher1Input, matcher2Input);
+    matcher1Tool.setDiagnosticConsumer(diag);
     matcher1Tool.setExtensions(extensions);
     const int matcher1Status = matcher1Tool.run();
     if (matcher1Status) {
@@ -160,6 +177,7 @@ void WebCLValidator::run()
 
     WebCLMatcher2Tool matcher2Tool(matcher2Argc, matcher2Argv,
                                    matcher2Input, validatorInput);
+    matcher2Tool.setDiagnosticConsumer(diag);
     matcher2Tool.setExtensions(extensions);
     const int matcher2Status = matcher2Tool.run();
     if (matcher2Status) {
@@ -169,6 +187,7 @@ void WebCLValidator::run()
 
     WebCLValidatorTool validatorTool(validatorArgc, validatorArgv,
                                      validatorInput);
+    validatorTool.setDiagnosticConsumer(diag);
     validatorTool.setExtensions(extensions);
     const int validatorStatus = validatorTool.run();
     validatedSource_ = validatorTool.getValidatedSource();
@@ -216,20 +235,18 @@ CLV_API extern "C" clv_program CLV_CALL clvValidate(
 CLV_API extern "C" clv_program_status CLV_CALL clvGetProgramStatus(
     clv_program program)
 {
-    // TODO: make consider callback not yet called, errors, warnings
-    return program->getExitStatus() == EXIT_SUCCESS ? CLV_PROGRAM_ACCEPTED : CLV_PROGRAM_ILLEGAL;
-}
+    // TODO: make consider callback not yet called
 
-CLV_API extern "C" cl_int CLV_CALL clvGetProgramKernelCount(
-    clv_program program)
-{
-    if (!program)
-        return CL_INVALID_PROGRAM;
+    if (program->getExitStatus() == EXIT_SUCCESS) {
+        assert(program->getNumErrors() == 0);
 
-    if (program->getExitStatus() != EXIT_SUCCESS)
-        return 0;
-
-    return program->getKernels().size();
+        if (program->getNumWarnings() > 0)
+            return CLV_PROGRAM_ACCEPTED_WITH_WARNINGS;
+        else
+            return CLV_PROGRAM_ACCEPTED;
+    } else {
+        return CLV_PROGRAM_ILLEGAL;
+    }
 }
 
 namespace
@@ -249,6 +266,149 @@ namespace
 
         return CL_SUCCESS;
     }
+}
+
+CLV_API extern "C" cl_int CLV_CALL clvGetProgramLogMessageCount(
+    clv_program program)
+{
+    if (!program)
+        return CL_INVALID_PROGRAM;
+
+    return program->getLogMessages().size();
+}
+
+CLV_API extern "C" clv_program_log_level CLV_CALL clvGetProgramLogMessageLevel(
+    clv_program program,
+    cl_uint n)
+{
+    if (!program)
+        return CLV_LOG_MESSAGE_ERROR;
+
+    const std::vector<WebCLDiag::Message> &messages = program->getLogMessages();
+
+    if (n >= messages.size())
+        return CLV_LOG_MESSAGE_ERROR;
+
+    assert(messages[n].level != clang::DiagnosticsEngine::Ignored);
+
+    switch (messages[n].level) {
+    case clang::DiagnosticsEngine::Note:
+        return CLV_LOG_MESSAGE_NOTE;
+    case clang::DiagnosticsEngine::Warning:
+        return CLV_LOG_MESSAGE_WARNING;
+    case clang::DiagnosticsEngine::Error:
+    case clang::DiagnosticsEngine::Fatal:
+    default:
+        return CLV_LOG_MESSAGE_ERROR;
+    }
+}
+
+CLV_API extern "C" cl_int CLV_CALL clvGetProgramLogMessageText(
+    clv_program program,
+    cl_uint n,
+    size_t buf_size,
+    char *buf,
+    size_t *size_ret)
+{
+    if (!program)
+        return CL_INVALID_PROGRAM;
+
+    const std::vector<WebCLDiag::Message> &messages = program->getLogMessages();
+
+    if (n >= messages.size())
+        return CL_INVALID_VALUE;
+
+    return returnString(messages[n].text, buf_size, buf, size_ret);
+}
+
+CLV_API extern "C" cl_bool CLV_CALL clvProgramLogMessageHasSource(
+    clv_program program,
+    cl_uint n)
+{
+    if (!program)
+        return CL_FALSE;
+
+    const std::vector<WebCLDiag::Message> &messages = program->getLogMessages();
+
+    if (n >= messages.size())
+        return CL_FALSE;
+
+    return messages[n].source.get() != NULL;
+}
+
+CLV_API extern "C" cl_long CLV_CALL clvGetProgramLogMessageSourceOffset(
+    clv_program program,
+    cl_uint n)
+{
+    if (!program)
+        return CL_INVALID_PROGRAM;
+
+    const std::vector<WebCLDiag::Message> &messages = program->getLogMessages();
+
+    if (n >= messages.size())
+        return CL_INVALID_VALUE;
+
+    if (!clvProgramLogMessageHasSource(program, n))
+        return CL_INVALID_OPERATION;
+
+    return messages[n].sourceOffset;
+}
+
+CLV_API extern "C" size_t CLV_CALL clvGetProgramLogMessageSourceLen(
+    clv_program program,
+    cl_uint n)
+{
+    if (!program)
+        return CL_INVALID_PROGRAM;
+
+    const std::vector<WebCLDiag::Message> &messages = program->getLogMessages();
+
+    if (n >= messages.size())
+        return CL_INVALID_VALUE;
+
+    if (!clvProgramLogMessageHasSource(program, n))
+        return CL_INVALID_OPERATION;
+
+    return messages[n].sourceLen;
+}
+
+CLV_API extern "C" cl_int CLV_CALL clvGetProgramLogMessageSourceText(
+    clv_program program,
+    cl_uint n,
+    cl_long offset,
+    size_t len,
+    size_t buf_size,
+    char *buf,
+    size_t *size_ret)
+{
+    if (!program)
+        return CL_INVALID_PROGRAM;
+
+    const std::vector<WebCLDiag::Message> &messages = program->getLogMessages();
+
+    if (n >= messages.size())
+        return CL_INVALID_VALUE;
+
+    if (!clvProgramLogMessageHasSource(program, n))
+        return CL_INVALID_OPERATION;
+
+    std::string::size_type sourceSize = messages[n].source->size();
+    std::string sourceText =
+        messages[n].source->substr(offset > sourceSize ? sourceSize : offset, len);
+
+    return returnString(sourceText, buf_size, buf, size_ret);
+}
+
+CLV_API extern "C" cl_int CLV_CALL clvGetProgramKernelCount(
+    clv_program program)
+{
+    if (!program)
+        return CL_INVALID_PROGRAM;
+
+    if (program->getExitStatus() != EXIT_SUCCESS)
+        return 0;
+
+    return program->getKernels().size();
 }
 
 CLV_API extern "C" cl_int CLV_CALL clvGetProgramKernelName(

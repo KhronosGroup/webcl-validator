@@ -70,6 +70,11 @@ WebCLTool::~WebCLTool()
     compilations_ = NULL;
 }
 
+void WebCLTool::setDiagnosticConsumer(clang::DiagnosticConsumer *diag)
+{
+    tool_->setDiagnosticConsumer(diag);
+}
+
 void WebCLTool::setExtensions(const std::set<std::string> &extensions)
 {
     extensions_ = extensions;
