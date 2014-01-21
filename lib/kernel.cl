@@ -1530,7 +1530,16 @@ void barrier (cl_mem_fence_flags flags);
 
 // TODO: only declare these if used
 
-#define _CL_DECLARE_ATOMICS(MOD, TYPE)                                  \
+// special versions that allow to differentiate between cl_khr_fp16 and  cl_khr_fp64
+#define _CL_DECLARE_ATOMICS_BASIC(MOD, TYPE)    \
+  _CL_OVERLOADABLE TYPE atomic_add    (volatile MOD TYPE *p, TYPE val); \
+  _CL_OVERLOADABLE TYPE atomic_sub    (volatile MOD TYPE *p, TYPE val); \
+  _CL_OVERLOADABLE TYPE atomic_xchg   (volatile MOD TYPE *p, TYPE val); \
+  _CL_OVERLOADABLE TYPE atomic_inc    (volatile MOD TYPE *p);           \
+  _CL_OVERLOADABLE TYPE atomic_dec    (volatile MOD TYPE *p);           \
+  _CL_OVERLOADABLE TYPE atomic_cmpxchg(volatile MOD TYPE *p, TYPE cmp, TYPE val);
+  
+#define _CL_DECLARE_ATOMICS_EXTENDED(MOD, TYPE)                                  \
   _CL_OVERLOADABLE TYPE atomic_add    (volatile MOD TYPE *p, TYPE val); \
   _CL_OVERLOADABLE TYPE atomic_sub    (volatile MOD TYPE *p, TYPE val); \
   _CL_OVERLOADABLE TYPE atomic_xchg   (volatile MOD TYPE *p, TYPE val); \
@@ -1542,6 +1551,11 @@ void barrier (cl_mem_fence_flags flags);
   _CL_OVERLOADABLE TYPE atomic_and    (volatile MOD TYPE *p, TYPE val); \
   _CL_OVERLOADABLE TYPE atomic_or     (volatile MOD TYPE *p, TYPE val); \
   _CL_OVERLOADABLE TYPE atomic_xor    (volatile MOD TYPE *p, TYPE val);
+
+#define _CL_DECLARE_ATOMICS(MOD, TYPE)                                  \
+  _CL_DECLARE_ATOMICS_BASIC(MOD, TYPE)                                  \
+  _CL_DECLARE_ATOMICS_EXTENDED(MOD, TYPE)
+
 _CL_DECLARE_ATOMICS(__global, int )
 _CL_DECLARE_ATOMICS(__global, uint)
 _CL_DECLARE_ATOMICS(__local , int )
@@ -1549,6 +1563,20 @@ _CL_DECLARE_ATOMICS(__local , uint)
 
 _CL_OVERLOADABLE float atomic_xchg(volatile __global float *p, float val);
 _CL_OVERLOADABLE float atomic_xchg(volatile __local  float *p, float val);
+
+// TODO: wrap behind #ifdef cl_khr_int64_base_atomics
+#  pragma OPENCL EXTENSION cl_khr_int64_base_atomics: enable
+_CL_DECLARE_ATOMICS_BASIC(__global, long )
+_CL_DECLARE_ATOMICS_BASIC(__global, ulong)
+_CL_DECLARE_ATOMICS_BASIC(__local , long )
+_CL_DECLARE_ATOMICS_BASIC(__local , ulong)
+
+// TODO: wrap behind #ifdef cl_khr_int64_extended_atomics
+#  pragma OPENCL EXTENSION cl_khr_int64_extended_atomics: enable
+_CL_DECLARE_ATOMICS_EXTENDED(__global, long )
+_CL_DECLARE_ATOMICS_EXTENDED(__global, ulong)
+_CL_DECLARE_ATOMICS_EXTENDED(__local , long )
+_CL_DECLARE_ATOMICS_EXTENDED(__local , ulong)
 
 #define atom_add     atomic_add
 #define atom_sub     atomic_sub

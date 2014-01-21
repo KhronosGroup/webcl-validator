@@ -1,0 +1,71 @@
+// RUN: %webcl-validator %s 2>&1 | grep -v CHECK | %FileCheck %s
+
+#pragma OPENCL EXTENSION cl_khr_int64_extended_atomics : enable
+
+// check only one return argument per argument length, per argument type and per address space
+
+// int global
+// CHECK: return atomic_min(_WCL_ADDR_CLAMP_global_3(volatile __global int *, arg0, 1, _wcl_allocs->gl.atoms__global_int_data_min, _wcl_allocs->gl.atoms__global_int_data_max, _wcl_allocs->gl.atoms__global_uint_data_min, _wcl_allocs->gl.atoms__global_uint_data_max, _wcl_allocs->gl.atoms__global_float_data_min, _wcl_allocs->gl.atoms__global_float_data_max, _wcl_allocs->gn), arg1);
+
+// uint global
+// CHECK: return atomic_min(_WCL_ADDR_CLAMP_global_3(volatile __global uint *, arg0, 1, _wcl_allocs->gl.atoms__global_int_data_min, _wcl_allocs->gl.atoms__global_int_data_max, _wcl_allocs->gl.atoms__global_uint_data_min, _wcl_allocs->gl.atoms__global_uint_data_max, _wcl_allocs->gl.atoms__global_float_data_min, _wcl_allocs->gl.atoms__global_float_data_max, _wcl_allocs->gn), arg1);
+
+// int local
+// CHECK: return atomic_min(_WCL_ADDR_CLAMP_local_3(volatile __local int *, arg0, 1, _wcl_allocs->ll.atoms__local_int_data_min, _wcl_allocs->ll.atoms__local_int_data_max, _wcl_allocs->ll.atoms__local_uint_data_min, _wcl_allocs->ll.atoms__local_uint_data_max, _wcl_allocs->ll.atoms__local_float_data_min, _wcl_allocs->ll.atoms__local_float_data_max, _wcl_allocs->ln), arg1);
+
+// uint local
+// CHECK: return atomic_min(_WCL_ADDR_CLAMP_local_3(volatile __local uint *, arg0, 1, _wcl_allocs->ll.atoms__local_int_data_min, _wcl_allocs->ll.atoms__local_int_data_max, _wcl_allocs->ll.atoms__local_uint_data_min, _wcl_allocs->ll.atoms__local_uint_data_max, _wcl_allocs->ll.atoms__local_float_data_min, _wcl_allocs->ll.atoms__local_float_data_max, _wcl_allocs->ln), arg1);
+
+__kernel void atoms(volatile __global int* global_int_data, volatile __local int* local_int_data,
+                      volatile __global uint* global_uint_data, volatile __local uint* local_uint_data,
+                      volatile __global float* global_float_data, volatile __local float* local_float_data)
+{
+  int val_int = 1;
+  int val_uint = 2;
+  uint cmp = 1;
+  float val_float = 3;
+
+  // CHECK: (_wcl_allocs, global_int_data, val_int);
+  val_int = atomic_min    (global_int_data, val_int);
+  // CHECK: (_wcl_allocs, global_int_data, val_int);
+  val_int = atomic_max    (global_int_data, val_int);
+  // CHECK: (_wcl_allocs, global_int_data, val_int);
+  val_int = atomic_and    (global_int_data, val_int);
+  // CHECK: (_wcl_allocs, global_int_data, val_int);
+  val_int = atomic_or     (global_int_data, val_int);
+  // CHECK: (_wcl_allocs, global_int_data, val_int);
+  val_int = atomic_xor    (global_int_data, val_int);
+
+  // CHECK: (_wcl_allocs, global_uint_data, val_uint);
+  val_uint = atomic_min    (global_uint_data, val_uint);
+  // CHECK: (_wcl_allocs, global_uint_data, val_uint);
+  val_uint = atomic_max    (global_uint_data, val_uint);
+  // CHECK: (_wcl_allocs, global_uint_data, val_uint);
+  val_uint = atomic_and    (global_uint_data, val_uint);
+  // CHECK: (_wcl_allocs, global_uint_data, val_uint);
+  val_uint = atomic_or     (global_uint_data, val_uint);
+  // CHECK: (_wcl_allocs, global_uint_data, val_uint);
+  val_uint = atomic_xor    (global_uint_data, val_uint);
+
+  // CHECK: (_wcl_allocs, local_int_data, val_int);
+  val_int = atomic_min    (local_int_data, val_int);
+  // CHECK: (_wcl_allocs, local_int_data, val_int);
+  val_int = atomic_max    (local_int_data, val_int);
+  // CHECK: (_wcl_allocs, local_int_data, val_int);
+  val_int = atomic_and    (local_int_data, val_int);
+  // CHECK: (_wcl_allocs, local_int_data, val_int);
+  val_int = atomic_or     (local_int_data, val_int);
+  // CHECK: (_wcl_allocs, local_int_data, val_int);
+  val_int = atomic_xor    (local_int_data, val_int);
+
+  // CHECK: (_wcl_allocs, local_uint_data, val_uint);
+  val_uint = atomic_min    (local_uint_data, val_uint);
+  // CHECK: (_wcl_allocs, local_uint_data, val_uint);
+  val_uint = atomic_max    (local_uint_data, val_uint);
+  // CHECK: (_wcl_allocs, local_uint_data, val_uint);
+  val_uint = atomic_and    (local_uint_data, val_uint);
+  // CHECK: (_wcl_allocs, local_uint_data, val_uint);
+  val_uint = atomic_or     (local_uint_data, val_uint);
+  // CHECK: (_wcl_allocs, local_uint_data, val_uint);
+  val_uint = atomic_xor    (local_uint_data, val_uint);
+}
