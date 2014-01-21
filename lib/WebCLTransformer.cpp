@@ -283,6 +283,30 @@ namespace {
 	std::string suffix_; // "f" or "i"
     };
 
+    // GenericWrapper creates a generic wrapper for function with exactly pointer one argument (and possibly other
+    // arguments)
+    class GenericWrapper: public WebCLTransformer::FunctionCallWrapper {
+    public:
+        /// @param name          Name of the function to wrap
+        /// @param numArgs       Number of arguments in the function
+        /// @param ptrArgIndex   Index of the argument with the pointer type to check (zero = first argument)
+        /// @param returnTypeStr Index of the argument that determines the return type of the function. If it is the
+        ///                      same as ptrArgIndex, the pointer is dereferenced for determining the return type.
+        GenericWrapper(std::string name, unsigned numArgs, unsigned ptrArgIndex, unsigned returnTypeArgIndex);
+
+        std::string getName() const;
+        unsigned getNumArgs() const;
+
+        WrappedFunction wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, clang::CallExpr *callExpr, const ExprVector &arguments, WebCLKernelHandler &kernelHandler, WebCLRewriter &rewriter) const;
+
+    private:
+        std::string     name_;
+        unsigned        numArgs_;
+        unsigned        ptrArgIndex_;
+        unsigned        returnTypeArgIndex_;
+    };
+
+
     VLoad::VLoad(unsigned width, bool half, bool aligned) :
 	width_(width), half_(half), aligned_(aligned)
     {
@@ -540,6 +564,64 @@ namespace {
                 varDecl->getInit()->getSourceRange(), varDecl->getInit(), varDecl->getLocStart());
         }
     }
+
+    GenericWrapper::GenericWrapper(std::string name, unsigned numArgs, unsigned ptrArgIndex, unsigned returnTypeArgIndex) :
+        name_(name),
+        numArgs_(numArgs),
+        ptrArgIndex_(ptrArgIndex),
+        returnTypeArgIndex_(returnTypeArgIndex)
+    {
+        // nothing
+    }
+
+    std::string GenericWrapper::getName() const
+    {
+        return name_;
+    }
+
+    unsigned GenericWrapper::getNumArgs() const
+    {
+        return numArgs_;
+    }
+
+    WrappedFunction GenericWrapper::wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, clang::CallExpr *callExpr, const ExprVector &arguments, WebCLKernelHandler &kernelHandler, WebCLRewriter &rewriter) const
+    {
+        WebCLConfiguration cfg;
+
+        clang::Expr *pointerArg = arguments[ptrArgIndex_];
+        std::string ptrArgName = "arg" + stringify(ptrArgIndex_);
+
+        if (!pointerArg->getType()->isPointerType()) {
+            transformer.error(arguments[1]->getLocStart(), "%0 argument number %1 must be a pointer") << getName().c_str() << ptrArgIndex_ + 1;
+            return WrappedFunction();
+        }
+
+        std::string ptrTypeStr = pointerArg->getType().getAsString();
+        std::string returnTypeStr =
+            ((returnTypeArgIndex_ == ptrArgIndex_) 
+                ? WebCLTypes::reduceType(instance, pointerArg->getType().getTypePtr()->getPointeeType())
+                : WebCLTypes::reduceType(instance, arguments[returnTypeArgIndex_]->getType())).getAsString();
+
+        AddressSpaceLimits &limits = kernelHandler.getDerefLimits(pointerArg);
+
+        std::string indent = cfg.getIndentation(1);
+        std::stringstream body;
+        std::string args;
+        for (unsigned c = 0; c < numArgs_; ++c) {
+            if (c) {
+                args += ", ";
+            }
+            if (c == ptrArgIndex_) {
+                args += transformer.getCheckMacroCall(WebCLTransformer::MACRO_CLAMP, ptrArgName, ptrTypeStr, 1, limits);
+            } else {
+                args += "arg" + stringify(c);
+            }
+        }
+        body << indent << "return " << name_ << "(" <<  args << ");\n";
+
+        return WrappedFunction(returnTypeStr, body.str());
+    }
+
 }
 
 
