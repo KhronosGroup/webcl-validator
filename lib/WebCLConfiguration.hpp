@@ -65,14 +65,14 @@ public:
 
     /// \return Name of macro that can be used to validate pointers. The
     /// generated macro with this name returns a valid pointer by making call to
-    /// the macro of name getNameOfLimitCheckMacro.
+    /// the macro of name getNameOfLimitCheckFunction.
     ///
     /// \see getStaticLimitRef
     /// \see getDynamicLimitRef
     /// \see getNullLimitRef
-    /// \see getNameOfLimitCheckMacro
-    const std::string getNameOfLimitClampMacro(
-        unsigned addressSpaceNum, int limitCount) const;
+    /// \see getNameOfLimitCheckFunction
+    const std::string getNameOfLimitClampFunction(
+        unsigned addressSpaceNum, int limitCount, std::string type) const;
     /// \return Name of macro that can be used to validate pointers. The
     /// generated macro with this name returns a boolean indicating whether the
     /// access is permitted or not.
@@ -80,9 +80,9 @@ public:
     /// \see getStaticLimitRef
     /// \see getDynamicLimitRef
     /// \see getNullLimitRef
-    /// \see getNameOfLimitClampMacro
-    const std::string getNameOfLimitCheckMacro(
-        unsigned addressSpaceNum, int limitCount) const;
+    /// \see getNameOfLimitClampFunction
+    const std::string getNameOfLimitCheckFunction(
+        unsigned addressSpaceNum, int limitCount, std::string type) const;
     /// \return Name of macro that describes size of largest memory
     /// reference in given address space.
     const std::string getNameOfSizeMacro(const std::string &asName) const;
@@ -122,17 +122,24 @@ public:
 
     /// \return Minimum and maximum limits of an address space
     /// structure.
-    const std::string getStaticLimitRef(unsigned addressSpaceNum) const;
+    const std::string getStaticLimitRef(unsigned addressSpaceNum, std::string cast = "") const;
     /// \return Minimum and maximum limits of a memory object passed
     /// to a kernel.
-    const std::string getDynamicLimitRef(const clang::VarDecl *decl) const;
+    const std::string getDynamicLimitRef(const clang::VarDecl *decl, std::string cast = "") const;
     /// \return Minimum and maximum limits of a null memory area.
     const std::string getNullLimitRef(unsigned addressSpaceNum) const;
+
+    /// \return Stripped version of str in purpose of using it as an identifier
+    /// Currently only handles spaces and asterisks. The generated sequences
+    /// should be so that the user is not able to generate colliisions
+    /// by choosing identifiers in a certain way.
+    const std::string getIdentifierForString(std::string str) const;
 
     /// Prefixes for generated types, variables and macros.
     const std::string typePrefix_;
     const std::string variablePrefix_;
     const std::string macroPrefix_;
+    const std::string functionPrefix_;
 
     /// Suffixes for memory area lower and upper bounds.
     const std::string minSuffix_;

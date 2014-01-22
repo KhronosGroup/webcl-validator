@@ -408,7 +408,7 @@ namespace {
 	}
 	body
 	    << indent << ptrTypeStr << " ptr = arg1 + " << origDataWidth << " * (size_t) arg0;\n"
-	    << indent << "if (" << transformer.getCheckMacroCall(WebCLTransformer::MACRO_CHECK, "ptr", ptrTypeStr, origDataWidth, limits) << ")\n"
+	    << indent << "if (" << transformer.getCheckFunctionCall(WebCLTransformer::CHECK_CHECK, "ptr", ptrTypeStr, origDataWidth, limits) << ")\n"
 	    << indent__ << "return " << getName() << "(0, ptr);\n"
 	    << indent << "else\n"
 	    << indent__ << "return " << zeroValue << ";\n";
@@ -467,7 +467,7 @@ namespace {
 	std::stringstream body;
 	body
 	    << indent << ptrTypeStr << " ptr = arg2 + " << origDataWidth << " * (size_t) arg1;\n"
-	    << indent << "if (" << transformer.getCheckMacroCall(WebCLTransformer::MACRO_CHECK, "ptr", ptrTypeStr, origDataWidth, limits) << ")\n"
+	    << indent << "if (" << transformer.getCheckFunctionCall(WebCLTransformer::CHECK_CHECK, "ptr", ptrTypeStr, origDataWidth, limits) << ")\n"
 	    << indent__ << getName() << "(arg0, 0, ptr);\n";
 
 	return WrappedFunction("void", body.str());
@@ -612,7 +612,7 @@ namespace {
                 args += ", ";
             }
             if (c == ptrArgIndex_) {
-                args += transformer.getCheckMacroCall(WebCLTransformer::MACRO_CLAMP, ptrArgName, ptrTypeStr, 1, limits);
+                args += transformer.getCheckFunctionCall(WebCLTransformer::CHECK_CLAMP, ptrArgName, ptrTypeStr, 1, limits);
             } else {
                 args += "arg" + stringify(c);
             }
@@ -1199,7 +1199,7 @@ void WebCLTransformer::removeRelocated(clang::VarDecl *decl)
   wclRewriter_.removeText(decl->getSourceRange());
 }
 
-std::string WebCLTransformer::getCheckMacroCall(MacroKind kind, std::string addr, std::string type, unsigned size, AddressSpaceLimits &limits)
+std::string WebCLTransformer::getCheckFunctionCall(CheckKind kind, std::string addr, std::string type, unsigned size, AddressSpaceLimits &limits)
 {
   std::stringstream retVal;
 
@@ -1208,34 +1208,34 @@ std::string WebCLTransformer::getCheckMacroCall(MacroKind kind, std::string addr
 
   std::string name;
   switch (kind) {
-  case MACRO_CLAMP:
-      name = cfg_.getNameOfLimitClampMacro(addressSpace, limitCount);
+  case CHECK_CLAMP:
+      name = cfg_.getNameOfLimitClampFunction(addressSpace, limitCount, type);
       break;
-  case MACRO_CHECK:
-      name = cfg_.getNameOfLimitCheckMacro(addressSpace, limitCount);
+  case CHECK_CHECK:
+      name = cfg_.getNameOfLimitCheckFunction(addressSpace, limitCount, type);
       break;
   default:
       assert(0);
   }
 
-  retVal << name << "(" << type << ", " << addr << ", " << size;
+  retVal << name << "(" << addr << ", " << size;
 
   if (limits.hasStaticallyAllocatedLimits()) {
-    retVal << ", " << cfg_.getStaticLimitRef(addressSpace);
+      retVal << ", " << cfg_.getStaticLimitRef(addressSpace, "(" + type + ")");
   }
 
   for (AddressSpaceLimits::LimitList::iterator i = limits.getDynamicLimits().begin();
        i != limits.getDynamicLimits().end(); i++) {
-    retVal << ", " << cfg_.getDynamicLimitRef(*i);
+      retVal << ", " << cfg_.getDynamicLimitRef(*i, "(" + type + ")");
   }
 
-  if (kind == MACRO_CLAMP) {
-      retVal << ", " << cfg_.getNameOfAddressSpaceNullPtrRef(addressSpace);
+  if (kind == CHECK_CLAMP) {
+      retVal << ", (" << type << ")" << cfg_.getNameOfAddressSpaceNullPtrRef(addressSpace);
   }
   retVal << ")";
 
-  // add macro implementations afterwards
-  usedClampMacros_.insert(ClampMacroKey(limits.getAddressSpace(), limitCount));
+  // add function implementations afterwards
+  usedClampFunctions_.insert(ClampFunctionKey(limits.getAddressSpace(), limitCount, type));
   
   return retVal.str();
 }
@@ -1271,7 +1271,7 @@ namespace {
     };
 }
 
-std::string WebCLTransformer::getClampMacroExpression(clang::Expr *access, unsigned size, AddressSpaceLimits &limits)
+std::string WebCLTransformer::getClampFunctionExpression(clang::Expr *access, unsigned size, AddressSpaceLimits &limits)
 {
     BaseIndexField     bif(access);
     clang::SourceRange baseRange = clang::SourceRange(bif.base->getLocStart(), bif.base->getLocEnd());
@@ -1287,7 +1287,7 @@ std::string WebCLTransformer::getClampMacroExpression(clang::Expr *access, unsig
     }
   
     // trust limits given in parameter or check against all limits
-    std::string macro = getCheckMacroCall(MACRO_CLAMP, memAddress.str(), bif.base->getType().getAsString(), size, limits);
+    std::string macro = getCheckFunctionCall(CHECK_CLAMP, memAddress.str(), bif.base->getType().getAsString(), size, limits);
 
     std::stringstream retVal;
     retVal << "(*(" << macro  << "))";
@@ -1300,7 +1300,7 @@ std::string WebCLTransformer::getClampMacroExpression(clang::Expr *access, unsig
 
 void WebCLTransformer::addMemoryAccessCheck(clang::Expr *access, unsigned size, AddressSpaceLimits &limits)
 {
-  std::string retVal = getClampMacroExpression(access, size, limits);
+  std::string retVal = getClampFunctionExpression(access, size, limits);
   
   DEBUG(
     std::cerr << "Creating memcheck for: " << original
@@ -1509,49 +1509,59 @@ void WebCLTransformer::emitGeneralCode(std::ostream &out)
     out << "\n" << generalClContents << "\n";
 }
 
-void WebCLTransformer::emitLimitMacros(std::ostream &out)
+void WebCLTransformer::emitLimitFunctions(std::ostream &out)
 {
-    for (RequiredMacroSet::iterator i = usedClampMacros_.begin();
-         i != usedClampMacros_.end(); i++) {
-      
-      out << getWclAddrCheckMacroDefinition(i->first, i->second) << "\n";
+    for (RequiredFunctionSet::iterator i = usedClampFunctions_.begin();
+         i != usedClampFunctions_.end(); i++) {
+      out << getWclAddrCheckFunctionDefinition(*i) << "\n";
     }
 
     out << "\n";
 }
 
-std::string WebCLTransformer::getWclAddrCheckMacroDefinition(unsigned aSpaceNum,
-                                                             unsigned limitCount)
+std::string WebCLTransformer::getWclAddrCheckFunctionDefinition(ClampFunctionKey clamp)
 {
+    unsigned aSpaceNum = std::tr1::get<0>(clamp);
+    unsigned limitCount = std::tr1::get<1>(clamp);
+    std::string type = std::tr1::get<2>(clamp);
+
     std::stringstream retVal;
-    std::stringstream retValPostfix;
-    std::stringstream limitCheckArgs;
-    limitCheckArgs << "type, addr, size";
+    std::stringstream limitCheckDeclArgs;
+    std::stringstream limitCheckCallArgs;
+    limitCheckDeclArgs << type << "addr, unsigned size";
+    limitCheckCallArgs << "addr, size";
     for (unsigned i = 0; i < limitCount; i++) {
-	limitCheckArgs << ", min" << i << ", max" << i;
+	limitCheckDeclArgs << ", " << type << " min" << i << ", " << type << " max" << i;
+	limitCheckCallArgs << ", min" << i << ", max" << i;
     }
-    retVal  << "#define " << cfg_.getNameOfLimitCheckMacro(aSpaceNum, limitCount)
-	    << "(" << limitCheckArgs.str() << ") \\\n"
-	    << cfg_.getIndentation(1) << "( 0\\\n";
-  
+
+    retVal << "bool " << cfg_.getNameOfLimitCheckFunction(aSpaceNum, limitCount, type)
+           << "(" << limitCheckDeclArgs.str() << ")\n"
+           << "{\n"
+           << cfg_.getIndentation(1) << "  return 0";
+
     // at least one of the limits must match
     for (unsigned i = 0; i < limitCount; i++) {
-	retVal << cfg_.getIndentation(i + 1) << "|| "
+	retVal << "\n" << cfg_.getIndentation(2) << "|| "
 	       << "( "
-	       << "((addr) >= ((type)min" << i << "))"
+	       << "((addr) >= (min" << i << "))"
 	       << " && "
-	       << "((addr + size - 1) <= " << cfg_.getNameOfLimitMacro() << "(type, max" << i << "))"
-	       << " ) \\\n";
+	       << "((addr + size - 1) <= " << cfg_.getNameOfLimitMacro() << "(" << type << ", max" << i << "))"
+	       << " )";
     }
+    retVal << ";\n"
+           << "}\n";
   
-    retVal << cfg_.getIndentation(limitCount + 1) << retValPostfix.str() << " )\n";
-
-    // define clamping macro in terms of the checking macro
-    retVal  << "#define " << cfg_.getNameOfLimitClampMacro(aSpaceNum, limitCount)
-	    << "(" << limitCheckArgs.str() << ", asnull) \\\n"
-	    << cfg_.getIndentation(1) << "( "
-	    << cfg_.getNameOfLimitCheckMacro(aSpaceNum, limitCount) 
-	    << "(" << limitCheckArgs.str() << ") ? (addr) : (type)(asnull))\n";
+    // define clamping function in terms of the checking function
+    retVal << type
+           << cfg_.getNameOfLimitClampFunction(aSpaceNum, limitCount, type)
+           << "(" << limitCheckDeclArgs.str() << ", " << type << " asnull)\n"
+           << "{\n"
+           << cfg_.getIndentation(1)
+           << " return "
+           << cfg_.getNameOfLimitCheckFunction(aSpaceNum, limitCount, type) 
+           << "(" << limitCheckCallArgs.str() << ") ? addr : asnull;\n"
+           << "}\n";
   
     return retVal.str();
 }
@@ -1561,8 +1571,8 @@ void WebCLTransformer::emitPrologue(std::ostream &out)
     out << preModulePrologue_.str();
     out << modulePrologue_.str();
     emitGeneralCode(out);
-    emitLimitMacros(out);
-    out << afterLimitMacros_.str();
+    emitLimitFunctions(out);
+    out << afterLimitFunctions_.str();
 }
 
 void WebCLTransformer::emitTypeNullInitialization(
@@ -1618,9 +1628,9 @@ bool WebCLTransformer::wrapFunctionCall(std::string wrapperName, clang::CallExpr
                     wclRewriter_);
 
             if (result.doWrap_) {
-                afterLimitMacros_ << wrappedDeclaration(instance_, result.returnTypeStr_, expr, wrapperName) << "\n";
+                afterLimitFunctions_ << wrappedDeclaration(instance_, result.returnTypeStr_, expr, wrapperName) << "\n";
 
-                afterLimitMacros_ << "{\n" << result.body_ << "}\n";
+                afterLimitFunctions_ << "{\n" << result.body_ << "}\n";
 
                 changeFunctionCallee(expr, wrapperName);
                 addRecordArgument(expr);

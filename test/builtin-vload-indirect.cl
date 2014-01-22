@@ -17,15 +17,15 @@ __kernel void builtin_wrappers(__global char *output,
     }
 
     offset = 0;
-    // CHECK: float4 r1 = _wcl_vload4_0(_wcl_allocs, _wcl_locals._wcl_offset, ((*(_WCL_ADDR_CLAMP_private_1(__global float **, (_wcl_allocs->pa._wcl_ptr), 1, &_wcl_allocs->pa, (&_wcl_allocs->pa + 1), _wcl_allocs->pn)))));
+    // CHECK: float4 r1 = _wcl_vload4_0(_wcl_allocs, _wcl_locals._wcl_offset,
     float4 r1 = vload4(offset, (*ptr));
 
     offset = 1;
-    // CHECK: float4 r2 = _wcl_vload4_1(_wcl_allocs, _wcl_locals._wcl_offset, ((*(_WCL_ADDR_CLAMP_private_1(__global float **, (_wcl_allocs->pa._wcl_ptr), 1, &_wcl_allocs->pa, (&_wcl_allocs->pa + 1), _wcl_allocs->pn)))));
+    // CHECK: float4 r2 = _wcl_vload4_1(_wcl_allocs, _wcl_locals._wcl_offset,
     float4 r2 = vload4(offset, (*ptr));
 
     offset = 2;
-    // CHECK: float4 r3 = _wcl_vload4_2(_wcl_allocs, _wcl_locals._wcl_offset, ((*(_WCL_ADDR_CLAMP_private_1(__global float **, (_wcl_allocs->pa._wcl_ptr), 1, &_wcl_allocs->pa, (&_wcl_allocs->pa + 1), _wcl_allocs->pn)))));
+    // CHECK: float4 r3 = _wcl_vload4_2(_wcl_allocs, _wcl_locals._wcl_offset,
     float4 r3 = vload4(offset, (*ptr));
 
     output[0] = r1.x;
