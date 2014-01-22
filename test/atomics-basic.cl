@@ -5,24 +5,24 @@
 // check only one return argument per argument length, per argument type and per address space
 
 // long global
-// CHECK: return atomic_add(_WCL_ADDR_CLAMP_global_3(volatile __global long *, arg0, 1, _wcl_allocs->gl.atoms__global_long_data_min, _wcl_allocs->gl.atoms__global_long_data_max, _wcl_allocs->gl.atoms__global_ulong_data_min, _wcl_allocs->gl.atoms__global_ulong_data_max, _wcl_allocs->gl.atoms__global_float_data_min, _wcl_allocs->gl.atoms__global_float_data_max, _wcl_allocs->gn), arg1);
-// CHECK: return atomic_inc(_WCL_ADDR_CLAMP_global_3(volatile __global long *, arg0, 1, _wcl_allocs->gl.atoms__global_long_data_min, _wcl_allocs->gl.atoms__global_long_data_max, _wcl_allocs->gl.atoms__global_ulong_data_min, _wcl_allocs->gl.atoms__global_ulong_data_max, _wcl_allocs->gl.atoms__global_float_data_min, _wcl_allocs->gl.atoms__global_float_data_max, _wcl_allocs->gn));
-// CHECK: return atomic_cmpxchg(_WCL_ADDR_CLAMP_global_3(volatile __global long *, arg0, 1, _wcl_allocs->gl.atoms__global_long_data_min, _wcl_allocs->gl.atoms__global_long_data_max, _wcl_allocs->gl.atoms__global_ulong_data_min, _wcl_allocs->gl.atoms__global_ulong_data_max, _wcl_allocs->gl.atoms__global_float_data_min, _wcl_allocs->gl.atoms__global_float_data_max, _wcl_allocs->gn), arg1, arg2);
+// CHECK: return atomic_add(_
+// CHECK: return atomic_inc(_
+// CHECK: return atomic_cmpxchg(_
 
 // ulong global
-// CHECK: return atomic_add(_WCL_ADDR_CLAMP_global_3(volatile __global ulong *, arg0, 1, _wcl_allocs->gl.atoms__global_long_data_min, _wcl_allocs->gl.atoms__global_long_data_max, _wcl_allocs->gl.atoms__global_ulong_data_min, _wcl_allocs->gl.atoms__global_ulong_data_max, _wcl_allocs->gl.atoms__global_float_data_min, _wcl_allocs->gl.atoms__global_float_data_max, _wcl_allocs->gn), arg1);
-// CHECK: return atomic_inc(_WCL_ADDR_CLAMP_global_3(volatile __global ulong *, arg0, 1, _wcl_allocs->gl.atoms__global_long_data_min, _wcl_allocs->gl.atoms__global_long_data_max, _wcl_allocs->gl.atoms__global_ulong_data_min, _wcl_allocs->gl.atoms__global_ulong_data_max, _wcl_allocs->gl.atoms__global_float_data_min, _wcl_allocs->gl.atoms__global_float_data_max, _wcl_allocs->gn));
-// CHECK: return atomic_cmpxchg(_WCL_ADDR_CLAMP_global_3(volatile __global ulong *, arg0, 1, _wcl_allocs->gl.atoms__global_long_data_min, _wcl_allocs->gl.atoms__global_long_data_max, _wcl_allocs->gl.atoms__global_ulong_data_min, _wcl_allocs->gl.atoms__global_ulong_data_max, _wcl_allocs->gl.atoms__global_float_data_min, _wcl_allocs->gl.atoms__global_float_data_max, _wcl_allocs->gn), arg1, arg2);
+// CHECK: return atomic_add(_
+// CHECK: return atomic_inc(_
+// CHECK: return atomic_cmpxchg(_
 
 // long local
-// CHECK: return atomic_add(_WCL_ADDR_CLAMP_local_3(volatile __local long *, arg0, 1, _wcl_allocs->ll.atoms__local_long_data_min, _wcl_allocs->ll.atoms__local_long_data_max, _wcl_allocs->ll.atoms__local_ulong_data_min, _wcl_allocs->ll.atoms__local_ulong_data_max, _wcl_allocs->ll.atoms__local_float_data_min, _wcl_allocs->ll.atoms__local_float_data_max, _wcl_allocs->ln), arg1);
-// CHECK: return atomic_inc(_WCL_ADDR_CLAMP_local_3(volatile __local long *, arg0, 1, _wcl_allocs->ll.atoms__local_long_data_min, _wcl_allocs->ll.atoms__local_long_data_max, _wcl_allocs->ll.atoms__local_ulong_data_min, _wcl_allocs->ll.atoms__local_ulong_data_max, _wcl_allocs->ll.atoms__local_float_data_min, _wcl_allocs->ll.atoms__local_float_data_max, _wcl_allocs->ln));
-// CHECK: return atomic_cmpxchg(_WCL_ADDR_CLAMP_local_3(volatile __local long *, arg0, 1, _wcl_allocs->ll.atoms__local_long_data_min, _wcl_allocs->ll.atoms__local_long_data_max, _wcl_allocs->ll.atoms__local_ulong_data_min, _wcl_allocs->ll.atoms__local_ulong_data_max, _wcl_allocs->ll.atoms__local_float_data_min, _wcl_allocs->ll.atoms__local_float_data_max, _wcl_allocs->ln), arg1, arg2);
+// CHECK: return atomic_add(_
+// CHECK: return atomic_inc(_
+// CHECK: return atomic_cmpxchg(_
 
 // ulong local
-// CHECK: return atomic_add(_WCL_ADDR_CLAMP_local_3(volatile __local ulong *, arg0, 1, _wcl_allocs->ll.atoms__local_long_data_min, _wcl_allocs->ll.atoms__local_long_data_max, _wcl_allocs->ll.atoms__local_ulong_data_min, _wcl_allocs->ll.atoms__local_ulong_data_max, _wcl_allocs->ll.atoms__local_float_data_min, _wcl_allocs->ll.atoms__local_float_data_max, _wcl_allocs->ln), arg1);
-// CHECK: return atomic_inc(_WCL_ADDR_CLAMP_local_3(volatile __local ulong *, arg0, 1, _wcl_allocs->ll.atoms__local_long_data_min, _wcl_allocs->ll.atoms__local_long_data_max, _wcl_allocs->ll.atoms__local_ulong_data_min, _wcl_allocs->ll.atoms__local_ulong_data_max, _wcl_allocs->ll.atoms__local_float_data_min, _wcl_allocs->ll.atoms__local_float_data_max, _wcl_allocs->ln));
-// CHECK: return atomic_cmpxchg(_WCL_ADDR_CLAMP_local_3(volatile __local ulong *, arg0, 1, _wcl_allocs->ll.atoms__local_long_data_min, _wcl_allocs->ll.atoms__local_long_data_max, _wcl_allocs->ll.atoms__local_ulong_data_min, _wcl_allocs->ll.atoms__local_ulong_data_max, _wcl_allocs->ll.atoms__local_float_data_min, _wcl_allocs->ll.atoms__local_float_data_max, _wcl_allocs->ln), arg1, arg2);
+// CHECK: return atomic_add(_
+// CHECK: return atomic_inc(_
+// CHECK: return atomic_cmpxchg(_
 
 __kernel void atoms(volatile __global long* global_long_data, volatile __local long* local_long_data,
                       volatile __global ulong* global_ulong_data, volatile __local ulong* local_ulong_data,

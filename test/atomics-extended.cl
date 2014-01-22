@@ -5,16 +5,16 @@
 // check only one return argument per argument length, per argument type and per address space
 
 // int global
-// CHECK: return atomic_min(_WCL_ADDR_CLAMP_global_3(volatile __global int *, arg0, 1, _wcl_allocs->gl.atoms__global_int_data_min, _wcl_allocs->gl.atoms__global_int_data_max, _wcl_allocs->gl.atoms__global_uint_data_min, _wcl_allocs->gl.atoms__global_uint_data_max, _wcl_allocs->gl.atoms__global_float_data_min, _wcl_allocs->gl.atoms__global_float_data_max, _wcl_allocs->gn), arg1);
+// CHECK: return atomic_min(_
 
 // uint global
-// CHECK: return atomic_min(_WCL_ADDR_CLAMP_global_3(volatile __global uint *, arg0, 1, _wcl_allocs->gl.atoms__global_int_data_min, _wcl_allocs->gl.atoms__global_int_data_max, _wcl_allocs->gl.atoms__global_uint_data_min, _wcl_allocs->gl.atoms__global_uint_data_max, _wcl_allocs->gl.atoms__global_float_data_min, _wcl_allocs->gl.atoms__global_float_data_max, _wcl_allocs->gn), arg1);
+// CHECK: return atomic_min(_
 
 // int local
-// CHECK: return atomic_min(_WCL_ADDR_CLAMP_local_3(volatile __local int *, arg0, 1, _wcl_allocs->ll.atoms__local_int_data_min, _wcl_allocs->ll.atoms__local_int_data_max, _wcl_allocs->ll.atoms__local_uint_data_min, _wcl_allocs->ll.atoms__local_uint_data_max, _wcl_allocs->ll.atoms__local_float_data_min, _wcl_allocs->ll.atoms__local_float_data_max, _wcl_allocs->ln), arg1);
+// CHECK: return atomic_min(_
 
 // uint local
-// CHECK: return atomic_min(_WCL_ADDR_CLAMP_local_3(volatile __local uint *, arg0, 1, _wcl_allocs->ll.atoms__local_int_data_min, _wcl_allocs->ll.atoms__local_int_data_max, _wcl_allocs->ll.atoms__local_uint_data_min, _wcl_allocs->ll.atoms__local_uint_data_max, _wcl_allocs->ll.atoms__local_float_data_min, _wcl_allocs->ll.atoms__local_float_data_max, _wcl_allocs->ln), arg1);
+// CHECK: return atomic_min(_
 
 __kernel void atoms(volatile __global int* global_int_data, volatile __local int* local_int_data,
                       volatile __global uint* global_uint_data, volatile __local uint* local_uint_data,
