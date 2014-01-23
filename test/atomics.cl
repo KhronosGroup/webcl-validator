@@ -3,30 +3,30 @@
 // check only one return argument per argument length, per argument type and per address space
 
 // int global
-// CHECK: return atomic_add(_
-// CHECK: return atomic_inc(_
-// CHECK: return atomic_cmpxchg(_
+// CHECK-DAG: return atomic_add(_
+// CHECK-DAG: return atomic_inc(_
+// CHECK-DAG: return atomic_cmpxchg(_
 
 // uint global
-// CHECK: atomic_add(_
-// CHECK: return atomic_inc(_
-// CHECK: return atomic_cmpxchg(_
+// CHECK-DAG: atomic_add(_
+// CHECK-DAG: return atomic_inc(_
+// CHECK-DAG: return atomic_cmpxchg(_
 
 // int local
-// CHECK: return atomic_add(_
-// CHECK: return atomic_inc(_
-// CHECK: return atomic_cmpxchg(_
+// CHECK-DAG: return atomic_add(_
+// CHECK-DAG: return atomic_inc(_
+// CHECK-DAG: return atomic_cmpxchg(_
 
 // uint local
-// CHECK: return atomic_add(_
-// CHECK: return atomic_inc(_
-// CHECK: return atomic_cmpxchg(_
+// CHECK-DAG: return atomic_add(_
+// CHECK-DAG: return atomic_inc(_
+// CHECK-DAG: return atomic_cmpxchg(_
 
 // float global
-// CHECK: return atomic_xchg(_
+// CHECK-DAG: return atomic_xchg(_
 
 // float local
-// CHECK: return atomic_xchg(_
+// CHECK-DAG: return atomic_xchg(_
 
 __kernel void atomics(volatile __global int* global_int_data, volatile __local int* local_int_data,
                       volatile __global uint* global_uint_data, volatile __local uint* local_uint_data,
