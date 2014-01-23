@@ -5,9 +5,9 @@
 
 // CHECK-NOT: error: WebCL doesn't support enabling 'cl_khr_fp64' extension.
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
-// CHECK: error: WebCL doesn't support enabling 'cl_khr_int64_base_atomics' extension.
+// CHECK-NOT: error: WebCL doesn't support enabling 'cl_khr_int64_base_atomics' extension.
 #pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable
-// CHECK: error: WebCL doesn't support enabling 'cl_khr_int64_extended_atomics' extension.
+// CHECK-NOT: error: WebCL doesn't support enabling 'cl_khr_int64_extended_atomics' extension.
 #pragma OPENCL EXTENSION cl_khr_int64_extended_atomics : enable
 // CHECK-NOT: error: WebCL doesn't support enabling 'cl_khr_fp16' extension.
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable

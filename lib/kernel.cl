@@ -669,6 +669,46 @@ void barrier (cl_mem_fence_flags flags);
   double4  _CL_OVERLOADABLE NAME(double4 , double4 , double4 );         \
   double8  _CL_OVERLOADABLE NAME(double8 , double8 , double8 );         \
   double16 _CL_OVERLOADABLE NAME(double16, double16, double16);)
+#define _CL_DECLARE_FUNC_V_VVPVI(NAME)                                  \
+  float    _CL_OVERLOADABLE NAME(float   , float   , __local int *);    \
+  float2   _CL_OVERLOADABLE NAME(float2  , float2  , __local int2 *);   \
+  float3   _CL_OVERLOADABLE NAME(float3  , float3  , __local int3 *);   \
+  float4   _CL_OVERLOADABLE NAME(float4  , float4  , __local int4 *);   \
+  float8   _CL_OVERLOADABLE NAME(float8  , float8  , __local int8 *);   \
+  float16  _CL_OVERLOADABLE NAME(float16 , float16 , __local int16 *);  \
+  __IF_FP64(                                                             \
+  double   _CL_OVERLOADABLE NAME(double  , double  , __local int *);    \
+  double2  _CL_OVERLOADABLE NAME(double2 , double2 , __local int2 *);   \
+  double3  _CL_OVERLOADABLE NAME(double3 , double3 , __local int3 *);   \
+  double4  _CL_OVERLOADABLE NAME(double4 , double4 , __local int4 *);   \
+  double8  _CL_OVERLOADABLE NAME(double8 , double8 , __local int8 *);   \
+  double16 _CL_OVERLOADABLE NAME(double16, double16, __local int16 *);) \
+  float    _CL_OVERLOADABLE NAME(float   , float   , __private int *);    \
+  float2   _CL_OVERLOADABLE NAME(float2  , float2  , __private int2 *);   \
+  float3   _CL_OVERLOADABLE NAME(float3  , float3  , __private int3 *);   \
+  float4   _CL_OVERLOADABLE NAME(float4  , float4  , __private int4 *);   \
+  float8   _CL_OVERLOADABLE NAME(float8  , float8  , __private int8 *);   \
+  float16  _CL_OVERLOADABLE NAME(float16 , float16 , __private int16 *);  \
+  __IF_FP64(                                                             \
+  double   _CL_OVERLOADABLE NAME(double  , double  , __private int *);    \
+  double2  _CL_OVERLOADABLE NAME(double2 , double2 , __private int2 *);   \
+  double3  _CL_OVERLOADABLE NAME(double3 , double3 , __private int3 *);   \
+  double4  _CL_OVERLOADABLE NAME(double4 , double4 , __private int4 *);   \
+  double8  _CL_OVERLOADABLE NAME(double8 , double8 , __private int8 *);   \
+  double16 _CL_OVERLOADABLE NAME(double16, double16, __private int16 *);) \
+  float    _CL_OVERLOADABLE NAME(float   , float   , __global int *);    \
+  float2   _CL_OVERLOADABLE NAME(float2  , float2  , __global int2 *);   \
+  float3   _CL_OVERLOADABLE NAME(float3  , float3  , __global int3 *);   \
+  float4   _CL_OVERLOADABLE NAME(float4  , float4  , __global int4 *);   \
+  float8   _CL_OVERLOADABLE NAME(float8  , float8  , __global int8 *);   \
+  float16  _CL_OVERLOADABLE NAME(float16 , float16 , __global int16 *);  \
+  __IF_FP64(                                                             \
+  double   _CL_OVERLOADABLE NAME(double  , double  , __global int *);    \
+  double2  _CL_OVERLOADABLE NAME(double2 , double2 , __global int2 *);   \
+  double3  _CL_OVERLOADABLE NAME(double3 , double3 , __global int3 *);   \
+  double4  _CL_OVERLOADABLE NAME(double4 , double4 , __global int4 *);   \
+  double8  _CL_OVERLOADABLE NAME(double8 , double8 , __global int8 *);   \
+  double16 _CL_OVERLOADABLE NAME(double16, double16, __global int16 *);)
 #define _CL_DECLARE_FUNC_V_VVS(NAME)                            \
   float2   _CL_OVERLOADABLE NAME(float2  , float2  , float );   \
   float3   _CL_OVERLOADABLE NAME(float3  , float3  , float );   \
@@ -853,6 +893,66 @@ void barrier (cl_mem_fence_flags flags);
   double4  _CL_OVERLOADABLE NAME(double4 , __private double4 *);        \
   double8  _CL_OVERLOADABLE NAME(double8 , __private double8 *);        \
   double16 _CL_OVERLOADABLE NAME(double16, __private double16*);)
+#define _CL_DECLARE_FUNC_V_VPVI(NAME)                                   \
+  float    _CL_OVERLOADABLE NAME(float   , __global  int   *);          \
+  float2   _CL_OVERLOADABLE NAME(float2  , __global  int2  *);          \
+  float3   _CL_OVERLOADABLE NAME(float3  , __global  int3  *);          \
+  float4   _CL_OVERLOADABLE NAME(float4  , __global  int4  *);          \
+  float8   _CL_OVERLOADABLE NAME(float8  , __global  int8  *);          \
+  float16  _CL_OVERLOADABLE NAME(float16 , __global  int16 *);          \
+  __IF_FP64(                                                            \
+  double   _CL_OVERLOADABLE NAME(double  , __global  int  *);           \
+  double2  _CL_OVERLOADABLE NAME(double2 , __global  int2 *);           \
+  double3  _CL_OVERLOADABLE NAME(double3 , __global  int3 *);           \
+  double4  _CL_OVERLOADABLE NAME(double4 , __global  int4 *);           \
+  double8  _CL_OVERLOADABLE NAME(double8 , __global  int8 *);           \
+  double16 _CL_OVERLOADABLE NAME(double16, __global  int16*);)          \
+  float    _CL_OVERLOADABLE NAME(float   , __local   int *);            \
+  float2   _CL_OVERLOADABLE NAME(float2  , __local   int2 *);           \
+  float3   _CL_OVERLOADABLE NAME(float3  , __local   int3 *);           \
+  float4   _CL_OVERLOADABLE NAME(float4  , __local   int4 *);           \
+  float8   _CL_OVERLOADABLE NAME(float8  , __local   int8 *);           \
+  float16  _CL_OVERLOADABLE NAME(float16 , __local   int16 *);          \
+  __IF_FP64(                                                            \
+  double   _CL_OVERLOADABLE NAME(double  , __local   int *);            \
+  double2  _CL_OVERLOADABLE NAME(double2 , __local   int2 *);           \
+  double3  _CL_OVERLOADABLE NAME(double3 , __local   int3 *);           \
+  double4  _CL_OVERLOADABLE NAME(double4 , __local   int4 *);           \
+  double8  _CL_OVERLOADABLE NAME(double8 , __local   int8 *);           \
+  double16 _CL_OVERLOADABLE NAME(double16, __local   int16 *);)         \
+  float    _CL_OVERLOADABLE NAME(float   , __private int *);            \
+  float2   _CL_OVERLOADABLE NAME(float2  , __private int2 *);           \
+  float3   _CL_OVERLOADABLE NAME(float3  , __private int3 *);           \
+  float4   _CL_OVERLOADABLE NAME(float4  , __private int4 *);           \
+  float8   _CL_OVERLOADABLE NAME(float8  , __private int8 *);           \
+  float16  _CL_OVERLOADABLE NAME(float16 , __private int16 *);          \
+  __IF_FP64(                                                            \
+  double   _CL_OVERLOADABLE NAME(double  , __private int *);            \
+  double2  _CL_OVERLOADABLE NAME(double2 , __private int2 *);           \
+  double3  _CL_OVERLOADABLE NAME(double3 , __private int3 *);           \
+  double4  _CL_OVERLOADABLE NAME(double4 , __private int4 *);           \
+  double8  _CL_OVERLOADABLE NAME(double8 , __private int8 *);           \
+  double16 _CL_OVERLOADABLE NAME(double16, __private int16 *);)
+#define _CL_DECLARE_FUNC_H_HPVI(NAME)                               \
+  __IF_FP16(                                                        \
+  half    _CL_OVERLOADABLE NAME(half   , __global  int   *);        \
+  half2   _CL_OVERLOADABLE NAME(half2  , __global  int2  *);        \
+  half3   _CL_OVERLOADABLE NAME(half3  , __global  int3  *);        \
+  half4   _CL_OVERLOADABLE NAME(half4  , __global  int4  *);        \
+  half8   _CL_OVERLOADABLE NAME(half8  , __global  int8  *);        \
+  half16  _CL_OVERLOADABLE NAME(half16 , __global  int16 *);        \
+  half    _CL_OVERLOADABLE NAME(half   , __local   int   *);        \
+  half2   _CL_OVERLOADABLE NAME(half2  , __local   int2  *);        \
+  half3   _CL_OVERLOADABLE NAME(half3  , __local   int3  *);        \
+  half4   _CL_OVERLOADABLE NAME(half4  , __local   int4  *);        \
+  half8   _CL_OVERLOADABLE NAME(half8  , __local   int8  *);        \
+  half16  _CL_OVERLOADABLE NAME(half16 , __local   int16 *);        \
+  half    _CL_OVERLOADABLE NAME(half   , __private int   *);        \
+  half2   _CL_OVERLOADABLE NAME(half2  , __private int2  *);        \
+  half3   _CL_OVERLOADABLE NAME(half3  , __private int3  *);        \
+  half4   _CL_OVERLOADABLE NAME(half4  , __private int4  *);        \
+  half8   _CL_OVERLOADABLE NAME(half8  , __private int8  *);        \
+  half16  _CL_OVERLOADABLE NAME(half16 , __private int16 *);)
 #define _CL_DECLARE_FUNC_V_SV(NAME)                     \
   float2   _CL_OVERLOADABLE NAME(float , float2  );     \
   float3   _CL_OVERLOADABLE NAME(float , float3  );     \
@@ -907,6 +1007,26 @@ void barrier (cl_mem_fence_flags flags);
   double _CL_OVERLOADABLE NAME(double4 );       \
   double _CL_OVERLOADABLE NAME(double8 );       \
   double _CL_OVERLOADABLE NAME(double16);)
+#define _CL_DECLARE_FUNC_H_HHPVI(NAME)                             \
+  __IF_FP16(                                                       \
+  half _CL_OVERLOADABLE NAME(half, half, __local int *);           \
+  half _CL_OVERLOADABLE NAME(half, half, __private int *);         \
+  half _CL_OVERLOADABLE NAME(half, half, __global int *);          \
+  half2 _CL_OVERLOADABLE NAME(half2, half2, __local int2 *);       \
+  half2 _CL_OVERLOADABLE NAME(half2, half2, __private int2 *);     \
+  half2 _CL_OVERLOADABLE NAME(half2, half2, __global int2 *);      \
+  half3 _CL_OVERLOADABLE NAME(half3, half3, __local int3 *);       \
+  half3 _CL_OVERLOADABLE NAME(half3, half3, __private int3 *);     \
+  half3 _CL_OVERLOADABLE NAME(half3, half3, __global int3 *);      \
+  half4 _CL_OVERLOADABLE NAME(half4, half4, __local int4 *);       \
+  half4 _CL_OVERLOADABLE NAME(half4, half4, __private int4 *);     \
+  half4 _CL_OVERLOADABLE NAME(half4, half4, __global int4 *);      \
+  half8 _CL_OVERLOADABLE NAME(half8, half8, __local int8 *);       \
+  half8 _CL_OVERLOADABLE NAME(half8, half8, __private int8 *);     \
+  half8 _CL_OVERLOADABLE NAME(half8, half8, __global int8 *);      \
+  half16 _CL_OVERLOADABLE NAME(half16, half16, __local int16 *);   \
+  half16 _CL_OVERLOADABLE NAME(half16, half16, __private int16 *); \
+  half16 _CL_OVERLOADABLE NAME(half16, half16, __global int16 *);)
 #define _CL_DECLARE_FUNC_S_VV(NAME)                     \
   float  _CL_OVERLOADABLE NAME(float   , float   );     \
   float  _CL_OVERLOADABLE NAME(float2  , float2  );     \
@@ -1530,7 +1650,16 @@ void barrier (cl_mem_fence_flags flags);
 
 // TODO: only declare these if used
 
-#define _CL_DECLARE_ATOMICS(MOD, TYPE)                                  \
+// special versions that allow to differentiate between cl_khr_fp16 and  cl_khr_fp64
+#define _CL_DECLARE_ATOMICS_BASIC(MOD, TYPE)    \
+  _CL_OVERLOADABLE TYPE atomic_add    (volatile MOD TYPE *p, TYPE val); \
+  _CL_OVERLOADABLE TYPE atomic_sub    (volatile MOD TYPE *p, TYPE val); \
+  _CL_OVERLOADABLE TYPE atomic_xchg   (volatile MOD TYPE *p, TYPE val); \
+  _CL_OVERLOADABLE TYPE atomic_inc    (volatile MOD TYPE *p);           \
+  _CL_OVERLOADABLE TYPE atomic_dec    (volatile MOD TYPE *p);           \
+  _CL_OVERLOADABLE TYPE atomic_cmpxchg(volatile MOD TYPE *p, TYPE cmp, TYPE val);
+  
+#define _CL_DECLARE_ATOMICS_EXTENDED(MOD, TYPE)                                  \
   _CL_OVERLOADABLE TYPE atomic_add    (volatile MOD TYPE *p, TYPE val); \
   _CL_OVERLOADABLE TYPE atomic_sub    (volatile MOD TYPE *p, TYPE val); \
   _CL_OVERLOADABLE TYPE atomic_xchg   (volatile MOD TYPE *p, TYPE val); \
@@ -1542,6 +1671,11 @@ void barrier (cl_mem_fence_flags flags);
   _CL_OVERLOADABLE TYPE atomic_and    (volatile MOD TYPE *p, TYPE val); \
   _CL_OVERLOADABLE TYPE atomic_or     (volatile MOD TYPE *p, TYPE val); \
   _CL_OVERLOADABLE TYPE atomic_xor    (volatile MOD TYPE *p, TYPE val);
+
+#define _CL_DECLARE_ATOMICS(MOD, TYPE)                                  \
+  _CL_DECLARE_ATOMICS_BASIC(MOD, TYPE)                                  \
+  _CL_DECLARE_ATOMICS_EXTENDED(MOD, TYPE)
+
 _CL_DECLARE_ATOMICS(__global, int )
 _CL_DECLARE_ATOMICS(__global, uint)
 _CL_DECLARE_ATOMICS(__local , int )
@@ -1549,6 +1683,20 @@ _CL_DECLARE_ATOMICS(__local , uint)
 
 _CL_OVERLOADABLE float atomic_xchg(volatile __global float *p, float val);
 _CL_OVERLOADABLE float atomic_xchg(volatile __local  float *p, float val);
+
+// TODO: wrap behind #ifdef cl_khr_int64_base_atomics
+#  pragma OPENCL EXTENSION cl_khr_int64_base_atomics: enable
+_CL_DECLARE_ATOMICS_BASIC(__global, long )
+_CL_DECLARE_ATOMICS_BASIC(__global, ulong)
+_CL_DECLARE_ATOMICS_BASIC(__local , long )
+_CL_DECLARE_ATOMICS_BASIC(__local , ulong)
+
+// TODO: wrap behind #ifdef cl_khr_int64_extended_atomics
+#  pragma OPENCL EXTENSION cl_khr_int64_extended_atomics: enable
+_CL_DECLARE_ATOMICS_EXTENDED(__global, long )
+_CL_DECLARE_ATOMICS_EXTENDED(__global, ulong)
+_CL_DECLARE_ATOMICS_EXTENDED(__local , long )
+_CL_DECLARE_ATOMICS_EXTENDED(__local , ulong)
 
 #define atom_add     atomic_add
 #define atom_sub     atomic_sub

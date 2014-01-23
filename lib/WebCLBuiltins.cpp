@@ -35,12 +35,6 @@ static const char *hashReplacements[] = {
 static const int numHashReplacements =
     sizeof(hashReplacements) / sizeof(hashReplacements[0]);
 
-static const char *unsafeMathBuiltins[] = {
-    "fract", "frexp", "lgamma_r", "modf", "remquo", "sincos"
-};
-static const int numUnsafeMathBuiltins =
-    sizeof(unsafeMathBuiltins) / sizeof(unsafeMathBuiltins[0]);
-
 static const char *unsafeVectorBuiltins[] = {
     "vload#", "vload_half", "vload_half#", "vloada_half#",
     "vstore#", "vstore_half", "vstore_half#", "vstorea_#", "vstorea_half#",
@@ -52,16 +46,6 @@ static const char *unsafeVectorBuiltins[] = {
 static const int numUnsafeVectorBuiltins =
     sizeof(unsafeVectorBuiltins) / sizeof(unsafeVectorBuiltins[0]);
 
-static const char *unsafeAtomicBuiltins[] = {
-    "atomic_add", "atomic_sub",
-    "atomic_inc", "atomic_dec",
-    "atomic_xchg", "atomic_cmpxchg",
-    "atomic_min", "atomic_max",
-    "atomic_and", "atomic_or", "atomic_xor"
-};
-static const int numUnsafeAtomicBuiltins =
-    sizeof(unsafeAtomicBuiltins) / sizeof(unsafeAtomicBuiltins[0]);
-
 static const char *unsupportedBuiltins[] = {
     "async_work_group_copy", "async_work_group_strided_copy",
     "wait_group_events", "prefetch"
@@ -70,7 +54,13 @@ static const int numUnsupportedBuiltins =
     sizeof(unsupportedBuiltins) / sizeof(unsupportedBuiltins[0]);
 
 static const char *safeBuiltins[] = {
-  "get_image_width", "get_image_height"
+    "get_image_width", "get_image_height",
+    "atomic_add", "atomic_sub",
+    "atomic_inc", "atomic_dec",
+    "atomic_xchg", "atomic_cmpxchg",
+    "atomic_min", "atomic_max",
+    "atomic_and", "atomic_or", "atomic_xor",
+    "fract", "frexp", "lgamma_r", "modf", "remquo", "sincos"
 };
 static const int numSafeBuiltins =
     sizeof(safeBuiltins) / sizeof(safeBuiltins[0]);
@@ -126,11 +116,13 @@ static struct {
     { "fmin", "_CL_DECLARE_FUNC_V_VS(fmin)\n" },
     { "fmod", "_CL_DECLARE_FUNC_V_VV(fmod)\n" },
     { "fract", "_CL_DECLARE_FUNC_V_VPV(fract)\n" },
+    { "frexp", "_CL_DECLARE_FUNC_V_VPVI(frexp)\n_CL_DECLARE_FUNC_H_HPVI(frexp)\n" },
     { "hypot", "_CL_DECLARE_FUNC_V_VV(hypot)\n" },
     { "ilogb", "_CL_DECLARE_FUNC_K_V(ilogb)\n" },
     { "ldexp", "_CL_DECLARE_FUNC_V_VJ(ldexp)\n" },
     { "ldexp", "_CL_DECLARE_FUNC_V_VI(ldexp)\n" },
     { "lgamma", "_CL_DECLARE_FUNC_V_V(lgamma)\n" },
+    { "lgamma_r", "_CL_DECLARE_FUNC_V_VPVI(lgamma_r)\n_CL_DECLARE_FUNC_H_HPVI(lgamma_r)\n" },
     { "log", "_CL_DECLARE_FUNC_V_V(log)\n" },
     { "log2", "_CL_DECLARE_FUNC_V_V(log2)\n" },
     { "log10", "_CL_DECLARE_FUNC_V_V(log10)\n" },
@@ -193,6 +185,7 @@ static struct {
     { "abs_diff", "_CL_DECLARE_FUNC_UG_GG(abs_diff)\n" },
     { "add_sat", "_CL_DECLARE_FUNC_G_GG(add_sat)\n" },
     { "hadd", "_CL_DECLARE_FUNC_G_GG(hadd)\n" },
+    { "remquo", "_CL_DECLARE_FUNC_V_VVPVI(remquo)\n_CL_DECLARE_FUNC_H_HHPVI(remquo)\n" },
     { "rhadd", "_CL_DECLARE_FUNC_G_GG(rhadd)\n" },
     { "clamp", "_CL_DECLARE_FUNC_G_GGG(clamp)\n" },
     { "clz", "_CL_DECLARE_FUNC_G_G(clz)\n" },
@@ -218,7 +211,9 @@ static struct {
     { "min", "_CL_DECLARE_FUNC_V_VS(min)\n" },
     { "mix", "_CL_DECLARE_FUNC_V_VVV(mix)\n" },
     { "mix", "_CL_DECLARE_FUNC_V_VVS(mix)\n" },
+    { "modf", "_CL_DECLARE_FUNC_V_VPV(modf)\n" },
     { "radians", "_CL_DECLARE_FUNC_V_V(radians)\n" },
+    { "sincos", "_CL_DECLARE_FUNC_V_VPV(sincos)\n" },
     { "step", "_CL_DECLARE_FUNC_V_VV(step)\n" },
     { "step", "_CL_DECLARE_FUNC_V_SV(step)\n" },
     { "smoothstep", "_CL_DECLARE_FUNC_V_VVV(smoothstep)\n" },
@@ -280,17 +275,13 @@ static const int numBuiltinDecls =
     sizeof(builtinDecls) / sizeof(builtinDecls[0]);
 
 WebCLBuiltins::WebCLBuiltins()
-    : unsafeMathBuiltins_()
-    , unsafeVectorBuiltins_()
-    , unsafeAtomicBuiltins_()
+    : unsafeVectorBuiltins_()
     , unsupportedBuiltins_()
     , safeBuiltins_()
     , roundingSuffixes_(roundingSuffixes, roundingSuffixes + numRoundingSuffixes)
     , vloadHalfDeclared(false)
 {
-    initialize(unsafeMathBuiltins_, unsafeMathBuiltins, numUnsafeMathBuiltins);
     initialize(unsafeVectorBuiltins_, unsafeVectorBuiltins, numUnsafeVectorBuiltins);
-    initialize(unsafeAtomicBuiltins_, unsafeAtomicBuiltins, numUnsafeAtomicBuiltins);
     initialize(unsupportedBuiltins_, unsupportedBuiltins, numUnsupportedBuiltins);
     initialize(safeBuiltins_, safeBuiltins, numSafeBuiltins);
 
@@ -312,9 +303,7 @@ bool WebCLBuiltins::isSafe(const std::string &builtin) const
 bool WebCLBuiltins::isUnsafe(const std::string &builtin) const
 {
     return
-        unsafeMathBuiltins_.count(builtin) ||
-        unsafeVectorBuiltins_.count(builtin) ||
-        unsafeAtomicBuiltins_.count(builtin);
+        unsafeVectorBuiltins_.count(builtin);
 }
 
 bool WebCLBuiltins::isUnsupported(const std::string &builtin) const

@@ -42,7 +42,7 @@ namespace {
     }
 
     template<typename Container, typename T>
-    Container addValue(const Container& list, T value)
+    Container operator+(const Container& list, T value)
     {
 	Container l(list);
 	l.push_back(value);
@@ -54,6 +54,7 @@ WebCLConfiguration::WebCLConfiguration()
     : typePrefix_("_Wcl")
     , variablePrefix_("_wcl")
     , macroPrefix_("_WCL")
+    , functionPrefix_("_wcl")
 
     , minSuffix_("min")
     , maxSuffix_("max")
@@ -98,9 +99,12 @@ WebCLConfiguration::WebCLConfiguration()
 
     , localRangeZeroingMacro_(macroPrefix_ + "_LOCAL_RANGE_INIT")
 
-    , dataWidths_(addValue(generateWidths(2, 16), 3))
-    // this may be a little bit ridiculous but at least we get a constant list initialized
-    , roundingModes_(addValue(addValue(addValue(addValue(StringList(), "rte"), "rtz"), "rtp"), "rtn"))
+    , dataWidths_(generateWidths(2, 16) + 3)
+    , roundingModes_(StringList() + "rte" + "rtz" + "rtp" + "rtn")
+
+    , atomicOperations1_(StringList() + "atomic_inc" + "atomic_dec")
+    , atomicOperations2_(StringList() + "atomic_add" + "atomic_sub" + "atomic_xchg" + "atomic_min" + "atomic_max" + "atomic_and" + "atomic_or" + "atomic_xor")
+    , atomicOperations3_(StringList() + "atomic_cmpxchg")
 
     , localVariableRenamer_(variablePrefix_ + "_", "_")
     , privateVariableRenamer_(variablePrefix_ + "_", "_")
@@ -154,19 +158,44 @@ const std::string WebCLConfiguration::getNameOfAddressSpaceNullPtrRef(unsigned a
     return prefix + privateNullField_;
 }
 
-const std::string WebCLConfiguration::getNameOfLimitClampMacro(
-    unsigned addressSpaceNum, int limitCount) const
+const std::string WebCLConfiguration::getIdentifierForString(std::string str) const
+{
+    std::string result;
+    for (unsigned c = 0; c < str.size(); ++c) {
+        switch (str[c]) {
+        case ' ': {
+            result += "__";
+        } break;
+        case '_': {
+            result += "_u";
+        } break;
+        case 'P': {
+            result += "PP";
+        } break;
+        case '*': {
+            result += "Ptr";
+        } break;
+        default:
+            result += str[c];
+        }
+    }
+    // no additional underscore at the end
+    return result;
+}
+
+const std::string WebCLConfiguration::getNameOfLimitClampFunction(
+    unsigned addressSpaceNum, int limitCount, std::string type) const
 {
     std::stringstream result;
-    result << macroPrefix_ << "_ADDR_CLAMP_" << getNameOfAddressSpace(addressSpaceNum) << "_" << limitCount;
+    result << functionPrefix_ << "_addr_clamp_" << getNameOfAddressSpace(addressSpaceNum) << "_" << limitCount << "_" << getIdentifierForString(type);
     return result.str();
 }
 
-const std::string WebCLConfiguration::getNameOfLimitCheckMacro(
-    unsigned addressSpaceNum, int limitCount) const
+const std::string WebCLConfiguration::getNameOfLimitCheckFunction(
+    unsigned addressSpaceNum, int limitCount, std::string type) const
 {
     std::stringstream result;
-    result << macroPrefix_ << "_ADDR_CHECK_" << getNameOfAddressSpace(addressSpaceNum) << "_" << limitCount;
+    result << functionPrefix_ << "_addr_check_" << getNameOfAddressSpace(addressSpaceNum) << "_" << limitCount << "_" << getIdentifierForString(type);
     return result.str();
 }
 
@@ -301,18 +330,18 @@ const std::string WebCLConfiguration::getIndentation(unsigned int levels) const
     return indentation;
 }
 
-const std::string WebCLConfiguration::getStaticLimitRef(unsigned addressSpaceNum) const
+const std::string WebCLConfiguration::getStaticLimitRef(unsigned addressSpaceNum, std::string cast) const
 {
     std::string prefix = addressSpaceRecordName_ + "->";
 
     switch (addressSpaceNum) {
     case clang::LangAS::opencl_constant:
         prefix += constantLimitsField_ + ".";
-        return prefix + constantMinField_ + ", " + prefix + constantMaxField_;
+        return cast + prefix + constantMinField_ + ", " + cast + prefix + constantMaxField_;
 
     case clang::LangAS::opencl_local:
         prefix += localLimitsField_ + ".";
-        return prefix + localMinField_ + ", " + prefix + localMaxField_;
+        return cast + prefix + localMinField_ + ", " + cast + prefix + localMaxField_;
 
     case clang::LangAS::opencl_global:
         assert(false && "There can't be static allocations in global address space.");
@@ -320,11 +349,11 @@ const std::string WebCLConfiguration::getStaticLimitRef(unsigned addressSpaceNum
 
     default:
         prefix += privatesField_;
-        return "&" + prefix + ", (&" + prefix + " + 1)";
+        return cast + "&" + prefix + ", " + cast + "(&" + prefix + " + 1)";
     }
 }
 
-const std::string WebCLConfiguration::getDynamicLimitRef(const clang::VarDecl *decl) const
+const std::string WebCLConfiguration::getDynamicLimitRef(const clang::VarDecl *decl, std::string cast) const
 {
     std::string prefix = addressSpaceRecordName_ + "->";
 
@@ -346,8 +375,8 @@ const std::string WebCLConfiguration::getDynamicLimitRef(const clang::VarDecl *d
     prefix += ".";
 
     std::stringstream retVal;
-    retVal << prefix << getNameOfLimitField(decl, false) << ", "
-           << prefix << getNameOfLimitField(decl, true);
+    retVal << cast << prefix << getNameOfLimitField(decl, false) << ", "
+           << cast << prefix << getNameOfLimitField(decl, true);
     return retVal.str();
 }
 

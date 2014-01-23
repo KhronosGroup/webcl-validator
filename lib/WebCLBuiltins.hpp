@@ -72,12 +72,8 @@ private:
     /// example, 'vload#' is expanded to 'vload2' - 'vload16'.
     void initialize(BuiltinNames &names, const char *patterns[], int numPatterns);
 
-    /// The pointer argument points to a single element.
-    BuiltinNames unsafeMathBuiltins_;
     /// The pointer argument points to an element array.
     BuiltinNames unsafeVectorBuiltins_;
-    /// The pointer argument points to an (unsigned) integer.
-    BuiltinNames unsafeAtomicBuiltins_;
     /// Calling is never allowed.
     BuiltinNames unsupportedBuiltins_;
     /// Calling is always safe for these, even if they have pointer

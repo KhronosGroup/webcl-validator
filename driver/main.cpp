@@ -140,6 +140,8 @@ int main(int argc, char const* argv[])
     extensions.push_back("cl_khr_fp64");
     extensions.push_back("cl_khr_fp16");
     extensions.push_back("cl_khr_gl_sharing");
+    extensions.push_back("cl_khr_int64_base_atomics");
+    extensions.push_back("cl_khr_int64_extended_atomics");
     extensions.push_back(0);
 
     // Parse user defines
