@@ -65,6 +65,24 @@ namespace {
     }
 }
 
+WebCLTransformer::ClampFunctionKey::ClampFunctionKey(unsigned aSpaceNum, unsigned limitCount, std::string type) :
+    aSpaceNum(aSpaceNum), limitCount(limitCount), type(type)
+{
+    // nothing
+}
+
+bool WebCLTransformer::ClampFunctionKey::operator<(const ClampFunctionKey& other) const
+{
+    return 
+        (aSpaceNum < other.aSpaceNum)   ? true :
+        (aSpaceNum > other.aSpaceNum)   ? false :
+        (limitCount < other.limitCount) ? true :
+        (limitCount > other.limitCount) ? false :
+        (type < other.type)             ? true :
+        (type > other.type)             ? false :
+        false;
+}
+
 class WebCLTransformer::FunctionCallWrapper {
 public:
     FunctionCallWrapper();
@@ -1521,45 +1539,41 @@ void WebCLTransformer::emitLimitFunctions(std::ostream &out)
 
 std::string WebCLTransformer::getWclAddrCheckFunctionDefinition(ClampFunctionKey clamp)
 {
-    unsigned aSpaceNum = std::tr1::get<0>(clamp);
-    unsigned limitCount = std::tr1::get<1>(clamp);
-    std::string type = std::tr1::get<2>(clamp);
-
     std::stringstream retVal;
     std::stringstream limitCheckDeclArgs;
     std::stringstream limitCheckCallArgs;
-    limitCheckDeclArgs << type << "addr, unsigned size";
+    limitCheckDeclArgs << clamp.type << "addr, unsigned size";
     limitCheckCallArgs << "addr, size";
-    for (unsigned i = 0; i < limitCount; i++) {
-	limitCheckDeclArgs << ", " << type << " min" << i << ", " << type << " max" << i;
+    for (unsigned i = 0; i < clamp.limitCount; i++) {
+	limitCheckDeclArgs << ", " << clamp.type << " min" << i << ", " << clamp.type << " max" << i;
 	limitCheckCallArgs << ", min" << i << ", max" << i;
     }
 
-    retVal << "bool " << cfg_.getNameOfLimitCheckFunction(aSpaceNum, limitCount, type)
+    retVal << "bool " << cfg_.getNameOfLimitCheckFunction(clamp.aSpaceNum, clamp.limitCount, clamp.type)
            << "(" << limitCheckDeclArgs.str() << ")\n"
            << "{\n"
            << cfg_.getIndentation(1) << "  return 0";
 
     // at least one of the limits must match
-    for (unsigned i = 0; i < limitCount; i++) {
+    for (unsigned i = 0; i < clamp.limitCount; i++) {
 	retVal << "\n" << cfg_.getIndentation(2) << "|| "
 	       << "( "
 	       << "((addr) >= (min" << i << "))"
 	       << " && "
-	       << "((addr + size - 1) <= " << cfg_.getNameOfLimitMacro() << "(" << type << ", max" << i << "))"
+	       << "((addr + size - 1) <= " << cfg_.getNameOfLimitMacro() << "(" << clamp.type << ", max" << i << "))"
 	       << " )";
     }
     retVal << ";\n"
            << "}\n";
   
     // define clamping function in terms of the checking function
-    retVal << type
-           << cfg_.getNameOfLimitClampFunction(aSpaceNum, limitCount, type)
-           << "(" << limitCheckDeclArgs.str() << ", " << type << " asnull)\n"
+    retVal << clamp.type
+           << cfg_.getNameOfLimitClampFunction(clamp.aSpaceNum, clamp.limitCount, clamp.type)
+           << "(" << limitCheckDeclArgs.str() << ", " << clamp.type << " asnull)\n"
            << "{\n"
            << cfg_.getIndentation(1)
            << " return "
-           << cfg_.getNameOfLimitCheckFunction(aSpaceNum, limitCount, type) 
+           << cfg_.getNameOfLimitCheckFunction(clamp.aSpaceNum, clamp.limitCount, clamp.type) 
            << "(" << limitCheckCallArgs.str() << ") ? addr : asnull;\n"
            << "}\n";
   
