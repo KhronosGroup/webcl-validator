@@ -33,7 +33,6 @@
 #include <set>
 #include <utility>
 #include <sstream>
-#include <tr1/tuple>
 
 namespace clang {
     class ArraySubscriptExpr;
@@ -294,10 +293,17 @@ private:
     /// Caches source code replacements.
     WebCLRewriter wclRewriter_;
   
-    /// Set of all different clamp macro call types in the program. One
-    /// pair for each address space and limit count:
-    /// <address space number, limit count>.
-    typedef std::tr1::tuple< unsigned, unsigned, std::string > ClampFunctionKey;
+    struct ClampFunctionKey {
+        ClampFunctionKey(unsigned = 0, unsigned = 0, std::string = "");
+
+        bool operator<(const ClampFunctionKey& other) const;
+
+        unsigned    aSpaceNum;
+        unsigned    limitCount;
+        std::string type;
+    };
+
+    /// Set of all different clamp macro call types in the program.
     typedef std::set<ClampFunctionKey> RequiredFunctionSet;
     RequiredFunctionSet usedClampFunctions_;
 
