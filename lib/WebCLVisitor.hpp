@@ -87,6 +87,8 @@ public:
     bool VisitDeclRefExpr(clang::DeclRefExpr *decl);
     /// \see clang::RecursiveASTVisitor::VisitForStmt
     bool VisitForStmt(clang::ForStmt *stmt);
+    /// \see clang::RecursiveASTVisitor::VisitGotoStmt
+    bool VisitGotoStmt(clang::GotoStmt *stmt);
   
 protected:
 
@@ -106,6 +108,7 @@ protected:
     virtual bool handleRecordDecl(clang::RecordDecl *decl);
     virtual bool handleDeclRefExpr(clang::DeclRefExpr *expr);
     virtual bool handleForStmt(clang::ForStmt *stmt);
+    virtual bool handleGotoStmt(clang::GotoStmt *stmt);
 };
 
 /// \brief Complains about WebCL limitations in OpenCL C code.
@@ -118,6 +121,9 @@ public:
 
     /// \see WebCLVisitor::handleParmVar
     virtual bool handleParmVarDecl(clang::ParmVarDecl *decl);
+
+    /// \see WebCLVisitor::handleGotoStmt
+    virtual bool handleGotoStmt(clang::GotoStmt *stmt);
 
 private:
 

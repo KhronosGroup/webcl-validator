@@ -112,6 +112,11 @@ bool WebCLVisitor::VisitForStmt(clang::ForStmt *stmt)
   return handleForStmt(stmt);
 }
 
+bool WebCLVisitor::VisitGotoStmt(clang::GotoStmt *stmt)
+{
+    return handleGotoStmt(stmt);
+}
+
 bool WebCLVisitor::handleTranslationUnitDecl(clang::TranslationUnitDecl *decl)
 {
     return true;
@@ -180,6 +185,10 @@ bool WebCLVisitor::handleForStmt(clang::ForStmt *stmt) {
   return true;
 }
 
+bool WebCLVisitor::handleGotoStmt(clang::GotoStmt *stmt) {
+  return true;
+}
+
 // WebCLRestrictor
 
 WebCLRestrictor::WebCLRestrictor(clang::CompilerInstance &instance)
@@ -222,6 +231,12 @@ bool WebCLRestrictor::handleParmVarDecl(clang::ParmVarDecl *decl)
     check3dImageParameter(function, typeLocation, type);
     checkUnsupportedBuiltinParameter(function, typeLocation, qualType);
     return true;
+}
+
+bool WebCLRestrictor::handleGotoStmt(clang::GotoStmt *stmt)
+{
+    error(stmt->getLocStart(), "WebCL does not support goto");
+    return false;
 }
 
 void WebCLRestrictor::checkStructureParameter(
