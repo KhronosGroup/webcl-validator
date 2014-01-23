@@ -51,7 +51,7 @@ namespace
 {
     bool collectSourceLocation(
         const clang::Diagnostic &info,
-        std::map<clang::FileID, std::shared_ptr<std::string> > &sources,
+        std::map<clang::FileID, std::tr1::shared_ptr<std::string> > &sources,
         WebCLDiag::Message &message)
     {
         clang::SourceLocation loc = info.getLocation();
@@ -71,7 +71,7 @@ namespace
             if (invalid)
                 return false;
 
-            sources[file] = std::shared_ptr<std::string>(new std::string(source));
+            sources[file] = std::tr1::shared_ptr<std::string>(new std::string(source));
         }
 
         message.source = sources[file];

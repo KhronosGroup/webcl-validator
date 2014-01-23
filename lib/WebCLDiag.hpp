@@ -24,7 +24,7 @@
 #include "clang/Basic/Diagnostic.h"
 
 #include <map>
-#include <memory>
+#include <tr1/memory>
 #include <string>
 #include <vector>
 
@@ -50,13 +50,13 @@ public:
         clang::DiagnosticsEngine::Level level;
         std::string text;
 
-        std::shared_ptr<std::string> source;
+        std::tr1::shared_ptr<std::string> source;
         std::string::size_type sourceOffset;
         std::string::size_type sourceLen;
 
         Message(clang::DiagnosticsEngine::Level level)
             : level(level)
-            , source(NULL), sourceOffset(std::string::npos), sourceLen(std::string::npos)
+            , source(), sourceOffset(std::string::npos), sourceLen(std::string::npos)
         {
         }
     };
@@ -65,5 +65,5 @@ public:
 
 private:
 
-    std::map<clang::FileID, std::shared_ptr<std::string> > sources;
+    std::map<clang::FileID, std::tr1::shared_ptr<std::string> > sources;
 };
