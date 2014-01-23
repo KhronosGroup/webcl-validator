@@ -82,7 +82,10 @@ void WebCLHelperFunctionHandler::run(clang::ASTContext &context)
     WebCLAnalyser::FunctionDeclSet &helperFunctions = analyser_.getHelperFunctions();
     for (WebCLAnalyser::FunctionDeclSet::iterator i = helperFunctions.begin();
         i != helperFunctions.end(); ++i) {
-            transformer_.addRecordParameter(*i);
+        if (!(*i)->hasBody()) {
+            error((*i)->getLocStart(), "All declared functions must be defined");
+        }
+        transformer_.addRecordParameter(*i);
     }
 
     // Go through all helper function calls and add allocation
@@ -90,7 +93,7 @@ void WebCLHelperFunctionHandler::run(clang::ASTContext &context)
     WebCLAnalyser::CallExprSet &internalCalls = analyser_.getInternalCalls();
     for (WebCLAnalyser::CallExprSet::iterator i = internalCalls.begin();
         i != internalCalls.end(); ++i) {
-            transformer_.addRecordArgument(*i);
+        transformer_.addRecordArgument(*i);
     }
 }
 
