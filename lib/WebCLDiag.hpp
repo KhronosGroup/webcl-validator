@@ -24,7 +24,6 @@
 #include "clang/Basic/Diagnostic.h"
 
 #include <map>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -50,13 +49,13 @@ public:
         clang::DiagnosticsEngine::Level level;
         std::string text;
 
-        std::shared_ptr<std::string> source;
+        std::string *source;
         std::string::size_type sourceOffset;
         std::string::size_type sourceLen;
 
         Message(clang::DiagnosticsEngine::Level level)
             : level(level)
-            , source(), sourceOffset(std::string::npos), sourceLen(std::string::npos)
+            , source(NULL), sourceOffset(std::string::npos), sourceLen(std::string::npos)
         {
         }
     };
@@ -65,5 +64,11 @@ public:
 
 private:
 
-    std::map<clang::FileID, std::shared_ptr<std::string> > sources;
+    bool collectSourceLocation(
+        const clang::Diagnostic &info,
+        WebCLDiag::Message &message);
+
+    int nextSourceID;
+    std::map<clang::FileID, int /* sourceID */> sourceIDs;
+    std::map<int /* sourceID */, std::string> sources;
 };

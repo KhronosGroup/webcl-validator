@@ -333,7 +333,7 @@ CLV_API extern "C" cl_bool CLV_CALL clvProgramLogMessageHasSource(
     if (n >= messages.size())
         return CL_FALSE;
 
-    return messages[n].source.get() != NULL;
+    return messages[n].source != NULL;
 }
 
 CLV_API extern "C" cl_long CLV_CALL clvGetProgramLogMessageSourceOffset(
