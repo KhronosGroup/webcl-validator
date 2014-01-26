@@ -82,9 +82,6 @@ void WebCLHelperFunctionHandler::run(clang::ASTContext &context)
     WebCLAnalyser::FunctionDeclSet &helperFunctions = analyser_.getHelperFunctions();
     for (WebCLAnalyser::FunctionDeclSet::iterator i = helperFunctions.begin();
         i != helperFunctions.end(); ++i) {
-        if (!(*i)->hasBody()) {
-            error((*i)->getLocStart(), "All declared functions must be defined");
-        }
         transformer_.addRecordParameter(*i);
     }
 
@@ -581,6 +578,15 @@ void WebCLFunctionCallHandler::run(clang::ASTContext &context)
 
     unsigned fnCounter = 0;
 
+    WebCLAnalyser::FunctionDeclSet &helperFunctions = analyser_.getHelperFunctions();
+    WebCLAnalyser::FunctionDeclSet withoutBody; // helper functions without body
+    for (WebCLAnalyser::FunctionDeclSet::iterator i = helperFunctions.begin();
+        i != helperFunctions.end(); ++i) {
+        if (!(*i)->hasBody()) {
+            withoutBody.insert(*i);
+        }
+    }
+
     for (WebCLAnalyser::CallExprSet::const_iterator builtinCallIt = builtinCalls.begin();
         builtinCallIt != builtinCalls.end();
         ++builtinCallIt) {
@@ -589,7 +595,10 @@ void WebCLFunctionCallHandler::run(clang::ASTContext &context)
 
     for (WebCLAnalyser::CallExprSet::const_iterator internalCallIt = internalCalls.begin();
         internalCallIt != internalCalls.end();
-        ++internalCallIt) {
+         ++internalCallIt) {
+        if (withoutBody.count((*internalCallIt)->getDirectCallee())) {
+            error((*internalCallIt)->getLocStart(), "All declared functions that are called must be defined");
+        }
         handle(*internalCallIt, false, fnCounter);
     }
 }

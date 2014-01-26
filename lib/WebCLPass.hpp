@@ -276,7 +276,7 @@ private:
     WebCLKernelHandler &kernelHandler_;
 };
 
-/// Generates memory access checks.
+/// Generates memory access checks and disallows calls to undeclared functions.
 class WebCLFunctionCallHandler : public WebCLPass
 {
 public:
