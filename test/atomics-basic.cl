@@ -5,24 +5,24 @@
 // check only one return argument per argument length, per argument type and per address space
 
 // long global
-// CHECK: return atomic_add(_
-// CHECK: return atomic_inc(_
-// CHECK: return atomic_cmpxchg(_
+// CHECK-DAG: return atomic_add(_
+// CHECK-DAG: return atomic_inc(_
+// CHECK-DAG: return atomic_cmpxchg(_
 
 // ulong global
-// CHECK: return atomic_add(_
-// CHECK: return atomic_inc(_
-// CHECK: return atomic_cmpxchg(_
+// CHECK-DAG: return atomic_add(_
+// CHECK-DAG: return atomic_inc(_
+// CHECK-DAG: return atomic_cmpxchg(_
 
 // long local
-// CHECK: return atomic_add(_
-// CHECK: return atomic_inc(_
-// CHECK: return atomic_cmpxchg(_
+// CHECK-DAG: return atomic_add(_
+// CHECK-DAG: return atomic_inc(_
+// CHECK-DAG: return atomic_cmpxchg(_
 
 // ulong local
-// CHECK: return atomic_add(_
-// CHECK: return atomic_inc(_
-// CHECK: return atomic_cmpxchg(_
+// CHECK-DAG: return atomic_add(_
+// CHECK-DAG: return atomic_inc(_
+// CHECK-DAG: return atomic_cmpxchg(_
 
 __kernel void atoms(volatile __global long* global_long_data, volatile __local long* local_long_data,
                       volatile __global ulong* global_ulong_data, volatile __local ulong* local_ulong_data,

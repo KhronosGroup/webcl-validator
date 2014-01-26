@@ -5,16 +5,16 @@
 // check only one return argument per argument length, per argument type and per address space
 
 // int global
-// CHECK: return atomic_min(_
+// CHECK-DAG: return atomic_min(_
 
 // uint global
-// CHECK: return atomic_min(_
+// CHECK-DAG: return atomic_min(_
 
 // int local
-// CHECK: return atomic_min(_
+// CHECK-DAG: return atomic_min(_
 
 // uint local
-// CHECK: return atomic_min(_
+// CHECK-DAG: return atomic_min(_
 
 __kernel void atoms(volatile __global int* global_int_data, volatile __local int* local_int_data,
                       volatile __global uint* global_uint_data, volatile __local uint* local_uint_data,
