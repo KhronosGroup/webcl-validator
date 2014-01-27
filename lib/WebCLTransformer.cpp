@@ -301,6 +301,19 @@ namespace {
 	std::string suffix_; // "f" or "i"
     };
 
+    class WriteImage: public WebCLTransformer::FunctionCallWrapper {
+    public:
+	WriteImage(std::string suffix);
+
+	std::string getName() const;
+	unsigned getNumArgs() const;
+
+	WrappedFunction wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, clang::CallExpr *callExpr, const ExprVector &arguments, WebCLKernelHandler &kernelHandler, WebCLRewriter &rewriter) const;
+
+    private:
+	std::string suffix_; // "f" or "i" or "ui"
+    };
+
     // GenericWrapper creates a generic wrapper for function with exactly pointer one argument (and possibly other
     // arguments)
     class GenericWrapper: public WebCLTransformer::FunctionCallWrapper {
@@ -525,6 +538,50 @@ namespace {
         return WrappedFunction();
     }
 
+    WriteImage::WriteImage(std::string suffix) :
+	suffix_(suffix)
+    {
+	// nothing
+    }
+
+    std::string WriteImage::getName() const
+    {
+	return "write_image" + suffix_;
+    }
+
+    unsigned WriteImage::getNumArgs() const
+    {
+	return 3;
+    }
+
+    WrappedFunction WriteImage::wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, clang::CallExpr *callExpr, const ExprVector &arguments, WebCLKernelHandler &kernelHandler, WebCLRewriter &rewriter) const
+    {
+	WebCLConfiguration cfg;
+
+	clang::Expr *imageArg = arguments[0];
+	clang::Expr *coordArg = arguments[1];
+
+	if (WebCLTypes::reduceType(instance, imageArg->getType()).getAsString() != "image2d_t") {
+	    transformer.error(arguments[1]->getLocStart(), "%0 argument number 1 must be image2d_t") << getName().c_str();
+	    return WrappedFunction();
+	}
+
+	if (WebCLTypes::reduceType(instance, coordArg->getType()).getAsString() != "int2") {
+	    transformer.error(arguments[1]->getLocStart(), "%0 argument number 1 must be int2") << getName().c_str();
+	    return WrappedFunction();
+	}
+
+	std::string indent = cfg.getIndentation(1);
+	std::string indent__ = cfg.getIndentation(2);
+	std::stringstream body;
+        body
+            << indent << "int2 size = get_image_dim(arg0);\n"
+            << indent << "if (arg1.x >= 0 && arg1.y >= 0 && arg1.x < size.x && arg1.y < size.y)\n"
+            << indent__ << getName() << "(arg0, arg1, arg2);\n";
+
+	return WrappedFunction("void", body.str());
+    }
+
     SamplerType::SamplerType()
     {
         // nothing
@@ -679,6 +736,9 @@ WebCLTransformer::WebCLTransformer(
     }
     functionWrappers_.push_back(new ReadImage("f"));
     functionWrappers_.push_back(new ReadImage("i"));
+    functionWrappers_.push_back(new WriteImage("f"));
+    functionWrappers_.push_back(new WriteImage("i"));
+    functionWrappers_.push_back(new WriteImage("ui"));
 
     addGenericWrappers(cfg_.atomicOperations1_, 1, 0);
     addGenericWrappers(cfg_.atomicOperations2_, 2, 0);
