@@ -316,7 +316,8 @@ void WebCLKernelHandler::run(clang::ASTContext &context)
             for (std::vector<WebCLAnalyser::KernelArgInfo>::const_iterator j = i->args.begin();
                 j != i->args.end(); ++j) {
                     const WebCLAnalyser::KernelArgInfo &parm = *j;
-                    if (parm.pointerKind != WebCLTypes::NOT_POINTER) {
+                    if (parm.pointerKind != WebCLTypes::NOT_POINTER &&
+                        parm.pointerKind != WebCLTypes::IMAGE_HANDLE) {
 
                         transformer_.addSizeParameter(parm.decl);
 

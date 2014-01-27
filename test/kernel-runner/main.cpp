@@ -31,6 +31,7 @@
 #include <vector>
 #include <iostream>
 #include <iterator>
+#include <iomanip>
 
 #include <cstring>
 
@@ -104,20 +105,47 @@ std::string readAllInput()
     return std::string(begin, end);
 }
 
-typedef struct { 
+struct CommandLineArg {
+    CommandLineArg() {}
+    virtual ~CommandLineArg() {}
+};
+
+struct ImageArg: public CommandLineArg {
+    ImageArg(int width, int height) : width(width), height(height)
+    {
+        // nothing
+    }
+
+    unsigned width;
+    unsigned height;
+};
+
+struct BufferArg: public CommandLineArg { 
+    BufferArg(int initType, int as, int size, int length, float init) : 
+      initType(initType), as(as), size(size), length(length), init(init)
+    {
+      // nothing
+    }
+
     int initType; 
     int as; 
     int size; 
     int length; 
-    float init; } BufferArg;
+    float init;
+};
 
 bool testSource(int id, cl_device_id device, std::string const& source, 
-    std::string &kernelName, int globalWorkSize, int loopCount, std::vector<BufferArg> &buffers, bool isTransformed, 
-    char* programOutput, bool debug, bool hasOutput)
+    std::string &kernelName, int globalWorkSize, int loopCount, std::vector<CommandLineArg*> &dataArguments, bool isTransformed, 
+    char* programOutput, bool debug, bool hasOutput, float*& imageOutput, size_t imageOutputDims[2])
 {
     using llvm::sys::TimeValue;
 
     cl_int ret = CL_SUCCESS;
+
+    /* used for determining which image buffer to copy back to imageOutput */
+    ImageArg* firstImageArg = 0;
+    cl_mem firstImageMem;
+    imageOutput = 0;
 
     // Create an OpenCL context
     cl_context context = clCreateContext(NULL, 1, &device, NULL, NULL, &ret);
@@ -172,44 +200,94 @@ bool testSource(int id, cl_device_id device, std::string const& source,
 
     TimeValue allocate_buffers_begin = TimeValue::now();
 
-    for (unsigned i = 0; i < buffers.size(); i++) {        
-        if (buffers[i].size == SCALAR) {
-            switch (buffers[i].initType) {
-            case 0:
-                args.appendInt((int)buffers[i].init);
-                break;
-            case 1:
-                args.appendFloat(buffers[i].init);
-                break;
-            default:
-                std::cerr << "Unhandled argument type: " << buffers[i].initType << std::endl;
-                return false;
-            }
-        } else {
-            if (buffers[i].as == 1) {
-                args.appendArray(buffers[i].size, NULL, buffers[i].length);
-            } else {
-                void *initBuffer = NULL;
-                switch(buffers[i].initType) {
+    for (unsigned i = 0; i < dataArguments.size(); i++) {
+        if (BufferArg* buffer = dynamic_cast<BufferArg*>(dataArguments[i])) {
+            if (buffer->size == SCALAR) {
+                switch (buffer->initType) {
                 case 0:
-                    initBuffer = &intInit[0];
+                    args.appendInt((int)buffer->init);
                     break;
                 case 1:
-                    initBuffer = &floatInit[0];
-                    break;
-                case 2:
-                    initBuffer = &ucharInit[0];
+                    args.appendFloat(buffer->init);
                     break;
                 default:
-                    std::cerr << "Unhandled buffer type: " << buffers[i].initType << std::endl;
+                    std::cerr << "Unhandled argument type: " << buffer->initType << std::endl;
                     return false;
                 }
-                cl_mem memBuf = clCreateBuffer(context, 
-                    CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR, 
-                    buffers[i].size, initBuffer, &ret);
-                cleanUpVec.push_back(memBuf);
-                args.appendArray(&memBuf, buffers[i].length);
-            }        
+            } else {
+                if (buffer->as == 1) {
+                    args.appendArray(buffer->size, NULL, buffer->length);
+                } else {
+                    void *initBuffer = NULL;
+                    switch(buffer->initType) {
+                    case 0:
+                        initBuffer = &intInit[0];
+                        break;
+                    case 1:
+                        initBuffer = &floatInit[0];
+                        break;
+                    case 2:
+                        initBuffer = &ucharInit[0];
+                        break;
+                    default:
+                        std::cerr << "Unhandled buffer type: " << buffer->initType << std::endl;
+                        return false;
+                    }
+                    cl_mem memBuf = clCreateBuffer(context, 
+                        CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR, 
+                        buffer->size, initBuffer, &ret);
+                    cleanUpVec.push_back(memBuf);
+                    args.appendArray(&memBuf, buffer->length);
+                }        
+            }
+        } else if (ImageArg* image = dynamic_cast<ImageArg*>(dataArguments[i])) {
+            cl_image_format format = { CL_RGBA, CL_FLOAT };
+            cl_image_desc desc = {
+              /* image_type        : */ CL_MEM_OBJECT_IMAGE2D,
+              /* image_width       : */ image->width,
+              /* image_height      : */ image->height,
+              /* image_depth       : */ 0,
+              /* image_array_size  : */ 0,
+              /* image_row_pitch   : */ 0,
+              /* image_slice_pitch : */ 0,
+              /* num_mip_levels    : */ 0,
+              /* num_samples       : */ 0,
+              /* buffer            : */ NULL
+            };
+            cl_mem imageMem = clCreateImage(context,
+                CL_MEM_WRITE_ONLY,
+                &format,
+                &desc,
+                NULL,
+                &ret);
+            if (imageMem == NULL) {
+                std::cerr << "Failed to create image. Error " << ret << "\n";
+            } else {
+                if (!firstImageArg) {
+                    firstImageArg = image;
+                    firstImageMem = imageMem;
+                }
+
+#if 0
+                // This code doesn't have the desired effect. However, leaving it here for assisting future endeavors in
+                // trying to make it work. The idea here is making sure the data is empty to begin with, to make tests
+                // deterministic.
+                size_t origin[3] = { 0, 0, 0 };
+                size_t region[3] = { image->width, image->height, 1 };
+                size_t elementsPerRow = 4 * image->width;
+                float* zeroedData = new float[elementsPerRow];
+                std::fill(zeroedData, zeroedData + elementsPerRow, 0);
+                ret = clEnqueueWriteImage(command_queue, imageMem, CL_TRUE,
+                    origin, region, 
+                    sizeof(float) * elementsPerRow, 0,
+                    zeroedData,
+                    0, NULL, NULL);
+                delete[] zeroedData;
+#endif
+
+                cleanUpVec.push_back(imageMem);
+                args.appendImage(imageMem);
+            }
         }
     }
 
@@ -251,6 +329,31 @@ bool testSource(int id, cl_device_id device, std::string const& source,
         ret = clFinish(command_queue);
         if (debug) std::cerr << "Reading retval.\n";
         ret = clEnqueueReadBuffer(command_queue, retBuf, CL_TRUE, 0, 1024, retVal, 0, NULL, NULL);
+        if (firstImageArg) {
+            size_t width;
+            size_t height;
+            size_t objSize;
+            ret = clGetImageInfo(firstImageMem, CL_IMAGE_WIDTH, sizeof(width), &width, &objSize);
+            ret = clGetImageInfo(firstImageMem, CL_IMAGE_HEIGHT, sizeof(height), &height, &objSize);
+            
+            size_t channels = 4;
+            imageOutput = new float[height * width * channels];
+            imageOutputDims[0] = width;
+            imageOutputDims[1] = height;
+
+            size_t origin[3] = { 0, 0, 0 };
+            size_t region[3] = { width, height, 1 };
+
+            ret = clEnqueueReadImage(command_queue,
+                firstImageMem, CL_TRUE,
+                origin, region,
+                sizeof(float) * width * channels, 0,
+                imageOutput,
+                0, NULL, NULL);
+            if (ret != CL_SUCCESS) {
+                std::cerr << "Failed to read image: " << ret << "\n";
+            }
+        }
         ret = clFinish(command_queue);
 
         if (id == 0) {
@@ -339,6 +442,8 @@ int main(int argc, char const* argv[])
     localBuffer.insert("--local");
     std::set<std::string> constantBuffer;
     constantBuffer.insert("--constant");
+    std::set<std::string> image;
+    image.insert("--image");
     std::set<std::string> gcount;
     gcount.insert("--gcount");
     std::set<std::string> nooutput;
@@ -348,7 +453,7 @@ int main(int argc, char const* argv[])
     std::set<std::string> loopcount;
     loopcount.insert("--loop");
 
-    std::vector<BufferArg> buffers;
+    std::vector<CommandLineArg*> dataArguments;
     std::string kernel = "test_kernel";
     bool useWebCL = false;
     bool printDebug = false;
@@ -404,16 +509,19 @@ int main(int argc, char const* argv[])
             kernel = argv[i+1];
             i++;
         } else if (globalBuffer.count(argv[i])) {
-            BufferArg buf = { atotype[argv[i+1]], 3, atotypesize[argv[i+1]] * atoi(argv[i+2]), atoi(argv[i+2]), 0 };
-            buffers.push_back(buf);
+            BufferArg buf(atotype[argv[i+1]], 3, atotypesize[argv[i+1]] * atoi(argv[i+2]), atoi(argv[i+2]), 0);
+            dataArguments.push_back(new BufferArg(buf));
             i+=2;
         } else if (constantBuffer.count(argv[i])) {
-            BufferArg buf = { atotype[argv[i+1]], 2, atotypesize[argv[i+1]] * atoi(argv[i+2]), atoi(argv[i+2]), 0 };
-            buffers.push_back(buf);
+            BufferArg buf(atotype[argv[i+1]], 2, atotypesize[argv[i+1]] * atoi(argv[i+2]), atoi(argv[i+2]), 0);
+            dataArguments.push_back(new BufferArg(buf));
             i+=2;
         } else if (localBuffer.count(argv[i])) {
-            BufferArg buf = { atotype[argv[i+1]], 1, atotypesize[argv[i+1]] * atoi(argv[i+2]), atoi(argv[i+2]), 0 };
-            buffers.push_back(buf);
+            BufferArg buf(atotype[argv[i+1]], 1, atotypesize[argv[i+1]] * atoi(argv[i+2]), atoi(argv[i+2]), 0);
+            dataArguments.push_back(new BufferArg(buf));
+            i+=2;
+        } else if (image.count(argv[i])) {
+            dataArguments.push_back(new ImageArg(atoi(argv[i + 1]), atoi(argv[i + 2])));
             i+=2;
         } else if (gcount.count(argv[i])) {
             globalWorkItemCount = atoi(argv[i+1]);
@@ -423,8 +531,8 @@ int main(int argc, char const* argv[])
         } else if (nooutput.count(argv[i])) {
             addOutput = false;
         } else if (scalar.count(argv[i])) {
-            BufferArg buf = { atotype[argv[i+1]], 0, SCALAR, 1, atof(argv[i+2]) };
-            buffers.push_back(buf);
+            BufferArg buf(atotype[argv[i+1]], 0, SCALAR, 1, atof(argv[i+2]));
+            dataArguments.push_back(new BufferArg(buf));
             i+=2;
         } else if (loopcount.count(argv[i])) {
             loopCount = atoi(argv[i+1]);
@@ -435,17 +543,25 @@ int main(int argc, char const* argv[])
         std::cerr << "webcl: " << useWebCL << std::endl
                   << "kernel:" << kernel << std::endl
                   << "gcount:" << globalWorkItemCount << std::endl;
-        for (unsigned int i = 0; i < buffers.size(); i++) {
-            std::cerr << "buffer: " << buffers[i].as << ":" << buffers[i].size << ":" << buffers[i].length << "\n";
+        for (unsigned int i = 0; i < dataArguments.size(); i++) {
+            if (BufferArg* buffer = dynamic_cast<BufferArg*>(dataArguments[i])) {
+                std::cerr << "buffer: " << buffer->as << ":" << buffer->size << ":" << buffer->length << "\n";
+            }
         }
     }
 
     std::string retVal(1024, '\0');
     platform_vector const& platforms = getPlatformsIDs();
     int id = 0;
+    float* imageOutput = 0;
+    size_t imageOutputDims[2];
     for (platform_vector::const_iterator platform = platforms.begin();
          platform != platforms.end(); ++platform)
     {
+        if (imageOutput) {
+            delete imageOutput;
+            imageOutput = 0;
+        }
         std::string platName(1024, '\0');
         std::size_t platNameLen = 0U;
         clGetPlatformInfo(*platform, CL_PLATFORM_NAME, 1024, &platName[0], &platNameLen);
@@ -457,7 +573,7 @@ int main(int argc, char const* argv[])
              device != devices.end(); ++device)
         {        
             if (!checkDevInfo(*device)) {
-                if (!testSource(id, *device, source, kernel, globalWorkItemCount, loopCount, buffers, useWebCL, &retVal[0], printDebug, addOutput))
+                if (!testSource(id, *device, source, kernel, globalWorkItemCount, loopCount, dataArguments, useWebCL, &retVal[0], printDebug, addOutput, imageOutput, imageOutputDims))
                 {
                     return EXIT_FAILURE;
                 }
@@ -474,7 +590,35 @@ int main(int argc, char const* argv[])
             std::cout << (int)(retVal[i]) << ",";
         }
         std::cout << std::endl;
+
+        if (imageOutput) {
+            float* p = imageOutput;
+            std::cout << "image:\n";
+            for (unsigned y = 0; y < imageOutputDims[1]; ++y) {
+                std::cout << y << " ";
+                for (unsigned x = 0; x < imageOutputDims[0]; ++x) {
+                    if (x) {
+                        std::cout << ", ";
+                    }
+                    std::cout << "(";
+                    for (unsigned channel = 0; channel < 4; ++channel) {
+                        if (channel) {
+                            std::cout << ", ";
+                        }
+                        std::cout << std::setprecision(2) << std::fixed << *p;
+                        ++p;
+                    }
+                    std::cout << ")";
+                }
+                std::cout << "\n";
+            }
+        }
     }
+
+    for (unsigned i = 0; i < dataArguments.size(); ++i) {
+        delete dataArguments[i];
+    }
+    delete[] imageOutput;
 
     return EXIT_SUCCESS;
 }

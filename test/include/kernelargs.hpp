@@ -74,6 +74,12 @@ public:
         }
     }
 
+    void appendImage(cl_mem image) {
+        cl_int ret = clSetKernelArg(kernel_, argi_++, sizeof(image), &image);
+        if (ret != CL_SUCCESS)
+            std::cerr << "clSetKernelArg failed for cl_mem (image)." << std::endl;
+    }
+
     void appendInt(cl_int val) {
         cl_int ret = clSetKernelArg(kernel_, argi_++, sizeof(val), &val);
         if (ret != CL_SUCCESS)
