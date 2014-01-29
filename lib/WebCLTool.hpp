@@ -27,6 +27,7 @@
 #include "clang/Tooling/Tooling.h"
 
 #include "WebCLVisitor.hpp"
+#include "WebCLCommon.hpp"
 
 #include <string>
 #include <vector>
@@ -57,7 +58,7 @@ public:
 
     /// Constructor. Inputs and outputs are filenames. If output isn't
     /// given, standard output is used.
-    WebCLTool(int argc, char const **argv,
+    WebCLTool(const CharPtrVector &argv,
               char const *input, char const *output = NULL);
     virtual ~WebCLTool();
 
@@ -90,7 +91,7 @@ protected:
 class WebCLPreprocessorTool : public WebCLTool
 {
 public:
-    WebCLPreprocessorTool(int argc, char const **argv,
+    WebCLPreprocessorTool(const CharPtrVector &argv,
                           char const *input, char const *output);
     virtual ~WebCLPreprocessorTool();
 
@@ -113,7 +114,7 @@ private:
 class WebCLMatcher1Tool : public WebCLTool
 {
 public:
-    WebCLMatcher1Tool(int argc, char const **argv,
+    WebCLMatcher1Tool(const CharPtrVector &argv,
                       char const *input, char const *output);
     virtual ~WebCLMatcher1Tool();
 
@@ -128,7 +129,7 @@ public:
 class WebCLMatcher2Tool : public WebCLTool
 {
 public:
-    WebCLMatcher2Tool(int argc, char const **argv,
+    WebCLMatcher2Tool(const CharPtrVector &argv,
                       char const *input, char const *output);
     virtual ~WebCLMatcher2Tool();
 
@@ -143,7 +144,7 @@ public:
 class WebCLValidatorTool : public WebCLTool
 {
 public:
-    WebCLValidatorTool(int argc, char const **argv,
+    WebCLValidatorTool(const CharPtrVector &argv,
                        char const *input);
     virtual ~WebCLValidatorTool();
 

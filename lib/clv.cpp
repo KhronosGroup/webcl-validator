@@ -126,7 +126,7 @@ void WebCLValidator::run()
         return;
     }
 
-    WebCLPreprocessorTool preprocessorTool(preprocessorArgc, preprocessorArgv,
+    WebCLPreprocessorTool preprocessorTool(CharPtrVector(preprocessorArgv, preprocessorArgv + preprocessorArgc),
                                            preprocessorInput, matcher1Input);
     preprocessorTool.setDiagnosticConsumer(diag);
     preprocessorTool.setExtensions(extensions);
@@ -165,7 +165,7 @@ void WebCLValidator::run()
         return;
     }
 
-    WebCLMatcher1Tool matcher1Tool(matcher1Argc, matcher1Argv,
+    WebCLMatcher1Tool matcher1Tool(CharPtrVector(matcher1Argv, matcher1Argv + matcher1Argc),
                                    matcher1Input, matcher2Input);
     matcher1Tool.setDiagnosticConsumer(diag);
     matcher1Tool.setExtensions(extensions);
@@ -175,7 +175,7 @@ void WebCLValidator::run()
         return;
     }
 
-    WebCLMatcher2Tool matcher2Tool(matcher2Argc, matcher2Argv,
+    WebCLMatcher2Tool matcher2Tool(CharPtrVector(matcher2Argv, matcher2Argv + matcher2Argc),
                                    matcher2Input, validatorInput);
     matcher2Tool.setDiagnosticConsumer(diag);
     matcher2Tool.setExtensions(extensions);
@@ -185,7 +185,7 @@ void WebCLValidator::run()
         return;
     }
 
-    WebCLValidatorTool validatorTool(validatorArgc, validatorArgv,
+    WebCLValidatorTool validatorTool(CharPtrVector(validatorArgv, validatorArgv + validatorArgc),
                                      validatorInput);
     validatorTool.setDiagnosticConsumer(diag);
     validatorTool.setExtensions(extensions);

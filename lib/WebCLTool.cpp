@@ -35,24 +35,27 @@ namespace {
     // TODO: use clang::tooling::FixedCompilationDatabase::loadFromCommandLine.
     // This is a copy of an older version of it from the 3.2 release.
     clang::tooling::FixedCompilationDatabase *
-    loadFromCommandLine(int &Argc,
-        const char **Argv,
+    loadFromCommandLine(CharPtrVector &Argv,
         clang::Twine Directory = clang::Twine(".")) {
-        const char **DoubleDash = std::find(Argv, Argv + Argc, clang::StringRef("--"));
+        CharPtrVector::iterator DoubleDash = std::find(Argv.begin(), Argv.end(), clang::StringRef("--"));
 
-        if (DoubleDash == Argv + Argc)
+        if (DoubleDash == Argv.end())
             return NULL;
-        std::vector<std::string> CommandLine(DoubleDash + 1, Argv + Argc);
-        Argc = DoubleDash - Argv;
+        ++DoubleDash; // uh.. we don't use std::next, as it's c++11
+        std::vector<std::string> CommandLine(DoubleDash, Argv.end());
+        --DoubleDash;
+        Argv.erase(DoubleDash, Argv.end());
         return new clang::tooling::FixedCompilationDatabase(Directory, CommandLine);
     }
 }
 
-WebCLTool::WebCLTool(int argc, char const **argv,
+WebCLTool::WebCLTool(const CharPtrVector &argv,
                      char const *input, char const *output)
     : compilations_(NULL), paths_(), tool_(NULL), output_(output)
 {
-    compilations_ = loadFromCommandLine(argc, argv);
+    CharPtrVector argvCmdLine = argv;
+    // FIXME: is it essential that the modified argv is used by the caller?
+    compilations_ = loadFromCommandLine(argvCmdLine);
 
     paths_.push_back(input);
     tool_ = new clang::tooling::ClangTool(*compilations_, paths_);
@@ -87,9 +90,9 @@ int WebCLTool::run()
     return tool_->run(this);
 }
 
-WebCLPreprocessorTool::WebCLPreprocessorTool(int argc, char const **argv,
+WebCLPreprocessorTool::WebCLPreprocessorTool(const CharPtrVector &argv,
                                              char const *input, char const *output)
-    : WebCLTool(argc, argv, input, output)
+    : WebCLTool(argv, input, output)
 {
 }
 
@@ -104,9 +107,9 @@ clang::FrontendAction *WebCLPreprocessorTool::create()
     return action;
 }
 
-WebCLMatcher1Tool::WebCLMatcher1Tool(int argc, char const **argv,
+WebCLMatcher1Tool::WebCLMatcher1Tool(const CharPtrVector &argv,
                                      char const *input, char const *output)
-    : WebCLTool(argc, argv, input, output)
+    : WebCLTool(argv, input, output)
 {
 }
 
@@ -121,9 +124,9 @@ clang::FrontendAction *WebCLMatcher1Tool::create()
     return action;
 }
 
-WebCLMatcher2Tool::WebCLMatcher2Tool(int argc, char const **argv,
+WebCLMatcher2Tool::WebCLMatcher2Tool(const CharPtrVector &argv,
                                      char const *input, char const *output)
-    : WebCLTool(argc, argv, input, output)
+    : WebCLTool(argv, input, output)
 {
 }
 
@@ -138,9 +141,9 @@ clang::FrontendAction *WebCLMatcher2Tool::create()
     return action;
 }
 
-WebCLValidatorTool::WebCLValidatorTool(int argc, char const **argv,
+WebCLValidatorTool::WebCLValidatorTool(const CharPtrVector &argv,
                                        char const *input)
-    : WebCLTool(argc, argv, input)
+    : WebCLTool(argv, input)
 {
 }
 
