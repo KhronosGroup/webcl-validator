@@ -42,6 +42,7 @@
 WebCLAction::WebCLAction(const char *output)
     : clang::FrontendAction()
     , reporter_(NULL), preprocessor_(NULL)
+    , usedExtensions_(NULL)
     , output_(output), out_(NULL)
 {
 }
@@ -58,6 +59,11 @@ void WebCLAction::setExtensions(const std::set<std::string> &extensions)
     extensions_ = extensions;
 }
 
+void WebCLAction::setUsedExtensionsStorage(std::set<std::string> *usedExtensions)
+{
+    usedExtensions_ = usedExtensions;
+}
+
 bool WebCLAction::initialize(clang::CompilerInstance &instance)
 {
     reporter_ = new WebCLReporter(instance);
@@ -66,7 +72,7 @@ bool WebCLAction::initialize(clang::CompilerInstance &instance)
         return false;
     }
 
-    preprocessor_ = new WebCLPreprocessor(instance, extensions_);
+    preprocessor_ = new WebCLPreprocessor(instance, extensions_, usedExtensions_);
     if (!preprocessor_) {
         reporter_->fatal("Internal error. Can't create preprocessor callbacks.\n");
         return false;

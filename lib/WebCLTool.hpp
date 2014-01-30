@@ -64,6 +64,8 @@ public:
 
     void setDiagnosticConsumer(clang::DiagnosticConsumer *diag);
     void setExtensions(const std::set<std::string> &extensions);
+    // set the storage to return used extensions in; this approach is used to pierce through the layers
+    void setUsedExtensionsStorage(std::set<std::string> *usedExtensions);
 
     /// \see clang::tooling::FrontendActionFactory
     virtual clang::FrontendAction *create() = 0;
@@ -79,6 +81,8 @@ protected:
     std::vector<std::string> paths_;
     // Additional OpenCL extensions to allow in preprocessing besides cl_khr_initialize_memory
     std::set<std::string> extensions_;
+    // If not null, actually used extensions are placed here
+    std::set<std::string> *usedExtensions_;
     /// Tool representing a validation stage.
     clang::tooling::ClangTool* tool_;
     /// Target file for transformations.

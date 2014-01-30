@@ -51,7 +51,7 @@ namespace {
 
 WebCLTool::WebCLTool(const CharPtrVector &argv,
                      char const *input, char const *output)
-    : compilations_(NULL), paths_(), tool_(NULL), output_(output)
+    : compilations_(NULL), paths_(), usedExtensions_(NULL), tool_(NULL), output_(output)
 {
     CharPtrVector argvCmdLine = argv;
     // FIXME: is it essential that the modified argv is used by the caller?
@@ -83,6 +83,11 @@ void WebCLTool::setExtensions(const std::set<std::string> &extensions)
     extensions_ = extensions;
 }
 
+void WebCLTool::setUsedExtensionsStorage(std::set<std::string> *usedExtensions)
+{
+    usedExtensions_ = usedExtensions;
+}
+
 int WebCLTool::run()
 {
     if (!compilations_ || !tool_)
@@ -104,6 +109,7 @@ clang::FrontendAction *WebCLPreprocessorTool::create()
 {
     WebCLAction *action = new WebCLPreprocessorAction(output_, builtinDecls_);
     action->setExtensions(extensions_);
+    action->setUsedExtensionsStorage(usedExtensions_);
     return action;
 }
 

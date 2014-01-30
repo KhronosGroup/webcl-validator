@@ -249,6 +249,16 @@ bool WebCLArguments::supplyBuiltinDecls(const std::string &decls)
     return ofs.good() && ofs << decls;
 }
 
+bool WebCLArguments::WebCLArguments::supplyExtensionArguments(const std::set<std::string> &extensions)
+{
+    for (std::set<std::string>::const_iterator it = extensions.begin();
+         it != extensions.end();
+         ++it) {
+        
+    }
+    return true;
+}
+
 bool WebCLArguments::areArgumentsOk(int argc, char const **argv) const
 {
     return (argc > 1) && argv;

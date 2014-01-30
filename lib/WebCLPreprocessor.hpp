@@ -37,8 +37,7 @@ class WebCLPreprocessor : public WebCLReporter
                         , public clang::PPCallbacks
 {
 public:
-
-    explicit WebCLPreprocessor(clang::CompilerInstance &instance, const std::set<std::string> &extensions);
+    explicit WebCLPreprocessor(clang::CompilerInstance &instance, const std::set<std::string> &extensions, std::set<std::string> *usedExtensions);
     ~WebCLPreprocessor();
 
     /// \brief Complain about include directives in main source files.
@@ -62,6 +61,9 @@ private:
 
     /// OpenCL extensions that can be enabled.
     std::set<std::string> extensions_;
+
+    /// OpenCL extensions that wre actually requested; this can only include extensions from the extensions_ set
+    std::set<std::string> *usedExtensions_;
 };
 
 #endif // WEBCLVALIDATOR_WEBCLPREPROCESSOR

@@ -53,6 +53,7 @@ public:
     virtual ~WebCLAction();
 
     void setExtensions(const std::set<std::string> &extensions);
+    void setUsedExtensionsStorage(std::set<std::string> *usedExtensions);
 
 protected:
 
@@ -69,6 +70,8 @@ protected:
     WebCLPreprocessor *preprocessor_;
     // Additional OpenCL extensions to allow in preprocessing besides cl_khr_initialize_memory
     std::set<std::string> extensions_;
+    // If not null, used extensions are stored here
+    std::set<std::string> *usedExtensions_;
     /// Output filename.
     const char *output_;
     /// Stream corresponding to the output filename.

@@ -30,10 +30,11 @@ namespace {
     char const * const ClKhrInitializeMemoryStr = "cl_khr_initialize_memory";
 }
 
-WebCLPreprocessor::WebCLPreprocessor(clang::CompilerInstance &instance, const std::set<std::string> &extensions)
+WebCLPreprocessor::WebCLPreprocessor(clang::CompilerInstance &instance, const std::set<std::string> &extensions, std::set<std::string> *usedExtensions)
     : WebCLReporter(instance)
     , clang::PPCallbacks()
     , extensions_(extensions)
+    , usedExtensions_(usedExtensions)
 {
     extensions_.insert(ClKhrInitializeMemoryStr);
 }
@@ -69,5 +70,9 @@ void WebCLPreprocessor::PragmaOpenCLExtension(
     } else if (State == 0 && (name == ClKhrInitializeMemoryStr || name == "all")) {
         // cannot disable all extensions with webcl
         error(NameLoc, "WebCL program cannot disable extension %0.\n") << ClKhrInitializeMemoryStr;
+    } else {
+        if (usedExtensions_) {
+            usedExtensions_->insert(name);
+        }
     }
 }

@@ -28,6 +28,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <set>
 
 #include "WebCLCommon.hpp"
 
@@ -65,6 +66,11 @@ public:
     /// by the matcher and validator tools due to their argv's
     /// \return \c true on success, \c false on failure
     bool supplyBuiltinDecls(const std::string &decls);
+
+    /// Writes the given data into a file that is included as an input
+    /// by the matcher and validator tools due to their argv's
+    /// \return \c true on success, \c false on failure
+    bool supplyExtensionArguments(const std::set<std::string> &extensions);
 
 private:
 
