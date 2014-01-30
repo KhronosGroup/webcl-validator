@@ -74,8 +74,7 @@ namespace {
 }
 
 WebCLArguments::WebCLArguments(const std::string &inputSource, const CharPtrVector& argv)
-    : preprocessorArgc_(0)
-    , preprocessorArgv_(NULL)
+    : preprocessorArgv_()
     , validatorArgv_()
     , files_()
     , builtinDeclFilename_(NULL)
@@ -138,27 +137,20 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, const CharPtrVect
             userDefines.insert(option);
     }
 
-    preprocessorArgc_ =
-        preprocessorInvocationSize + userDefines.size() + numPreprocessorOptions + 1;
-
-    preprocessorArgv_ = new char const *[preprocessorArgc_];
-    if (!preprocessorArgv_) {
-        std::cerr << "Internal error. Can't create argument list for preprocessor."
-                  << std::endl;
-        return;
-    }
-
     // preprocessor arguments
-    std::copy(preprocessorInvocation,
-              preprocessorInvocation + preprocessorInvocationSize,
-              preprocessorArgv_);
-    std::copy(userDefines.begin(),
-              userDefines.end(),
-              preprocessorArgv_ + preprocessorInvocationSize);
-    std::copy(preprocessorOptions,
-              preprocessorOptions + numPreprocessorOptions,
-              preprocessorArgv_ + preprocessorInvocationSize + userDefines.size());
-    preprocessorArgv_[preprocessorArgc_ - 1] = "-ferror-limit=0";
+    std::transform(preprocessorInvocation,
+        preprocessorInvocation + preprocessorInvocationSize,
+        std::back_inserter(preprocessorArgv_),
+        wcl_strdup);
+    std::transform(userDefines.begin(),
+        userDefines.end(),
+        std::back_inserter(preprocessorArgv_),
+        wcl_strdup);
+    std::transform(preprocessorOptions,
+        preprocessorOptions + numPreprocessorOptions,
+        std::back_inserter(preprocessorArgv_),
+        wcl_strdup);
+    preprocessorArgv_.push_back(wcl_strdup("-ferror-limit=0"));
 
     // validator arguments
     std::transform(validatorInvocation,
@@ -180,8 +172,9 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, const CharPtrVect
 
 WebCLArguments::~WebCLArguments()
 {
-    delete[] preprocessorArgv_;
-    preprocessorArgv_ = NULL;
+    for (size_t i = 0; i < preprocessorArgv_.size(); ++i) {
+        delete[] preprocessorArgv_[i];
+    }
 
     for (size_t i = 0; i < validatorArgv_.size(); ++i) {
         delete[] validatorArgv_[i];
@@ -198,10 +191,10 @@ WebCLArguments::~WebCLArguments()
 
 CharPtrVector WebCLArguments::getPreprocessorArgv() const
 {
-    if (!areArgumentsOk(preprocessorArgc_, preprocessorArgv_))
+    if (!preprocessorArgv_.size())
         return CharPtrVector();
     // Input file has been already set.
-    return CharPtrVector(preprocessorArgv_, preprocessorArgv_ + preprocessorArgc_);
+    return preprocessorArgv_;
 }
 
 CharPtrVector WebCLArguments::getMatcherArgv()

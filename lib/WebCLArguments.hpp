@@ -81,10 +81,8 @@ private:
     /// of srcFd (typically standard input)
     char const *createCopiedTemporaryFile(int srcFd) const;
 
-    /// Preprocessor argument count.
-    int preprocessorArgc_;
     /// Preprocessor arguments.
-    char const **preprocessorArgv_;
+    CharPtrVector preprocessorArgv_;
     /// Arguments for normalization and memory access validation.
     CharPtrVector validatorArgv_;
 
