@@ -58,11 +58,25 @@ int mingwcompatible_mkstemp(char* tmplt) {
   return open(filename, O_RDWR | O_CREAT, 0600);
 }
 
+namespace {
+    // apparently wcl_strdup isn't in C standard, only in POSIX. Also we get to use 'delete[]' on these strings.
+    char* wcl_strdup(const char* str)
+    {
+        if (!str) {
+            return 0;
+        } else {
+            size_t storage_len = strlen(str) + 1;
+            char* clone = new char[storage_len];
+            std::copy(str, str + storage_len, clone);
+            return clone;
+        }
+    }
+}
+
 WebCLArguments::WebCLArguments(const std::string &inputSource, const CharPtrVector& argv)
     : preprocessorArgc_(0)
     , preprocessorArgv_(NULL)
-    , validatorArgc_(0)
-    , validatorArgv_(NULL)
+    , validatorArgv_()
     , files_()
     , builtinDeclFilename_(NULL)
     , outputs_()
@@ -126,18 +140,10 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, const CharPtrVect
 
     preprocessorArgc_ =
         preprocessorInvocationSize + userDefines.size() + numPreprocessorOptions + 1;
-    validatorArgc_ =
-        validatorInvocationSize + argv.size() + numValidatorOptions + 3;
 
     preprocessorArgv_ = new char const *[preprocessorArgc_];
     if (!preprocessorArgv_) {
         std::cerr << "Internal error. Can't create argument list for preprocessor."
-                  << std::endl;
-        return;
-    }
-    validatorArgv_ = new char const *[validatorArgc_];
-    if (!validatorArgv_) {
-        std::cerr << "Internal error. Can't create argument list for validator."
                   << std::endl;
         return;
     }
@@ -155,26 +161,31 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, const CharPtrVect
     preprocessorArgv_[preprocessorArgc_ - 1] = "-ferror-limit=0";
 
     // validator arguments
-    std::copy(validatorInvocation,
-              validatorInvocation + validatorInvocationSize,
-              validatorArgv_);
-    std::copy(argv.begin(),
-              argv.end(),
-              validatorArgv_ + validatorInvocationSize);
-    std::copy(validatorOptions,
-              validatorOptions + numValidatorOptions,
-              validatorArgv_ + validatorInvocationSize + argv.size());
-    validatorArgv_[validatorArgc_ - 1] = "-ferror-limit=0";
-    validatorArgv_[validatorArgc_ - 2] = "-fno-builtin";
-    validatorArgv_[validatorArgc_ - 3] = "-ffreestanding";
+    std::transform(validatorInvocation,
+        validatorInvocation + validatorInvocationSize,
+        std::back_inserter(validatorArgv_),
+        wcl_strdup);
+    std::transform(argv.begin(),
+        argv.end(),
+        std::back_inserter(validatorArgv_),
+        wcl_strdup);
+    std::transform(validatorOptions,
+        validatorOptions + numValidatorOptions,
+        std::back_inserter(validatorArgv_),
+        wcl_strdup);
+    validatorArgv_.push_back(wcl_strdup("-ferror-limit=0"));
+    validatorArgv_.push_back(wcl_strdup("-fno-builtin"));
+    validatorArgv_.push_back(wcl_strdup("-ffreestanding"));
 }
 
 WebCLArguments::~WebCLArguments()
 {
     delete[] preprocessorArgv_;
     preprocessorArgv_ = NULL;
-    delete[] validatorArgv_;
-    validatorArgv_ = NULL;
+
+    for (size_t i = 0; i < validatorArgv_.size(); ++i) {
+        delete[] validatorArgv_[i];
+    }
 
     while (files_.size()) {
         TemporaryFile &file = files_.back();
@@ -195,10 +206,10 @@ CharPtrVector WebCLArguments::getPreprocessorArgv() const
 
 CharPtrVector WebCLArguments::getMatcherArgv()
 {
-    if (!areArgumentsOk(validatorArgc_, validatorArgv_))
+    if (!validatorArgv_.size())
         return CharPtrVector();
 
-    CharPtrVector matcherArgv(validatorArgv_, validatorArgv_ + validatorArgc_);
+    CharPtrVector matcherArgv(validatorArgv_);
 
     // Set input file.
     char const *input = outputs_.back();
@@ -209,11 +220,11 @@ CharPtrVector WebCLArguments::getMatcherArgv()
 
 CharPtrVector WebCLArguments::getValidatorArgv() const
 {
-    if (!areArgumentsOk(validatorArgc_, validatorArgv_))
+    if (!validatorArgv_.size())
         return CharPtrVector();
 
     // Set input file.
-    CharPtrVector argv(validatorArgv_, validatorArgv_ + validatorArgc_);
+    CharPtrVector argv(validatorArgv_);
     char const *input = outputs_.back();
     argv[1] = input;
 

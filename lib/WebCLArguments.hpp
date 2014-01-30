@@ -85,10 +85,8 @@ private:
     int preprocessorArgc_;
     /// Preprocessor arguments.
     char const **preprocessorArgv_;
-    /// Argument count for normalization and memory access validation.
-    int validatorArgc_;
     /// Arguments for normalization and memory access validation.
-    char const **validatorArgv_;
+    CharPtrVector validatorArgv_;
 
     /// Pair of file descriptor and filename.
     typedef std::pair<int, char const *> TemporaryFile;
