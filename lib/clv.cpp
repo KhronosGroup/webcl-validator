@@ -78,7 +78,7 @@ WebCLValidator::WebCLValidator(
     const std::set<std::string> &extensions,
     int argc,
     char const* argv[])
-    : arguments(inputSource, argc, argv)
+    : arguments(inputSource, CharPtrVector(argv, argv + argc))
     , diag(new WebCLDiag())
     , extensions(extensions), exitStatus_(-1)
 {
@@ -92,42 +92,37 @@ WebCLValidator::~WebCLValidator()
 void WebCLValidator::run()
 {
     // Create only one preprocessor.
-    int preprocessorArgc = arguments.getPreprocessorArgc();
-    char const **preprocessorArgv = arguments.getPreprocessorArgv();
-    char const *preprocessorInput = arguments.getInput(preprocessorArgc, preprocessorArgv, true);
-    if (!preprocessorArgc || !preprocessorArgv || !preprocessorInput) {
+    CharPtrVector preprocessorArgv = arguments.getPreprocessorArgv();
+    char const *preprocessorInput = arguments.getInput(preprocessorArgv, true);
+    if (!preprocessorArgv.size() || !preprocessorInput) {
         exitStatus_ = EXIT_FAILURE;
         return;
     }
 
     // Create as many matchers as you like.
-    int matcher1Argc = arguments.getMatcherArgc();
-    char const **matcher1Argv = arguments.getMatcherArgv();
-    char const *matcher1Input = arguments.getInput(matcher1Argc, matcher1Argv, true);
-    if (!matcher1Argc || !matcher1Argv || !matcher1Input) {
+    CharPtrVector matcher1Argv = arguments.getMatcherArgv();
+    char const *matcher1Input = arguments.getInput(matcher1Argv, true);
+    if (!matcher1Argv.size() || !matcher1Input) {
         exitStatus_ = EXIT_FAILURE;
         return;
     }
 
-    int matcher2Argc = arguments.getMatcherArgc();
-    char const **matcher2Argv = arguments.getMatcherArgv();
-    char const *matcher2Input = arguments.getInput(matcher2Argc, matcher2Argv, true);
-    if (!matcher2Argc || !matcher2Argv || !matcher2Input) {
+    CharPtrVector matcher2Argv = arguments.getMatcherArgv();
+    char const *matcher2Input = arguments.getInput(matcher2Argv, true);
+    if (!matcher2Argv.size() || !matcher2Input) {
         exitStatus_ = EXIT_FAILURE;
         return;
     }
 
     // Create only one validator.
-    int validatorArgc = arguments.getValidatorArgc();
-    char const **validatorArgv = arguments.getValidatorArgv();
-    char const *validatorInput = arguments.getInput(validatorArgc, validatorArgv);
-    if (!validatorArgc || !validatorArgv) {
+    CharPtrVector validatorArgv = arguments.getValidatorArgv();
+    char const *validatorInput = arguments.getInput(validatorArgv);
+    if (!validatorArgv.size()) {
         exitStatus_ = EXIT_FAILURE;
         return;
     }
 
-    WebCLPreprocessorTool preprocessorTool(CharPtrVector(preprocessorArgv, preprocessorArgv + preprocessorArgc),
-                                           preprocessorInput, matcher1Input);
+    WebCLPreprocessorTool preprocessorTool(preprocessorArgv, preprocessorInput, matcher1Input);
     preprocessorTool.setDiagnosticConsumer(diag);
     preprocessorTool.setExtensions(extensions);
     const int preprocessorStatus = preprocessorTool.run();
@@ -165,8 +160,7 @@ void WebCLValidator::run()
         return;
     }
 
-    WebCLMatcher1Tool matcher1Tool(CharPtrVector(matcher1Argv, matcher1Argv + matcher1Argc),
-                                   matcher1Input, matcher2Input);
+    WebCLMatcher1Tool matcher1Tool(matcher1Argv, matcher1Input, matcher2Input);
     matcher1Tool.setDiagnosticConsumer(diag);
     matcher1Tool.setExtensions(extensions);
     const int matcher1Status = matcher1Tool.run();
@@ -175,8 +169,7 @@ void WebCLValidator::run()
         return;
     }
 
-    WebCLMatcher2Tool matcher2Tool(CharPtrVector(matcher2Argv, matcher2Argv + matcher2Argc),
-                                   matcher2Input, validatorInput);
+    WebCLMatcher2Tool matcher2Tool(matcher2Argv, matcher2Input, validatorInput);
     matcher2Tool.setDiagnosticConsumer(diag);
     matcher2Tool.setExtensions(extensions);
     const int matcher2Status = matcher2Tool.run();
@@ -185,8 +178,7 @@ void WebCLValidator::run()
         return;
     }
 
-    WebCLValidatorTool validatorTool(CharPtrVector(validatorArgv, validatorArgv + validatorArgc),
-                                     validatorInput);
+    WebCLValidatorTool validatorTool(validatorArgv, validatorInput);
     validatorTool.setDiagnosticConsumer(diag);
     validatorTool.setExtensions(extensions);
     const int validatorStatus = validatorTool.run();

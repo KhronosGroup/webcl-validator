@@ -58,12 +58,11 @@ int mingwcompatible_mkstemp(char* tmplt) {
   return open(filename, O_RDWR | O_CREAT, 0600);
 }
 
-WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char const *argv[])
+WebCLArguments::WebCLArguments(const std::string &inputSource, const CharPtrVector& argv)
     : preprocessorArgc_(0)
     , preprocessorArgv_(NULL)
     , validatorArgc_(0)
     , validatorArgv_(NULL)
-    , matcherArgv_()
     , files_()
     , builtinDeclFilename_(NULL)
     , outputs_()
@@ -119,7 +118,7 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
         sizeof(validatorOptions) / sizeof(validatorOptions[0]);
 
     std::set<char const *> userDefines;
-    for (int i = 0; i < argc; ++i) {
+    for (size_t i = 0; i < argv.size(); ++i) {
         char const *option = argv[i];
         if (!std::string(option).substr(0, 2).compare("-D"))
             userDefines.insert(option);
@@ -128,7 +127,7 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
     preprocessorArgc_ =
         preprocessorInvocationSize + userDefines.size() + numPreprocessorOptions + 1;
     validatorArgc_ =
-        validatorInvocationSize + argc + numValidatorOptions + 3;
+        validatorInvocationSize + argv.size() + numValidatorOptions + 3;
 
     preprocessorArgv_ = new char const *[preprocessorArgc_];
     if (!preprocessorArgv_) {
@@ -159,12 +158,12 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
     std::copy(validatorInvocation,
               validatorInvocation + validatorInvocationSize,
               validatorArgv_);
-    std::copy(argv,
-              argv + argc,
+    std::copy(argv.begin(),
+              argv.end(),
               validatorArgv_ + validatorInvocationSize);
     std::copy(validatorOptions,
               validatorOptions + numValidatorOptions,
-              validatorArgv_ + validatorInvocationSize + argc);
+              validatorArgv_ + validatorInvocationSize + argv.size());
     validatorArgv_[validatorArgc_ - 1] = "-ferror-limit=0";
     validatorArgv_[validatorArgc_ - 2] = "-fno-builtin";
     validatorArgv_[validatorArgc_ - 3] = "-ffreestanding";
@@ -177,12 +176,6 @@ WebCLArguments::~WebCLArguments()
     delete[] validatorArgv_;
     validatorArgv_ = NULL;
 
-    while (matcherArgv_.size()) {
-        char const **argv = matcherArgv_.back();
-        delete[] argv;
-        matcherArgv_.pop_back();
-    }
-
     while (files_.size()) {
         TemporaryFile &file = files_.back();
         // close(file.first);
@@ -192,43 +185,20 @@ WebCLArguments::~WebCLArguments()
     }
 }
 
-int WebCLArguments::getPreprocessorArgc() const
+CharPtrVector WebCLArguments::getPreprocessorArgv() const
 {
     if (!areArgumentsOk(preprocessorArgc_, preprocessorArgv_))
-        return 0;
-    return preprocessorArgc_;
-}
-
-int WebCLArguments::getMatcherArgc() const
-{
-    return getValidatorArgc();
-}
-
-int WebCLArguments::getValidatorArgc() const
-{
-    if (!areArgumentsOk(validatorArgc_, validatorArgv_))
-        return 0;
-    return validatorArgc_;
-}
-
-char const **WebCLArguments::getPreprocessorArgv() const
-{
-    if (!areArgumentsOk(preprocessorArgc_, preprocessorArgv_))
-        return NULL;
+        return CharPtrVector();
     // Input file has been already set.
-    return preprocessorArgv_;
+    return CharPtrVector(preprocessorArgv_, preprocessorArgv_ + preprocessorArgc_);
 }
 
-char const **WebCLArguments::getMatcherArgv()
+CharPtrVector WebCLArguments::getMatcherArgv()
 {
     if (!areArgumentsOk(validatorArgc_, validatorArgv_))
-        return NULL;
+        return CharPtrVector();
 
-    char const **matcherArgv = new char const *[validatorArgc_];
-    if (!matcherArgv)
-        return NULL;
-    matcherArgv_.push_back(matcherArgv);
-    std::copy(validatorArgv_, validatorArgv_ + validatorArgc_, matcherArgv);
+    CharPtrVector matcherArgv(validatorArgv_, validatorArgv_ + validatorArgc_);
 
     // Set input file.
     char const *input = outputs_.back();
@@ -237,21 +207,22 @@ char const **WebCLArguments::getMatcherArgv()
     return matcherArgv;
 }
 
-char const **WebCLArguments::getValidatorArgv() const
+CharPtrVector WebCLArguments::getValidatorArgv() const
 {
     if (!areArgumentsOk(validatorArgc_, validatorArgv_))
-        return NULL;
+        return CharPtrVector();
 
     // Set input file.
+    CharPtrVector argv(validatorArgv_, validatorArgv_ + validatorArgc_);
     char const *input = outputs_.back();
-    validatorArgv_[1] = input;
+    argv[1] = input;
 
-    return validatorArgv_;
+    return argv;
 }
 
-char const *WebCLArguments::getInput(int argc, char const **argv, bool createOutput)
+char const *WebCLArguments::getInput(const CharPtrVector& argv, bool createOutput)
 {
-    if (!areArgumentsOk(argc, argv))
+    if (!argv.size())
         return NULL;
 
     // Create output file for the next tool.
