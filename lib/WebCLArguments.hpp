@@ -46,6 +46,10 @@ public:
     WebCLArguments(const std::string &inputSource, const CharPtrVector& argv);
     ~WebCLArguments();
 
+    /// \return Tool arguments for the phase finding used extensions.
+    /// Input is the original input.
+    CharPtrVector getFindUsedExtensionsArgv() const;
+
     /// \return Preprocessor tool arguments.
     CharPtrVector getPreprocessorArgv() const;
 
@@ -58,9 +62,12 @@ public:
     CharPtrVector getValidatorArgv() const;
 
     /// \return Input file for a tool with the given
-    /// options. Optionally creates an output file that becomes the
-    /// input file of the next tool in the pipeline.
-    char const *getInput(const CharPtrVector& argv, bool createOutput = false);
+    /// options.
+    char const *getInput(const CharPtrVector& argv);
+
+    /// Creates an output file that becomes the input file of the next tool in
+    /// the pipeline.
+    void createOutput();
 
     /// Writes the given data into a file that is included as an input
     /// by the matcher and validator tools due to their argv's
@@ -87,6 +94,8 @@ private:
     /// of srcFd (typically standard input)
     char const *createCopiedTemporaryFile(int srcFd) const;
 
+    /// Preprocessor arguments.
+    CharPtrVector findUsedExtensionsArgv_;
     /// Preprocessor arguments.
     CharPtrVector preprocessorArgv_;
     /// Arguments for normalization and memory access validation.

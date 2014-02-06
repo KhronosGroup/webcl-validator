@@ -27,6 +27,7 @@
 #include "clang/Basic/AddressSpaces.h"
 
 #include <sstream>
+#include <cctype>
 
 namespace {
     UintList generateWidths(unsigned start, unsigned stop)
@@ -181,6 +182,18 @@ const std::string WebCLConfiguration::getIdentifierForString(std::string str) co
     }
     // no additional underscore at the end
     return result;
+}
+
+const std::string WebCLConfiguration::getExtensionDefineName(std::string extension) const
+{
+    //std::string define = macroPrefix_ + "_EXTENSION_";
+    std::string define = "_W2CL_EXTENSION_";
+    for (std::string::const_iterator it = extension.begin();
+         it != extension.end();
+         ++it) {
+        define += std::toupper(*it);
+    }
+    return define;
 }
 
 const std::string WebCLConfiguration::getNameOfLimitClampFunction(

@@ -115,6 +115,21 @@ private:
 /// output of preprocessing stage as input.
 ///
 /// \see WebCLMatcher1Action
+class WebCLFindUsedExtensionsTool : public WebCLTool
+{
+public:
+    WebCLFindUsedExtensionsTool(const CharPtrVector &argv,
+        char const *input);
+    virtual ~WebCLFindUsedExtensionsTool();
+
+    /// \brief see clang::tooling::FrontendActionFactory
+    virtual clang::FrontendAction *create();
+};
+
+/// Runs first stage of AST matcher based transformations. Takes the
+/// output of preprocessing stage as input.
+///
+/// \see WebCLMatcher1Action
 class WebCLMatcher1Tool : public WebCLTool
 {
 public:

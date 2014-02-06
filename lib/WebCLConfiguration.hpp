@@ -135,6 +135,9 @@ public:
     /// by choosing identifiers in a certain way.
     const std::string getIdentifierForString(std::string str) const;
 
+    /// \return the name of the #define associated with the extension. _WCL_EXTENSION_(extension name in uppercase)
+    const std::string getExtensionDefineName(std::string extension) const;
+
     /// Prefixes for generated types, variables and macros.
     const std::string typePrefix_;
     const std::string variablePrefix_;

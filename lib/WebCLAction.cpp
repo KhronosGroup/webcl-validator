@@ -102,6 +102,50 @@ bool WebCLAction::initialize(clang::CompilerInstance &instance)
     return true;
 }
 
+WebCLFindUsedExtensionsAction::WebCLFindUsedExtensionsAction()
+{
+}
+
+WebCLFindUsedExtensionsAction::~WebCLFindUsedExtensionsAction()
+{
+    // consumer_ not deleted, clang has a reference to it
+}
+
+bool WebCLFindUsedExtensionsAction::usesPreprocessorOnly() const
+{
+    return false;
+}
+
+void WebCLFindUsedExtensionsAction::ExecuteAction()
+{
+    clang::CompilerInstance &instance = getCompilerInstance();
+
+    ParseAST(instance.getPreprocessor(), consumer_, instance.getASTContext());
+}
+
+bool WebCLFindUsedExtensionsAction::initialize(clang::CompilerInstance &instance)
+{
+    if (!WebCLAction::initialize(instance))
+        return false;
+
+    consumer_ = finder_.newASTConsumer();
+    if (!consumer_) {
+        reporter_->fatal("Internal error. Can't create AST consumer.\n");
+        return false;
+    }
+    return true;
+}
+
+clang::ASTConsumer* WebCLFindUsedExtensionsAction::CreateASTConsumer(
+    clang::CompilerInstance &instance, llvm::StringRef)
+{
+    if (!initialize(instance)) {
+        return NULL;
+    }
+    return consumer_;
+}
+
+
 WebCLPreprocessorAction::WebCLPreprocessorAction(const char *output, std::string &builtinDecls)
     : WebCLAction(output), builtinDecls_(builtinDecls)
 {

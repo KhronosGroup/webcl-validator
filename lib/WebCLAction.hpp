@@ -78,6 +78,34 @@ protected:
     llvm::raw_ostream *out_;
 };
 
+/// Performs used extension detection
+class WebCLFindUsedExtensionsAction : public WebCLAction
+{
+public:
+    explicit WebCLFindUsedExtensionsAction();
+    virtual ~WebCLFindUsedExtensionsAction();
+
+    /// \see clang::FrontendAction
+    virtual clang::ASTConsumer* CreateASTConsumer(clang::CompilerInstance &instance,
+                                                  llvm::StringRef);
+
+    /// \see clang::FrontendAction
+    virtual void ExecuteAction();
+
+    /// \see clang::FrontendAction
+    virtual bool usesPreprocessorOnly() const;
+
+protected:
+    /// \see WebCLAction
+    virtual bool initialize(clang::CompilerInstance &instance);
+
+    /// Finds matches from AST.
+    clang::ast_matchers::MatchFinder finder_;
+
+    /// Runs matchers when AST has been parsed.
+    clang::ASTConsumer *consumer_;
+};
+
 /// Performs preprocessing stage only. Doesn't parse AST.
 class WebCLPreprocessorAction : public WebCLAction
 {

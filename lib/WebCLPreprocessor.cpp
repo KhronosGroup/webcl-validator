@@ -71,7 +71,7 @@ void WebCLPreprocessor::PragmaOpenCLExtension(
         // cannot disable all extensions with webcl
         error(NameLoc, "WebCL program cannot disable extension %0.\n") << ClKhrInitializeMemoryStr;
     } else {
-        if (usedExtensions_) {
+        if (usedExtensions_ && isFromMainFile(NameLoc)) {
             usedExtensions_->insert(name);
         }
     }

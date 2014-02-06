@@ -93,35 +93,44 @@ void WebCLValidator::run()
 {
     // Create only one preprocessor.
     CharPtrVector preprocessorArgv = arguments.getPreprocessorArgv();
-    char const *preprocessorInput = arguments.getInput(preprocessorArgv, true);
+    char const *preprocessorInput = arguments.getInput(preprocessorArgv);
+    arguments.createOutput();
     if (!preprocessorArgv.size() || !preprocessorInput) {
         exitStatus_ = EXIT_FAILURE;
         return;
     }
 
-    // Create as many matchers as you like.
     CharPtrVector matcher1Argv = arguments.getMatcherArgv();
-    char const *matcher1Input = arguments.getInput(matcher1Argv, true);
+    char const *matcher1Input = arguments.getInput(matcher1Argv);
+    arguments.createOutput();
     if (!matcher1Argv.size() || !matcher1Input) {
         exitStatus_ = EXIT_FAILURE;
         return;
     }
 
-    CharPtrVector matcher2Argv = arguments.getMatcherArgv();
-    char const *matcher2Input = arguments.getInput(matcher2Argv, true);
-    if (!matcher2Argv.size() || !matcher2Input) {
+    std::set<std::string> usedExtensions;
+    // usedExtensions.insert("ALL");
+    //WebCLMatcher1Tool findUsedExtensionsTool(matcher1Argv, matcher1Input, 0);
+    CharPtrVector findUsedExtensionsArgv = arguments.getFindUsedExtensionsArgv();
+    WebCLFindUsedExtensionsTool findUsedExtensionsTool(findUsedExtensionsArgv, preprocessorInput);
+    WebCLDiagNull diagNull;
+    findUsedExtensionsTool.setDiagnosticConsumer(&diagNull);
+    findUsedExtensionsTool.setExtensions(extensions);
+    findUsedExtensionsTool.setUsedExtensionsStorage(&usedExtensions);
+    const int findUsedExtensionsStatus = findUsedExtensionsTool.run();
+    if (findUsedExtensionsStatus) {
+        exitStatus_ = EXIT_FAILURE;
+        return;
+    }
+    std::cerr << "findUsedExtensionsArgv"; for (auto arg: findUsedExtensionsArgv) std::cerr << " " << arg; std::cerr << std::endl;
+    std::cerr << "Used extensions:"; for (auto ext: usedExtensions) std::cerr << " " << ext; std::cerr << std::endl;
+
+    if (!arguments.supplyExtensionArguments(usedExtensions)) {
         exitStatus_ = EXIT_FAILURE;
         return;
     }
 
-    // Create only one validator.
-    CharPtrVector validatorArgv = arguments.getValidatorArgv();
-    char const *validatorInput = arguments.getInput(validatorArgv);
-    if (!validatorArgv.size()) {
-        exitStatus_ = EXIT_FAILURE;
-        return;
-    }
-
+    preprocessorArgv = arguments.getPreprocessorArgv(); // take with the new flags
     WebCLPreprocessorTool preprocessorTool(preprocessorArgv, preprocessorInput, matcher1Input);
     preprocessorTool.setDiagnosticConsumer(diag);
     preprocessorTool.setExtensions(extensions);
@@ -159,6 +168,30 @@ void WebCLValidator::run()
         exitStatus_ = EXIT_FAILURE;
         return;
     }
+
+    matcher1Argv = arguments.getMatcherArgv();
+
+    CharPtrVector matcher2Argv = arguments.getMatcherArgv();
+    char const *matcher2Input = arguments.getInput(matcher2Argv);
+    arguments.createOutput();
+    if (!matcher2Argv.size() || !matcher2Input) {
+        exitStatus_ = EXIT_FAILURE;
+        return;
+    }
+
+    // Create only one validator.
+    CharPtrVector validatorArgv = arguments.getValidatorArgv();
+    char const *validatorInput = arguments.getInput(validatorArgv);
+    if (!validatorArgv.size()) {
+        exitStatus_ = EXIT_FAILURE;
+        return;
+    }
+
+    std::cerr << "preprocessorArgv"; for (auto arg: preprocessorArgv) std::cerr << " " << arg; std::cerr << std::endl;
+    std::cerr << "validatorArgv"; for (auto arg: validatorArgv) std::cerr << " " << arg; std::cerr << std::endl;
+    std::cerr << "matcher1Argv"; for (auto arg: matcher1Argv) std::cerr << " " << arg; std::cerr << std::endl;
+    std::cerr << "matcher2Argv"; for (auto arg: matcher2Argv) std::cerr << " " << arg; std::cerr << std::endl;
+    std::cerr << "Used extensions:"; for (auto ext: usedExtensions) std::cerr << " " << ext; std::cerr << std::endl;
 
     WebCLMatcher1Tool matcher1Tool(matcher1Argv, matcher1Input, matcher2Input);
     matcher1Tool.setDiagnosticConsumer(diag);

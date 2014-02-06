@@ -113,6 +113,24 @@ clang::FrontendAction *WebCLPreprocessorTool::create()
     return action;
 }
 
+WebCLFindUsedExtensionsTool::WebCLFindUsedExtensionsTool(const CharPtrVector &argv,
+    char const *input)
+    : WebCLTool(argv, input)
+{
+}
+
+WebCLFindUsedExtensionsTool::~WebCLFindUsedExtensionsTool()
+{
+}
+
+clang::FrontendAction *WebCLFindUsedExtensionsTool::create()
+{
+    WebCLAction *action = new WebCLFindUsedExtensionsAction();
+    action->setExtensions(extensions_);
+    action->setUsedExtensionsStorage(usedExtensions_);
+    return action;
+}
+
 WebCLMatcher1Tool::WebCLMatcher1Tool(const CharPtrVector &argv,
                                      char const *input, char const *output)
     : WebCLTool(argv, input, output)
@@ -127,6 +145,7 @@ clang::FrontendAction *WebCLMatcher1Tool::create()
 {
     WebCLAction *action = new WebCLMatcher1Action(output_);
     action->setExtensions(extensions_);
+    action->setUsedExtensionsStorage(usedExtensions_);
     return action;
 }
 
@@ -144,6 +163,7 @@ clang::FrontendAction *WebCLMatcher2Tool::create()
 {
     WebCLAction *action = new WebCLMatcher2Action(output_);
     action->setExtensions(extensions_);
+    action->setUsedExtensionsStorage(usedExtensions_);
     return action;
 }
 
@@ -161,5 +181,6 @@ clang::FrontendAction *WebCLValidatorTool::create()
 {
     WebCLAction *action = new WebCLValidatorAction(validatedSource_, kernels_);
     action->setExtensions(extensions_);
+    action->setUsedExtensionsStorage(usedExtensions_);
     return action;
 }

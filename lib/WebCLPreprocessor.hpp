@@ -62,7 +62,7 @@ private:
     /// OpenCL extensions that can be enabled.
     std::set<std::string> extensions_;
 
-    /// OpenCL extensions that wre actually requested; this can only include extensions from the extensions_ set
+    /// OpenCL extensions that are actually requested; this can only include extensions from the extensions_ set
     std::set<std::string> *usedExtensions_;
 };
 

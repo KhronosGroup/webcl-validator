@@ -72,3 +72,17 @@ private:
     std::map<clang::FileID, int /* sourceID */> sourceIDs;
     std::map<int /* sourceID */, std::string> sources;
 };
+
+// A diagnostics capture that simply discards all messages
+class WebCLDiagNull : public clang::DiagnosticConsumer
+{
+public:
+    WebCLDiagNull();
+    ~WebCLDiagNull();
+
+    void BeginSourceFile(const clang::LangOptions &LO, const clang::Preprocessor *PP);
+    void EndSourceFile();
+    void HandleDiagnostic(clang::DiagnosticsEngine::Level Level, const clang::Diagnostic &Info);
+
+private:
+};
