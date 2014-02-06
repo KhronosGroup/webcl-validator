@@ -122,8 +122,6 @@ void WebCLValidator::run()
         exitStatus_ = EXIT_FAILURE;
         return;
     }
-    std::cerr << "findUsedExtensionsArgv"; for (auto arg: findUsedExtensionsArgv) std::cerr << " " << arg; std::cerr << std::endl;
-    std::cerr << "Used extensions:"; for (auto ext: usedExtensions) std::cerr << " " << ext; std::cerr << std::endl;
 
     if (!arguments.supplyExtensionArguments(usedExtensions)) {
         exitStatus_ = EXIT_FAILURE;
@@ -186,12 +184,6 @@ void WebCLValidator::run()
         exitStatus_ = EXIT_FAILURE;
         return;
     }
-
-    std::cerr << "preprocessorArgv"; for (auto arg: preprocessorArgv) std::cerr << " " << arg; std::cerr << std::endl;
-    std::cerr << "validatorArgv"; for (auto arg: validatorArgv) std::cerr << " " << arg; std::cerr << std::endl;
-    std::cerr << "matcher1Argv"; for (auto arg: matcher1Argv) std::cerr << " " << arg; std::cerr << std::endl;
-    std::cerr << "matcher2Argv"; for (auto arg: matcher2Argv) std::cerr << " " << arg; std::cerr << std::endl;
-    std::cerr << "Used extensions:"; for (auto ext: usedExtensions) std::cerr << " " << ext; std::cerr << std::endl;
 
     WebCLMatcher1Tool matcher1Tool(matcher1Argv, matcher1Input, matcher2Input);
     matcher1Tool.setDiagnosticConsumer(diag);
