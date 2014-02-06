@@ -20,10 +20,9 @@ __kernel void atoms(volatile __global int* global_int_data, volatile __local int
                       volatile __global uint* global_uint_data, volatile __local uint* local_uint_data,
                       volatile __global float* global_float_data, volatile __local float* local_float_data)
 {
-  int val_int = 1;
-  int val_uint = 2;
+  long val_int = 1;
+  ulong val_uint = 2;
   uint cmp = 1;
-  float val_float = 3;
 
   // CHECK: (_wcl_allocs, global_int_data, val_int);
   val_int = atomic_min    (global_int_data, val_int);

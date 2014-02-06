@@ -1687,19 +1687,19 @@ _CL_DECLARE_ATOMICS(__local , uint)
 _CL_OVERLOADABLE float atomic_xchg(volatile __global float *p, float val);
 _CL_OVERLOADABLE float atomic_xchg(volatile __local  float *p, float val);
 
-// TODO: wrap behind #ifdef cl_khr_int64_base_atomics
-#  pragma OPENCL EXTENSION cl_khr_int64_base_atomics: enable
+#if defined( _W2CL_EXTENSION_CL_KHR_INT64_BASE_ATOMICS) || defined(_W2CL_EXTENSION_ALL)
 _CL_DECLARE_ATOMICS_BASIC(__global, long )
 _CL_DECLARE_ATOMICS_BASIC(__global, ulong)
 _CL_DECLARE_ATOMICS_BASIC(__local , long )
 _CL_DECLARE_ATOMICS_BASIC(__local , ulong)
+#endif
 
-// TODO: wrap behind #ifdef cl_khr_int64_extended_atomics
-#  pragma OPENCL EXTENSION cl_khr_int64_extended_atomics: enable
+#if defined( _W2CL_EXTENSION_CL_KHR_INT64_EXTENDED_ATOMICS) || defined(_W2CL_EXTENSION_ALL)
 _CL_DECLARE_ATOMICS_EXTENDED(__global, long )
 _CL_DECLARE_ATOMICS_EXTENDED(__global, ulong)
 _CL_DECLARE_ATOMICS_EXTENDED(__local , long )
 _CL_DECLARE_ATOMICS_EXTENDED(__local , ulong)
+#endif
 
 #define atom_add     atomic_add
 #define atom_sub     atomic_sub
