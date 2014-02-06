@@ -69,7 +69,7 @@ typedef ulong uintptr_t;
 #else
 #  define __IF_INT64(x)
 #endif
-#ifdef cl_khr_fp16
+#if defined(_W2CL_EXTENSION_CL_KHR_FP16) || defined(_W2CL_EXTENSION_ALL)
 #  define __IF_FP16(x) x
 #else
 #  define __IF_FP16(x)
@@ -141,7 +141,7 @@ typedef struct error_undefined_type_long error_undefined_type_long;
 typedef struct error_undefined_type_ulong error_undefined_type_ulong;
 #  define ulong error_undefined_type_ulong
 #endif
-#ifndef cl_khr_fp16
+#if !defined(_W2CL_EXTENSION_CL_KHR_FP16) && !defined(_W2CL_EXTENSION_ALL)
 typedef struct error_undefined_type_half error_undefined_type_half;
 #  define half error_undefined_type_half
 #endif
@@ -203,7 +203,7 @@ typedef ulong ulong8  __attribute__((__ext_vector_type__(8)));
 typedef ulong ulong16 __attribute__((__ext_vector_type__(16)));
 #endif
 
-#ifdef cl_khr_fp16
+#if defined(_W2CL_EXTENSION_CL_KHR_FP16) || defined(_W2CL_EXTENSION_ALL)
 typedef half half2  __attribute__((__ext_vector_type__(2)));
 typedef half half3  __attribute__((__ext_vector_type__(3)));
 typedef half half4  __attribute__((__ext_vector_type__(4)));
@@ -284,7 +284,7 @@ _CL_STATIC_ASSERT(ulong8 , sizeof(ulong8 ) == 8 *sizeof(ulong));
 _CL_STATIC_ASSERT(ulong16, sizeof(ulong16) == 16*sizeof(ulong));
 #endif
 
-#ifdef cl_khr_fp16
+#if defined(_W2CL_EXTENSION_CL_KHR_FP16) || defined(_W2CL_EXTENSION_ALL)
 _CL_STATIC_ASSERT(half, sizeof(half) == 2);
 _CL_STATIC_ASSERT(half2 , sizeof(half2 ) == 2 *sizeof(half));
 _CL_STATIC_ASSERT(half3 , sizeof(half3 ) == 4 *sizeof(half));
@@ -1612,8 +1612,7 @@ void barrier (cl_mem_fence_flags flags);
            )                                                \
   _CL_DECLARE_VSTORE_TYPE_WIDTH(float, WIDTH)
 
-#ifdef cl_khr_fp16
-
+#if defined(_W2CL_EXTENSION_CL_KHR_FP16) || defined(_W2CL_EXTENSION_ALL)
 #define _CL_DECLARE_VLOAD_HALF(MOD)                                     \
   float   _CL_OVERLOADABLE vload_half   (size_t offset, const MOD half *p); \
   float2  _CL_OVERLOADABLE vload_half2  (size_t offset, const MOD half *p); \
