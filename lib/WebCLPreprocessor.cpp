@@ -66,7 +66,7 @@ void WebCLPreprocessor::PragmaOpenCLExtension(
 {
     llvm::StringRef name = Name->getName();
     if (State && !extensions_.count(name)) {
-        error(NameLoc, "WebCL doesn't support enabling '%0' extension.\n") << name;
+        error(NameLoc, "WebCL or platform doesn't support enabling '%0' extension.\n") << name;
     } else if (State == 0 && (name == ClKhrInitializeMemoryStr || name == "all")) {
         // cannot disable all extensions with webcl
         error(NameLoc, "WebCL program cannot disable extension %0.\n") << ClKhrInitializeMemoryStr;
