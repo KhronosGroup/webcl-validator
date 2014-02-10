@@ -28,6 +28,9 @@
 #include "WebCLTypes.hpp"
 #include "general.h"
 
+#include "clang/AST/Attr.h"
+#include "clang/Basic/OpenCL.h"
+#include "clang/AST/Type.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/TypeLoc.h"
@@ -388,27 +391,45 @@ namespace {
     }
 
     std::string wrappedDeclaration(
-	clang::CompilerInstance &instance, 
-	std::string returnTypeStr,
-	const clang::CallExpr *callExpr, 
-	std::string name,
+        clang::CompilerInstance &instance, 
+        std::string returnTypeStr,
+        const clang::CallExpr *callExpr, 
+        std::string name,
     bool addAddressSpaceRecordArg)
     {
-	WebCLConfiguration cfg;
+        WebCLConfiguration cfg;
 
-	FunctionArgumentList newArguments;
+        FunctionArgumentList newArguments;
       
-    if (addAddressSpaceRecordArg) {
-      newArguments.push_back(std::make_pair(cfg.addressSpaceRecordType_ + "*", cfg.addressSpaceRecordName_));
-    }
+        if (addAddressSpaceRecordArg) {
+            newArguments.push_back(std::make_pair(cfg.addressSpaceRecordType_ + "*", cfg.addressSpaceRecordName_));
+        }
       
-    for (size_t argIdx = 0; argIdx < callExpr->getNumArgs(); ++argIdx) {
-	    newArguments.push_back(std::make_pair(
-		    callExpr->getArg(argIdx)->getType().getAsString(),
-		    "arg" + stringify(argIdx)));
-	}
-	
-	return functionDeclaration(returnTypeStr, name, newArguments);
+        for (size_t argIdx = 0; argIdx < callExpr->getNumArgs(); ++argIdx) {
+            const clang::Expr *expr = callExpr->getArg(argIdx);
+            const clang::DeclRefExpr *declRefExpr = WebCLTypes::declRefExprViaImplicit(expr);
+
+            std::string imageQualifiers;
+
+            if (declRefExpr) {
+                const clang::Decl *decl = declRefExpr->getDecl();
+                if (decl->hasAttr<clang::OpenCLImageAccessAttr>()) {
+                    int qualifier = decl->getAttr<clang::OpenCLImageAccessAttr>()->getAccess();
+                    imageQualifiers =
+                        qualifier == clang::CLIA_read_only ? "read_only " :
+                        qualifier == clang::CLIA_write_only ? "write_only " :
+                        qualifier == clang::CLIA_read_write ? "read_write " :
+                        "";
+                    assert(!qualifier || imageQualifiers.size());
+                }
+            }
+
+            newArguments.push_back(std::make_pair(
+                    imageQualifiers + expr->getType().getAsString(),
+                    "arg" + stringify(argIdx)));
+        }
+        
+        return functionDeclaration(returnTypeStr, name, newArguments);
     }
 
     WrappedFunction VLoad::wrapFunction(WebCLTransformer &transformer, clang::CompilerInstance &instance, clang::CallExpr *callExpr, const ExprVector &arguments, WebCLKernelHandler &kernelHandler, WebCLRewriter &rewriter) const
