@@ -88,6 +88,10 @@ forces sources to be interpreted as OpenCL code even if they wouldn't
 use the *.cl* suffix. Option *-include FILE* automatically includes
 helper code, such as OpenCL type and builtin definitions.
 
+To disable certain extensions from the default set of supported
+extensions you may use the --disable=xx switch:
+
+        webcl-validator kernel.cl --disable=cl_khr_fp16
 
 Building with Windows MinGW + MSYS (not tested recently since we changed to Visual Studio express)
 ----------------------------------
