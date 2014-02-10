@@ -25,6 +25,7 @@
 */
 
 #include "clang/AST/Decl.h"
+#include "clang/AST/Expr.h"
 
 #include <map>
 #include <set>
@@ -91,6 +92,10 @@ namespace WebCLTypes {
     /// Works around a bug in Clang's vector element access
     /// expression.
     unsigned getAddressSpace(clang::Expr *expr);
+
+    // \return The declaration of an expression or NULL if there is none. One
+    // implicit cast is allowed between the expression and its declaration.
+    const clang::DeclRefExpr *declRefExprViaImplicit(const clang::Expr *expr);
 }
 
 #endif // WEBCLVALIDATOR_TYPES
