@@ -491,6 +491,7 @@ bool WebCLAnalyser::handleFunctionDecl(clang::FunctionDecl *decl)
   if (decl->hasAttr<clang::OpenCLKernelAttr>()) {
     info(decl->getLocStart(), "This is kernel, go through arguments to collect pointers etc.");
     kernelFunctions_.push_back(KernelInfo(instance_, decl));
+    kernelSet_.insert(decl);
 
     // Check image typedefs here, so WebCLAnalyzer reference doesn't need to be passed everywhere
     const std::vector<KernelArgInfo>& kernelArgInfo = kernelFunctions_.back().args;
@@ -518,6 +519,12 @@ bool WebCLAnalyser::handleCallExpr(clang::CallExpr *expr)
   if (!callee) {
       error(expr->getLocStart(), "Function call is not direct.");
       return true;
+  }
+  
+  // make sure call is not kernel call
+  if (isKernel(callee) > 0) {
+    error(expr->getLocStart(), "Calling kernels is not allowed.");
+    return true;
   }
 
   if (helperFunctions_.count(callee) > 0) {

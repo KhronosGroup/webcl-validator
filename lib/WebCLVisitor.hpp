@@ -294,6 +294,11 @@ public:
   /// \return Whether a function call passes pointer parameter or if the
   /// function declaration takes pointer parameters.
   bool hasUnsafeParameters(clang::CallExpr *expr);
+  
+  /// \return True if name is name of a kernel function.
+  bool isKernel(clang::FunctionDecl *decl) {
+    return kernelSet_.count(decl) > 0;
+  }
 
 private:
 
@@ -302,9 +307,11 @@ private:
 
   /// Save variable into address space specific variable collection.
   void collectVariable(clang::VarDecl *decl);
-
+  
   /// User defined kernels.
   KernelList kernelFunctions_;
+  /// Set to check fast if function declaration is a kernel.
+  FunctionDeclSet kernelSet_;
   /// User defined functions.
   FunctionDeclSet helperFunctions_;
   /// Calls to user defined functions.
