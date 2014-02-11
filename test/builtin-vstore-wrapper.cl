@@ -26,15 +26,15 @@ __kernel void builtin_wrappers(__global char *output,
     }
 
     offset = 0;
-    // CHECK: _wcl_vstore4_1(_wcl_allocs, value, _wcl_locals._wcl_offset, input);
+    // CHECK-DAG: _wcl_vstore4_{{[0-3]}}(_wcl_allocs, value, _wcl_locals._wcl_offset, input);
     vstore@SIZE@(value, offset, input);
 
     offset = 1;
-    // CHECK: _wcl_vstore4_2(_wcl_allocs, value, _wcl_locals._wcl_offset, input);
+    // CHECK-DAG: _wcl_vstore4_{{[0-3]}}(_wcl_allocs, value, _wcl_locals._wcl_offset, input);
     vstore@SIZE@(value, offset, input);
 
     offset = 2;
-    // CHECK: _wcl_vstore4_3(_wcl_allocs, value, _wcl_locals._wcl_offset, input);
+    // CHECK-DAG: _wcl_vstore4_{{[0-3]}}(_wcl_allocs, value, _wcl_locals._wcl_offset, input);
     vstore@SIZE@(value, offset, input);
 
     for (int c = 0; c < 16; ++c) {
