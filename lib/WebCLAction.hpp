@@ -53,6 +53,7 @@ public:
     virtual ~WebCLAction();
 
     void setExtensions(const std::set<std::string> &extensions);
+    void setUsedExtensionsStorage(std::set<std::string> *usedExtensions);
 
 protected:
 
@@ -69,10 +70,40 @@ protected:
     WebCLPreprocessor *preprocessor_;
     // Additional OpenCL extensions to allow in preprocessing besides cl_khr_initialize_memory
     std::set<std::string> extensions_;
+    // If not null, used extensions are stored here
+    std::set<std::string> *usedExtensions_;
     /// Output filename.
     const char *output_;
     /// Stream corresponding to the output filename.
     llvm::raw_ostream *out_;
+};
+
+/// Performs used extension detection
+class WebCLFindUsedExtensionsAction : public WebCLAction
+{
+public:
+    explicit WebCLFindUsedExtensionsAction();
+    virtual ~WebCLFindUsedExtensionsAction();
+
+    /// \see clang::FrontendAction
+    virtual clang::ASTConsumer* CreateASTConsumer(clang::CompilerInstance &instance,
+                                                  llvm::StringRef);
+
+    /// \see clang::FrontendAction
+    virtual void ExecuteAction();
+
+    /// \see clang::FrontendAction
+    virtual bool usesPreprocessorOnly() const;
+
+protected:
+    /// \see WebCLAction
+    virtual bool initialize(clang::CompilerInstance &instance);
+
+    /// Finds matches from AST.
+    clang::ast_matchers::MatchFinder finder_;
+
+    /// Runs matchers when AST has been parsed.
+    clang::ASTConsumer *consumer_;
 };
 
 /// Performs preprocessing stage only. Doesn't parse AST.

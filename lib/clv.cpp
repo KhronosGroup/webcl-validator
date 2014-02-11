@@ -78,7 +78,7 @@ WebCLValidator::WebCLValidator(
     const std::set<std::string> &extensions,
     int argc,
     char const* argv[])
-    : arguments(inputSource, argc, argv)
+    : arguments(inputSource, CharPtrVector(argv, argv + argc))
     , diag(new WebCLDiag())
     , extensions(extensions), exitStatus_(-1)
 {
@@ -92,42 +92,44 @@ WebCLValidator::~WebCLValidator()
 void WebCLValidator::run()
 {
     // Create only one preprocessor.
-    int preprocessorArgc = arguments.getPreprocessorArgc();
-    char const **preprocessorArgv = arguments.getPreprocessorArgv();
-    char const *preprocessorInput = arguments.getInput(preprocessorArgc, preprocessorArgv, true);
-    if (!preprocessorArgc || !preprocessorArgv || !preprocessorInput) {
+    CharPtrVector preprocessorArgv = arguments.getPreprocessorArgv();
+    char const *preprocessorInput = arguments.getInput(preprocessorArgv);
+    arguments.createOutput();
+    if (!preprocessorArgv.size() || !preprocessorInput) {
         exitStatus_ = EXIT_FAILURE;
         return;
     }
 
-    // Create as many matchers as you like.
-    int matcher1Argc = arguments.getMatcherArgc();
-    char const **matcher1Argv = arguments.getMatcherArgv();
-    char const *matcher1Input = arguments.getInput(matcher1Argc, matcher1Argv, true);
-    if (!matcher1Argc || !matcher1Argv || !matcher1Input) {
+    CharPtrVector matcher1Argv = arguments.getMatcherArgv();
+    char const *matcher1Input = arguments.getInput(matcher1Argv);
+    arguments.createOutput();
+    if (!matcher1Argv.size() || !matcher1Input) {
         exitStatus_ = EXIT_FAILURE;
         return;
     }
 
-    int matcher2Argc = arguments.getMatcherArgc();
-    char const **matcher2Argv = arguments.getMatcherArgv();
-    char const *matcher2Input = arguments.getInput(matcher2Argc, matcher2Argv, true);
-    if (!matcher2Argc || !matcher2Argv || !matcher2Input) {
+    std::set<std::string> usedExtensions;
+    // usedExtensions.insert("ALL");
+    //WebCLMatcher1Tool findUsedExtensionsTool(matcher1Argv, matcher1Input, 0);
+    CharPtrVector findUsedExtensionsArgv = arguments.getFindUsedExtensionsArgv();
+    WebCLFindUsedExtensionsTool findUsedExtensionsTool(findUsedExtensionsArgv, preprocessorInput);
+    WebCLDiagNull diagNull;
+    findUsedExtensionsTool.setDiagnosticConsumer(&diagNull);
+    findUsedExtensionsTool.setExtensions(extensions);
+    findUsedExtensionsTool.setUsedExtensionsStorage(&usedExtensions);
+    const int findUsedExtensionsStatus = findUsedExtensionsTool.run();
+    if (findUsedExtensionsStatus) {
         exitStatus_ = EXIT_FAILURE;
         return;
     }
 
-    // Create only one validator.
-    int validatorArgc = arguments.getValidatorArgc();
-    char const **validatorArgv = arguments.getValidatorArgv();
-    char const *validatorInput = arguments.getInput(validatorArgc, validatorArgv);
-    if (!validatorArgc || !validatorArgv) {
+    if (!arguments.supplyExtensionArguments(usedExtensions)) {
         exitStatus_ = EXIT_FAILURE;
         return;
     }
 
-    WebCLPreprocessorTool preprocessorTool(preprocessorArgc, preprocessorArgv,
-                                           preprocessorInput, matcher1Input);
+    preprocessorArgv = arguments.getPreprocessorArgv(); // take with the new flags
+    WebCLPreprocessorTool preprocessorTool(preprocessorArgv, preprocessorInput, matcher1Input);
     preprocessorTool.setDiagnosticConsumer(diag);
     preprocessorTool.setExtensions(extensions);
     const int preprocessorStatus = preprocessorTool.run();
@@ -165,8 +167,25 @@ void WebCLValidator::run()
         return;
     }
 
-    WebCLMatcher1Tool matcher1Tool(matcher1Argc, matcher1Argv,
-                                   matcher1Input, matcher2Input);
+    matcher1Argv = arguments.getMatcherArgv();
+
+    CharPtrVector matcher2Argv = arguments.getMatcherArgv();
+    char const *matcher2Input = arguments.getInput(matcher2Argv);
+    arguments.createOutput();
+    if (!matcher2Argv.size() || !matcher2Input) {
+        exitStatus_ = EXIT_FAILURE;
+        return;
+    }
+
+    // Create only one validator.
+    CharPtrVector validatorArgv = arguments.getValidatorArgv();
+    char const *validatorInput = arguments.getInput(validatorArgv);
+    if (!validatorArgv.size()) {
+        exitStatus_ = EXIT_FAILURE;
+        return;
+    }
+
+    WebCLMatcher1Tool matcher1Tool(matcher1Argv, matcher1Input, matcher2Input);
     matcher1Tool.setDiagnosticConsumer(diag);
     matcher1Tool.setExtensions(extensions);
     const int matcher1Status = matcher1Tool.run();
@@ -175,8 +194,7 @@ void WebCLValidator::run()
         return;
     }
 
-    WebCLMatcher2Tool matcher2Tool(matcher2Argc, matcher2Argv,
-                                   matcher2Input, validatorInput);
+    WebCLMatcher2Tool matcher2Tool(matcher2Argv, matcher2Input, validatorInput);
     matcher2Tool.setDiagnosticConsumer(diag);
     matcher2Tool.setExtensions(extensions);
     const int matcher2Status = matcher2Tool.run();
@@ -185,8 +203,7 @@ void WebCLValidator::run()
         return;
     }
 
-    WebCLValidatorTool validatorTool(validatorArgc, validatorArgv,
-                                     validatorInput);
+    WebCLValidatorTool validatorTool(validatorArgv, validatorInput);
     validatorTool.setDiagnosticConsumer(diag);
     validatorTool.setExtensions(extensions);
     const int validatorStatus = validatorTool.run();

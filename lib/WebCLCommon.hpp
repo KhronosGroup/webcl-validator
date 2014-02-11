@@ -28,10 +28,12 @@
 
 #include <string>
 #include <list>
+#include <vector>
 #include <sstream>
 
 typedef std::list<std::string> StringList;
 typedef std::list<unsigned> UintList;
+typedef std::vector<const char*> CharPtrVector;
 
 // makes a string of anything that can be written to a c++ stream
 template <typename T> std::string stringify(const T& value)

@@ -28,6 +28,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <set>
+
+#include "WebCLCommon.hpp"
 
 /// Chains tools performing different validation stages. Links outputs
 /// of earlier stages to inputs of later stages. Makes sure that tool
@@ -40,35 +43,41 @@ public:
 
     /// Constructor. The command line options given by user should be
     /// passed as arguments, along with the contents of the input file.
-    WebCLArguments(const std::string &inputSource, int argc, char const *argv[]);
+    WebCLArguments(const std::string &inputSource, const CharPtrVector& argv);
     ~WebCLArguments();
 
-    /// \return Number of preprocessor tool arguments.
-    int getPreprocessorArgc() const;
-    /// \return Preprocessor tool arguments.
-    char const **getPreprocessorArgv() const;
+    /// \return Tool arguments for the phase finding used extensions.
+    /// Input is the original input.
+    CharPtrVector getFindUsedExtensionsArgv() const;
 
-    /// \return Number of arguments for all normalization tools.
-    int getMatcherArgc() const;
+    /// \return Preprocessor tool arguments.
+    CharPtrVector getPreprocessorArgv() const;
+
     /// \return Normalization tool arguments. Input is matched with
     /// output of previous (preprocessor or normalization) tool.
-    char const **getMatcherArgv();
+    CharPtrVector getMatcherArgv();
 
-    /// \return Number of arguments of memory access validation tool.
-    int getValidatorArgc() const;
     /// \return Memory access validation tool arguments. Input is
     /// matched with output of previous normalization tool.
-    char const **getValidatorArgv() const;
+    CharPtrVector getValidatorArgv() const;
 
     /// \return Input file for a tool with the given
-    /// options. Optionally creates an output file that becomes the
-    /// input file of the next tool in the pipeline.
-    char const *getInput(int argc, char const **argv, bool createOutput = false);
+    /// options.
+    char const *getInput(const CharPtrVector& argv);
+
+    /// Creates an output file that becomes the input file of the next tool in
+    /// the pipeline.
+    void createOutput();
 
     /// Writes the given data into a file that is included as an input
     /// by the matcher and validator tools due to their argv's
     /// \return \c true on success, \c false on failure
     bool supplyBuiltinDecls(const std::string &decls);
+
+    /// Writes the given data into a file that is included as an input
+    /// by the matcher and validator tools due to their argv's
+    /// \return \c true on success, \c false on failure
+    bool supplyExtensionArguments(const std::set<std::string> &extensions);
 
 private:
 
@@ -85,18 +94,12 @@ private:
     /// of srcFd (typically standard input)
     char const *createCopiedTemporaryFile(int srcFd) const;
 
-    /// Preprocessor argument count.
-    int preprocessorArgc_;
     /// Preprocessor arguments.
-    char const **preprocessorArgv_;
-    /// Argument count for normalization and memory access validation.
-    int validatorArgc_;
+    CharPtrVector findUsedExtensionsArgv_;
+    /// Preprocessor arguments.
+    CharPtrVector preprocessorArgv_;
     /// Arguments for normalization and memory access validation.
-    char const **validatorArgv_;
-
-    /// Arguments for normalization. Only required for releasing
-    /// allocated memory.
-    std::vector<char const **> matcherArgv_;
+    CharPtrVector validatorArgv_;
 
     /// Pair of file descriptor and filename.
     typedef std::pair<int, char const *> TemporaryFile;

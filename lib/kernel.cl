@@ -53,6 +53,9 @@ typedef ulong uintptr_t;
    only. Seems the pragma does not add the macro, so we have the target
    define the macro and the pragma is conditionally enabled.
 */
+#if defined( _W2CL_EXTENSION_CL_KHR_FP64) || defined(_W2CL_EXTENSION_ALL)
+#  pragma OPENCL EXTENSION cl_khr_fp64: enable
+#endif
 #ifdef cl_khr_fp16
 #  pragma OPENCL EXTENSION cl_khr_fp16: enable
 #endif
@@ -66,12 +69,12 @@ typedef ulong uintptr_t;
 #else
 #  define __IF_INT64(x)
 #endif
-#ifdef cl_khr_fp16
+#if defined(_W2CL_EXTENSION_CL_KHR_FP16) || defined(_W2CL_EXTENSION_ALL)
 #  define __IF_FP16(x) x
 #else
 #  define __IF_FP16(x)
 #endif
-#ifdef cl_khr_fp64
+#if defined( _W2CL_EXTENSION_CL_KHR_FP64) || defined(_W2CL_EXTENSION_ALL)
 #  define __IF_FP64(x) x
 #else
 #  define __IF_FP64(x)
@@ -138,11 +141,11 @@ typedef struct error_undefined_type_long error_undefined_type_long;
 typedef struct error_undefined_type_ulong error_undefined_type_ulong;
 #  define ulong error_undefined_type_ulong
 #endif
-#ifndef cl_khr_fp16
+#if !defined(_W2CL_EXTENSION_CL_KHR_FP16) && !defined(_W2CL_EXTENSION_ALL)
 typedef struct error_undefined_type_half error_undefined_type_half;
 #  define half error_undefined_type_half
 #endif
-#ifndef cl_khr_fp64
+#if !defined(_W2CL_EXTENSION_CL_KHR_FP64) && !defined(_W2CL_EXTENSION_ALL)
 typedef struct error_undefined_type_double error_undefined_type_double;
 #  define double error_undefined_type_double
 #endif
@@ -200,7 +203,7 @@ typedef ulong ulong8  __attribute__((__ext_vector_type__(8)));
 typedef ulong ulong16 __attribute__((__ext_vector_type__(16)));
 #endif
 
-#ifdef cl_khr_fp16
+#if defined(_W2CL_EXTENSION_CL_KHR_FP16) || defined(_W2CL_EXTENSION_ALL)
 typedef half half2  __attribute__((__ext_vector_type__(2)));
 typedef half half3  __attribute__((__ext_vector_type__(3)));
 typedef half half4  __attribute__((__ext_vector_type__(4)));
@@ -214,7 +217,7 @@ typedef float float4  __attribute__((__ext_vector_type__(4)));
 typedef float float8  __attribute__((__ext_vector_type__(8)));
 typedef float float16 __attribute__((__ext_vector_type__(16)));
 
-#ifdef cl_khr_fp64
+#if defined( _W2CL_EXTENSION_CL_KHR_FP64) || defined(_W2CL_EXTENSION_ALL)
 typedef double double2  __attribute__((__ext_vector_type__(2)));
 typedef double double3  __attribute__((__ext_vector_type__(3)));
 typedef double double4  __attribute__((__ext_vector_type__(4)));
@@ -281,7 +284,7 @@ _CL_STATIC_ASSERT(ulong8 , sizeof(ulong8 ) == 8 *sizeof(ulong));
 _CL_STATIC_ASSERT(ulong16, sizeof(ulong16) == 16*sizeof(ulong));
 #endif
 
-#ifdef cl_khr_fp16
+#if defined(_W2CL_EXTENSION_CL_KHR_FP16) || defined(_W2CL_EXTENSION_ALL)
 _CL_STATIC_ASSERT(half, sizeof(half) == 2);
 _CL_STATIC_ASSERT(half2 , sizeof(half2 ) == 2 *sizeof(half));
 _CL_STATIC_ASSERT(half3 , sizeof(half3 ) == 4 *sizeof(half));
@@ -297,7 +300,7 @@ _CL_STATIC_ASSERT(float4 , sizeof(float4 ) == 4 *sizeof(float));
 _CL_STATIC_ASSERT(float8 , sizeof(float8 ) == 8 *sizeof(float));
 _CL_STATIC_ASSERT(float16, sizeof(float16) == 16*sizeof(float));
 
-#ifdef cl_khr_fp64
+#if defined( _W2CL_EXTENSION_CL_KHR_FP64) || defined(_W2CL_EXTENSION_ALL)
 _CL_STATIC_ASSERT(double, sizeof(double) == 8);
 _CL_STATIC_ASSERT(double2 , sizeof(double2 ) == 2 *sizeof(double));
 _CL_STATIC_ASSERT(double3 , sizeof(double3 ) == 4 *sizeof(double));
@@ -1609,8 +1612,7 @@ void barrier (cl_mem_fence_flags flags);
            )                                                \
   _CL_DECLARE_VSTORE_TYPE_WIDTH(float, WIDTH)
 
-#ifdef cl_khr_fp16
-
+#if defined(_W2CL_EXTENSION_CL_KHR_FP16) || defined(_W2CL_EXTENSION_ALL)
 #define _CL_DECLARE_VLOAD_HALF(MOD)                                     \
   float   _CL_OVERLOADABLE vload_half   (size_t offset, const MOD half *p); \
   float2  _CL_OVERLOADABLE vload_half2  (size_t offset, const MOD half *p); \
@@ -1684,19 +1686,19 @@ _CL_DECLARE_ATOMICS(__local , uint)
 _CL_OVERLOADABLE float atomic_xchg(volatile __global float *p, float val);
 _CL_OVERLOADABLE float atomic_xchg(volatile __local  float *p, float val);
 
-// TODO: wrap behind #ifdef cl_khr_int64_base_atomics
-#  pragma OPENCL EXTENSION cl_khr_int64_base_atomics: enable
+#if defined( _W2CL_EXTENSION_CL_KHR_INT64_BASE_ATOMICS) || defined(_W2CL_EXTENSION_ALL)
 _CL_DECLARE_ATOMICS_BASIC(__global, long )
 _CL_DECLARE_ATOMICS_BASIC(__global, ulong)
 _CL_DECLARE_ATOMICS_BASIC(__local , long )
 _CL_DECLARE_ATOMICS_BASIC(__local , ulong)
+#endif
 
-// TODO: wrap behind #ifdef cl_khr_int64_extended_atomics
-#  pragma OPENCL EXTENSION cl_khr_int64_extended_atomics: enable
+#if defined( _W2CL_EXTENSION_CL_KHR_INT64_EXTENDED_ATOMICS) || defined(_W2CL_EXTENSION_ALL)
 _CL_DECLARE_ATOMICS_EXTENDED(__global, long )
 _CL_DECLARE_ATOMICS_EXTENDED(__global, ulong)
 _CL_DECLARE_ATOMICS_EXTENDED(__local , long )
 _CL_DECLARE_ATOMICS_EXTENDED(__local , ulong)
+#endif
 
 #define atom_add     atomic_add
 #define atom_sub     atomic_sub

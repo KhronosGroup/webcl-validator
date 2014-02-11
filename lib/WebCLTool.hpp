@@ -27,6 +27,7 @@
 #include "clang/Tooling/Tooling.h"
 
 #include "WebCLVisitor.hpp"
+#include "WebCLCommon.hpp"
 
 #include <string>
 #include <vector>
@@ -57,12 +58,14 @@ public:
 
     /// Constructor. Inputs and outputs are filenames. If output isn't
     /// given, standard output is used.
-    WebCLTool(int argc, char const **argv,
+    WebCLTool(const CharPtrVector &argv,
               char const *input, char const *output = NULL);
     virtual ~WebCLTool();
 
     void setDiagnosticConsumer(clang::DiagnosticConsumer *diag);
     void setExtensions(const std::set<std::string> &extensions);
+    // set the storage to return used extensions in; this approach is used to pierce through the layers
+    void setUsedExtensionsStorage(std::set<std::string> *usedExtensions);
 
     /// \see clang::tooling::FrontendActionFactory
     virtual clang::FrontendAction *create() = 0;
@@ -78,6 +81,8 @@ protected:
     std::vector<std::string> paths_;
     // Additional OpenCL extensions to allow in preprocessing besides cl_khr_initialize_memory
     std::set<std::string> extensions_;
+    // If not null, actually used extensions are placed here
+    std::set<std::string> *usedExtensions_;
     /// Tool representing a validation stage.
     clang::tooling::ClangTool* tool_;
     /// Target file for transformations.
@@ -90,7 +95,7 @@ protected:
 class WebCLPreprocessorTool : public WebCLTool
 {
 public:
-    WebCLPreprocessorTool(int argc, char const **argv,
+    WebCLPreprocessorTool(const CharPtrVector &argv,
                           char const *input, char const *output);
     virtual ~WebCLPreprocessorTool();
 
@@ -110,10 +115,25 @@ private:
 /// output of preprocessing stage as input.
 ///
 /// \see WebCLMatcher1Action
+class WebCLFindUsedExtensionsTool : public WebCLTool
+{
+public:
+    WebCLFindUsedExtensionsTool(const CharPtrVector &argv,
+        char const *input);
+    virtual ~WebCLFindUsedExtensionsTool();
+
+    /// \brief see clang::tooling::FrontendActionFactory
+    virtual clang::FrontendAction *create();
+};
+
+/// Runs first stage of AST matcher based transformations. Takes the
+/// output of preprocessing stage as input.
+///
+/// \see WebCLMatcher1Action
 class WebCLMatcher1Tool : public WebCLTool
 {
 public:
-    WebCLMatcher1Tool(int argc, char const **argv,
+    WebCLMatcher1Tool(const CharPtrVector &argv,
                       char const *input, char const *output);
     virtual ~WebCLMatcher1Tool();
 
@@ -128,7 +148,7 @@ public:
 class WebCLMatcher2Tool : public WebCLTool
 {
 public:
-    WebCLMatcher2Tool(int argc, char const **argv,
+    WebCLMatcher2Tool(const CharPtrVector &argv,
                       char const *input, char const *output);
     virtual ~WebCLMatcher2Tool();
 
@@ -143,7 +163,7 @@ public:
 class WebCLValidatorTool : public WebCLTool
 {
 public:
-    WebCLValidatorTool(int argc, char const **argv,
+    WebCLValidatorTool(const CharPtrVector &argv,
                        char const *input);
     virtual ~WebCLValidatorTool();
 

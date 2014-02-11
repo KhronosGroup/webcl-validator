@@ -32,7 +32,9 @@
 #include <iterator>
 #include <set>
 #include <string>
+#include <cstring>
 #include <vector>
+#include <algorithm>
 
 #include "WebCLHeader.hpp"
 
@@ -43,6 +45,24 @@ namespace {
         to.resize(from.tellg());
         from.seekg(0, std::ios::beg);
         return from.read(&to[0], to.size());
+    }
+
+    // apparently wclStrDup isn't in C standard, only in POSIX. Also we get to use 'delete[]' on these strings.
+    char* wclStrDup(const char* str)
+    {
+        if (!str) {
+            return 0;
+        } else {
+            size_t storage_len = strlen(str) + 1;
+            char* clone = new char[storage_len];
+            std::copy(str, str + storage_len, clone);
+            return clone;
+        }
+    }
+
+    char* dupToCString(const std::string& str)
+    {
+        return wclStrDup(str.c_str());
     }
 }
 
@@ -135,13 +155,35 @@ int main(int argc, char const* argv[])
         inputSource.append(fileContents);
     }
 
-    // Enable usual extensions
+    std::set<std::string> supportedExtensions;
+    supportedExtensions.insert("cl_khr_fp64");
+    supportedExtensions.insert("cl_khr_fp16");
+    supportedExtensions.insert("cl_khr_gl_sharing");
+    supportedExtensions.insert("cl_khr_int64_base_atomics");
+    supportedExtensions.insert("cl_khr_int64_extended_atomics");
+    std::set<std::string> enabledExtensions = supportedExtensions;
+
+    // Remove disabled extensions from the set of supported extension
+    for (int i = 2; i < argc; ++i) {
+        char const *option = argv[i];
+        std::string cmd = "--disable=";
+        if (std::string(option).substr(0, cmd.size()) == cmd) {
+            std::string extension =  std::string(option).substr(cmd.size());
+
+            if (supportedExtensions.count(extension)) {
+                enabledExtensions.erase(extension);
+            } else {
+                std::cerr << "error: Cannot disable unknown extension " << extension << "\n";
+                return EXIT_FAILURE;
+            }
+        }
+    }
+
+    // Construct the argument of enabled extensions, needs to be released later
     std::vector<const char *> extensions;
-    extensions.push_back("cl_khr_fp64");
-    extensions.push_back("cl_khr_fp16");
-    extensions.push_back("cl_khr_gl_sharing");
-    extensions.push_back("cl_khr_int64_base_atomics");
-    extensions.push_back("cl_khr_int64_extended_atomics");
+    std::transform(enabledExtensions.begin(), enabledExtensions.end(),
+        std::back_inserter(extensions),
+        dupToCString);
     extensions.push_back(0);
 
     // Parse user defines
@@ -159,6 +201,13 @@ int main(int argc, char const* argv[])
     // Run validator
     cl_int err = CL_SUCCESS;
     clv_program prog = clvValidate(inputSource.c_str(), &extensions[0], &userDefines[0], NULL, NULL, &err);
+    
+    for (std::vector<const char *>::const_iterator it = extensions.begin();
+         it != extensions.end();
+         ++it) {
+        delete[] *it;
+    }
+
     if (!prog) {
         std::cerr << "Failed to call validator: " << err << '\n';
         return EXIT_FAILURE;

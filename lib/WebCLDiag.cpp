@@ -100,3 +100,23 @@ bool WebCLDiag::collectSourceLocation(
 
     return true;
 }
+
+WebCLDiagNull::WebCLDiagNull()
+{
+}
+
+WebCLDiagNull::~WebCLDiagNull()
+{
+}
+
+void WebCLDiagNull::BeginSourceFile(const clang::LangOptions &langOpts, const clang::Preprocessor *pp)
+{
+}
+
+void WebCLDiagNull::EndSourceFile()
+{
+}
+
+void WebCLDiagNull::HandleDiagnostic(clang::DiagnosticsEngine::Level level, const clang::Diagnostic &info)
+{
+}

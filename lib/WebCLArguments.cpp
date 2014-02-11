@@ -22,6 +22,7 @@
 */
 
 #include "WebCLArguments.hpp"
+#include "WebCLConfiguration.hpp"
 #include "kernel.h"
 
 #include <algorithm>
@@ -58,12 +59,24 @@ int mingwcompatible_mkstemp(char* tmplt) {
   return open(filename, O_RDWR | O_CREAT, 0600);
 }
 
-WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char const *argv[])
-    : preprocessorArgc_(0)
-    , preprocessorArgv_(NULL)
-    , validatorArgc_(0)
-    , validatorArgv_(NULL)
-    , matcherArgv_()
+namespace {
+    // apparently wcl_strdup isn't in C standard, only in POSIX. Also we get to use 'delete[]' on these strings.
+    char* wcl_strdup(const char* str)
+    {
+        if (!str) {
+            return 0;
+        } else {
+            size_t storage_len = strlen(str) + 1;
+            char* clone = new char[storage_len];
+            std::copy(str, str + storage_len, clone);
+            return clone;
+        }
+    }
+}
+
+WebCLArguments::WebCLArguments(const std::string &inputSource, const CharPtrVector& argv)
+    : preprocessorArgv_()
+    , validatorArgv_()
     , files_()
     , builtinDeclFilename_(NULL)
     , outputs_()
@@ -94,16 +107,30 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
     // TODO: add -Dcl_khr_fp16 etc definitions to preprocessor options
     // based on extensions passed to clvValidate()
 
-    char const *preprocessorInvocation[] = {
-        "libclv", inputFilename, "--"
+    char const *findUsedExtensionsInvocation[] = {
+        "libclv", inputFilename, "--",
+        "-include", headerFilename
     };
-    const int preprocessorInvocationSize =
-        sizeof(preprocessorInvocation) / sizeof(preprocessorInvocation[0]);
+    const int findUsedExtensionsInvocationSize =
+        sizeof(findUsedExtensionsInvocation) / sizeof(findUsedExtensionsInvocation[0]);
+
+    char const *findUsedExtensionsOptions[] = {
+        "-E", "-x", "cl", "-fno-builtin", "-ffreestanding",
+        "-D_W2CL_EXTENSION_ALL"
+    };
+    const int numFindUsedExtensionsOptions =
+        sizeof(findUsedExtensionsOptions) / sizeof(findUsedExtensionsOptions[0]);
+
     char const *preprocessorOptions[] = {
         "-E", "-x", "cl", "-fno-builtin", "-ffreestanding"
     };
     const int numPreprocessorOptions =
         sizeof(preprocessorOptions) / sizeof(preprocessorOptions[0]);
+    char const *preprocessorInvocation[] = {
+        "libclv", inputFilename, "--"
+    };
+    const int preprocessorInvocationSize =
+        sizeof(preprocessorInvocation) / sizeof(preprocessorInvocation[0]);
 
     char const *validatorInvocation[] = {
         "libclv", NULL, "--"
@@ -119,68 +146,72 @@ WebCLArguments::WebCLArguments(const std::string &inputSource, int argc, char co
         sizeof(validatorOptions) / sizeof(validatorOptions[0]);
 
     std::set<char const *> userDefines;
-    for (int i = 0; i < argc; ++i) {
+    for (size_t i = 0; i < argv.size(); ++i) {
         char const *option = argv[i];
         if (!std::string(option).substr(0, 2).compare("-D"))
             userDefines.insert(option);
     }
 
-    preprocessorArgc_ =
-        preprocessorInvocationSize + userDefines.size() + numPreprocessorOptions + 1;
-    validatorArgc_ =
-        validatorInvocationSize + argc + numValidatorOptions + 3;
-
-    preprocessorArgv_ = new char const *[preprocessorArgc_];
-    if (!preprocessorArgv_) {
-        std::cerr << "Internal error. Can't create argument list for preprocessor."
-                  << std::endl;
-        return;
-    }
-    validatorArgv_ = new char const *[validatorArgc_];
-    if (!validatorArgv_) {
-        std::cerr << "Internal error. Can't create argument list for validator."
-                  << std::endl;
-        return;
-    }
+    // find used extensions arguments
+    std::transform(findUsedExtensionsInvocation,
+        findUsedExtensionsInvocation + findUsedExtensionsInvocationSize,
+        std::back_inserter(findUsedExtensionsArgv_),
+        wcl_strdup);
+    std::transform(userDefines.begin(),
+        userDefines.end(),
+        std::back_inserter(findUsedExtensionsArgv_),
+        wcl_strdup);
+    std::transform(findUsedExtensionsOptions,
+        findUsedExtensionsOptions + numFindUsedExtensionsOptions,
+        std::back_inserter(findUsedExtensionsArgv_),
+        wcl_strdup);
+    findUsedExtensionsArgv_.push_back(wcl_strdup("-ferror-limit=0"));
 
     // preprocessor arguments
-    std::copy(preprocessorInvocation,
-              preprocessorInvocation + preprocessorInvocationSize,
-              preprocessorArgv_);
-    std::copy(userDefines.begin(),
-              userDefines.end(),
-              preprocessorArgv_ + preprocessorInvocationSize);
-    std::copy(preprocessorOptions,
-              preprocessorOptions + numPreprocessorOptions,
-              preprocessorArgv_ + preprocessorInvocationSize + userDefines.size());
-    preprocessorArgv_[preprocessorArgc_ - 1] = "-ferror-limit=0";
+    std::transform(preprocessorInvocation,
+        preprocessorInvocation + preprocessorInvocationSize,
+        std::back_inserter(preprocessorArgv_),
+        wcl_strdup);
+    std::transform(userDefines.begin(),
+        userDefines.end(),
+        std::back_inserter(preprocessorArgv_),
+        wcl_strdup);
+    std::transform(preprocessorOptions,
+        preprocessorOptions + numPreprocessorOptions,
+        std::back_inserter(preprocessorArgv_),
+        wcl_strdup);
+    preprocessorArgv_.push_back(wcl_strdup("-ferror-limit=0"));
 
     // validator arguments
-    std::copy(validatorInvocation,
-              validatorInvocation + validatorInvocationSize,
-              validatorArgv_);
-    std::copy(argv,
-              argv + argc,
-              validatorArgv_ + validatorInvocationSize);
-    std::copy(validatorOptions,
-              validatorOptions + numValidatorOptions,
-              validatorArgv_ + validatorInvocationSize + argc);
-    validatorArgv_[validatorArgc_ - 1] = "-ferror-limit=0";
-    validatorArgv_[validatorArgc_ - 2] = "-fno-builtin";
-    validatorArgv_[validatorArgc_ - 3] = "-ffreestanding";
+    std::transform(validatorInvocation,
+        validatorInvocation + validatorInvocationSize,
+        std::back_inserter(validatorArgv_),
+        wcl_strdup);
+    std::transform(argv.begin(),
+        argv.end(),
+        std::back_inserter(validatorArgv_),
+        wcl_strdup);
+    std::transform(validatorOptions,
+        validatorOptions + numValidatorOptions,
+        std::back_inserter(validatorArgv_),
+        wcl_strdup);
+    validatorArgv_.push_back(wcl_strdup("-ferror-limit=0"));
+    validatorArgv_.push_back(wcl_strdup("-fno-builtin"));
+    validatorArgv_.push_back(wcl_strdup("-ffreestanding"));
 }
 
 WebCLArguments::~WebCLArguments()
 {
-    delete[] preprocessorArgv_;
-    preprocessorArgv_ = NULL;
-    delete[] validatorArgv_;
-    validatorArgv_ = NULL;
+    for (size_t i = 0; i < findUsedExtensionsArgv_.size(); ++i) {
+        delete[] findUsedExtensionsArgv_[i];
+    }
 
-    while (matcherArgv_.size()) {
-        char const **argv = matcherArgv_.back();
-        delete[] argv;
-        matcherArgv_.pop_back();
+    for (size_t i = 0; i < preprocessorArgv_.size(); ++i) {
+        delete[] preprocessorArgv_[i];
+    }
+
+    for (size_t i = 0; i < validatorArgv_.size(); ++i) {
+        delete[] validatorArgv_[i];
     }
 
     while (files_.size()) {
@@ -192,43 +223,25 @@ WebCLArguments::~WebCLArguments()
     }
 }
 
-int WebCLArguments::getPreprocessorArgc() const
+CharPtrVector WebCLArguments::getFindUsedExtensionsArgv() const
 {
-    if (!areArgumentsOk(preprocessorArgc_, preprocessorArgv_))
-        return 0;
-    return preprocessorArgc_;
+    return findUsedExtensionsArgv_;
 }
 
-int WebCLArguments::getMatcherArgc() const
+CharPtrVector WebCLArguments::getPreprocessorArgv() const
 {
-    return getValidatorArgc();
-}
-
-int WebCLArguments::getValidatorArgc() const
-{
-    if (!areArgumentsOk(validatorArgc_, validatorArgv_))
-        return 0;
-    return validatorArgc_;
-}
-
-char const **WebCLArguments::getPreprocessorArgv() const
-{
-    if (!areArgumentsOk(preprocessorArgc_, preprocessorArgv_))
-        return NULL;
+    if (!preprocessorArgv_.size())
+        return CharPtrVector();
     // Input file has been already set.
     return preprocessorArgv_;
 }
 
-char const **WebCLArguments::getMatcherArgv()
+CharPtrVector WebCLArguments::getMatcherArgv()
 {
-    if (!areArgumentsOk(validatorArgc_, validatorArgv_))
-        return NULL;
+    if (!validatorArgv_.size())
+        return CharPtrVector();
 
-    char const **matcherArgv = new char const *[validatorArgc_];
-    if (!matcherArgv)
-        return NULL;
-    matcherArgv_.push_back(matcherArgv);
-    std::copy(validatorArgv_, validatorArgv_ + validatorArgc_, matcherArgv);
+    CharPtrVector matcherArgv(validatorArgv_);
 
     // Set input file.
     char const *input = outputs_.back();
@@ -237,41 +250,54 @@ char const **WebCLArguments::getMatcherArgv()
     return matcherArgv;
 }
 
-char const **WebCLArguments::getValidatorArgv() const
+CharPtrVector WebCLArguments::getValidatorArgv() const
 {
-    if (!areArgumentsOk(validatorArgc_, validatorArgv_))
-        return NULL;
+    if (!validatorArgv_.size())
+        return CharPtrVector();
 
     // Set input file.
+    CharPtrVector argv(validatorArgv_);
     char const *input = outputs_.back();
-    validatorArgv_[1] = input;
+    argv[1] = input;
 
-    return validatorArgv_;
+    return argv;
 }
 
-char const *WebCLArguments::getInput(int argc, char const **argv, bool createOutput)
+char const *WebCLArguments::getInput(const CharPtrVector& argv)
 {
-    if (!areArgumentsOk(argc, argv))
+    if (!argv.size())
         return NULL;
 
-    // Create output file for the next tool.
-    if (createOutput) {
-        int fd = -1;
-        char const *name = createEmptyTemporaryFile(fd);
-        if (!name)
-            return NULL;
-        files_.push_back(TemporaryFile(-1, name));
-        close(fd);
-        outputs_.push_back(name);
-    }
-
     return argv[1];
+}
+
+void WebCLArguments::createOutput()
+{
+    int fd = -1;
+    char const *name = createEmptyTemporaryFile(fd);
+    if (!name)
+        return;
+    files_.push_back(TemporaryFile(-1, name));
+    close(fd);
+    outputs_.push_back(name);
 }
 
 bool WebCLArguments::supplyBuiltinDecls(const std::string &decls)
 {
     std::ofstream ofs(builtinDeclFilename_, std::ios::binary | std::ios::trunc);
     return ofs.good() && ofs << decls;
+}
+
+bool WebCLArguments::WebCLArguments::supplyExtensionArguments(const std::set<std::string> &extensions)
+{
+    WebCLConfiguration cfg;
+    for (std::set<std::string>::const_iterator it = extensions.begin();
+         it != extensions.end();
+         ++it) {
+        validatorArgv_.push_back(wcl_strdup(("-D" + cfg.getExtensionDefineName(*it)).c_str()));
+        preprocessorArgv_.push_back(wcl_strdup(("-D" + cfg.getExtensionDefineName(*it)).c_str()));
+    }
+    return true;
 }
 
 bool WebCLArguments::areArgumentsOk(int argc, char const **argv) const
