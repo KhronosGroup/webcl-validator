@@ -294,4 +294,15 @@ namespace WebCLTypes {
         }
         return kind;
     }
+
+    const clang::DeclRefExpr *declRefExprViaImplicit(const clang::Expr *expr)
+    {
+        const clang::DeclRefExpr *declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(expr);
+        if (!declRefExpr) {
+            if (const clang::ImplicitCastExpr *implicitCastExpr = clang::dyn_cast<const clang::ImplicitCastExpr>(expr)) {
+                declRefExpr = clang::dyn_cast<const clang::DeclRefExpr>(*implicitCastExpr->child_begin());
+            }
+        }
+        return declRefExpr;
+    }
 }

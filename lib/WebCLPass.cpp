@@ -728,23 +728,10 @@ WebCLImageSamplerSafetyHandler::WebCLImageSamplerSafetyHandler(
     checkedTypes_["sampler_t"] = new TypeAccessCheckerSampler;
 }
 
-namespace {
-    clang::DeclRefExpr *declRefExprViaImplicit(clang::Expr *expr)
-    {
-        clang::DeclRefExpr *declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(expr);
-        if (!declRefExpr) {
-            if (clang::ImplicitCastExpr *implicitCastExpr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)) {
-                declRefExpr = clang::dyn_cast<clang::DeclRefExpr>(*implicitCastExpr->child_begin());
-            }
-        }
-        return declRefExpr;
-    }
-}
-
 void WebCLImageSamplerSafetyHandler::run(clang::ASTContext &context)
 {
     WebCLAnalyser::CallExprSet calls = analyser_.getBuiltinCalls();
-    std::set<clang::DeclRefExpr*> usedAsArgument;
+    std::set<const clang::DeclRefExpr*> usedAsArgument;
 
     calls.insert(analyser_.getInternalCalls().begin(), analyser_.getInternalCalls().end());
 
@@ -771,7 +758,7 @@ void WebCLImageSamplerSafetyHandler::run(clang::ASTContext &context)
                     SAFE
                 } safety = REFERENCE_NOT_FOUND;
 
-                clang::DeclRefExpr *declRefExpr = declRefExprViaImplicit(expr);
+                const clang::DeclRefExpr *declRefExpr = WebCLTypes::declRefExprViaImplicit(expr);
 
                 std::string errorMessage;
                 if (declRefExpr) {
@@ -817,7 +804,7 @@ void WebCLImageSamplerSafetyHandler::run(clang::ASTContext &context)
         }
     }
 
-    std::set<clang::DeclRefExpr*> usedAsInitializer;
+    std::set<const clang::DeclRefExpr*> usedAsInitializer;
 
     WebCLAnalyser::VarDeclSet varDecls = analyser_.getLocalVariables();
     varDecls.insert(analyser_.getConstantVariables().begin(), analyser_.getConstantVariables().end());
@@ -828,7 +815,7 @@ void WebCLImageSamplerSafetyHandler::run(clang::ASTContext &context)
         clang::VarDecl *varDecl = *varDeclIt;
         clang::Expr *expr = varDecl->getInit();
         if (expr) {
-            clang::DeclRefExpr *declRefExpr = declRefExprViaImplicit(expr);
+            const clang::DeclRefExpr *declRefExpr = WebCLTypes::declRefExprViaImplicit(expr);
             if (declRefExpr) {
                 usedAsInitializer.insert(declRefExpr);
             }
