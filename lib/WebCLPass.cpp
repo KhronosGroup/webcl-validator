@@ -115,11 +115,17 @@ void WebCLAddressSpaceHandler::run(clang::ASTContext &context)
             // struct types must be also in address space, because there might be
             // tables / ponters inside struct... simpler structs could
             // maybe be left out.
+
+            // NOTE: now also uninitialized private variables are collected,
+            //       since it is easiest way to make sure they get initialized
+            //       to optimize this, normalization pass adding zero initializers
+            //       should be made.
             clang::VarDecl *decl = *i;
             if (decl->getType()->isPointerType() ||
                 decl->getType()->isStructureType() ||
                 decl->getType()->isArrayType() ||
-                analyser_.hasAddressReferences(decl)) {
+                analyser_.hasAddressReferences(decl) ||
+                !decl->hasInit()) {
                     DEBUG(
                         std::cerr << "Adding to AS: "
                         << decl->getDeclName().getAsString() << "\n"; );
