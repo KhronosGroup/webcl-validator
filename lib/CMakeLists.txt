@@ -18,7 +18,7 @@ generate_hex_header(general)
 generate_hex_header(kernel)
 
 # Sources for validator library
-llvm_process_sources(libclv_srcs
+llvm_process_sources(clv_srcs
   general.h
   kernel.h
   WebCLAction.cpp
@@ -43,34 +43,34 @@ llvm_process_sources(libclv_srcs
 )
 
 # Add public header for IDE
-set(libclv_headers
+set(clv_headers
   "${WCLV_SOURCE_DIR}/include/clv/clv.h"
 )
 
 if(MSVC_IDE OR XCODE)
-  set_source_files_properties(${libclv_headers} PROPERTIES HEADER_FILE_ONLY ON)
-  set(libclv_srcs ${libclv_srcs} ${libclv_headers})
+  set_source_files_properties(${clv_headers} PROPERTIES HEADER_FILE_ONLY ON)
+  set(clv_srcs ${clv_srcs} ${clv_headers})
 endif(MSVC_IDE OR XCODE)
 
 # Build a static library until our ABI is somewhat stable
-add_library(libclv STATIC ${libclv_srcs})
+add_library(clv STATIC ${clv_srcs})
 
 # The usual LLVM build system properties
 if( LLVM_COMMON_DEPENDS )
-  add_dependencies(libclv ${LLVM_COMMON_DEPENDS} )
+  add_dependencies(clv ${LLVM_COMMON_DEPENDS} )
 endif( LLVM_COMMON_DEPENDS )
 
-llvm_config(libclv ${LLVM_LINK_COMPONENTS})
-target_link_libraries(libclv ${LLVM_COMMON_LIBS} )
-link_system_libs(libclv)
+llvm_config(clv ${LLVM_LINK_COMPONENTS})
+target_link_libraries(clv ${LLVM_COMMON_LIBS} )
+link_system_libs(clv)
 
-install(TARGETS libclv
+install(TARGETS clv
   LIBRARY DESTINATION lib${LLVM_LIBDIR_SUFFIX}
   ARCHIVE DESTINATION lib${LLVM_LIBDIR_SUFFIX}
   RUNTIME DESTINATION bin)
-set_target_properties(libclv PROPERTIES FOLDER "Clang libraries")
+set_target_properties(clv PROPERTIES FOLDER "Clang libraries")
 
-target_link_libraries(libclv
+target_link_libraries(clv
   clangTooling
   clangRewriteFrontend
 )
