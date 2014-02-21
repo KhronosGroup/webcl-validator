@@ -102,6 +102,10 @@ ISSUE B9: Intel compiler crashes on image typedefs:
           typedef __read_only image2d_t my_image2d_t;
 Workaround: It's not necessary to use image typedefs.
 
+ISSUE B10: Intel compiler (3.0.1.15216) crashes on invalid build options 
+           (e.g. "-invalid-option").
+
+
 OpenCL Driver Bugs
 ------------------
 
