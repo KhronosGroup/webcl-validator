@@ -44,4 +44,6 @@ typedef uint _WclInitType;
 
 #endif // cl_khr_initialize_memory
 
+constant int hd4k_workaround_constant = 0;
+
 // <= General code that doesn't depend on input.

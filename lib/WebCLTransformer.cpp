@@ -1217,6 +1217,8 @@ void WebCLTransformer::createConstantAddressSpaceNullAllocation()
 void WebCLTransformer::createLocalAddressSpaceNullAllocation(clang::FunctionDecl *kernel)
 {
     std::ostream &out = functionPrologue(kernelPrologues_, kernel);
+    out << "local int hd4k_workaround_local;" << std::endl;
+    out << "hd4k_workaround_local = hd4k_workaround_constant;" << std::endl;
     createAddressSpaceNullAllocation(out, clang::LangAS::opencl_local);
 }
 
