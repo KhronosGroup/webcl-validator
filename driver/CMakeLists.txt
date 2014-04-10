@@ -8,7 +8,7 @@ add_clang_executable(webcl-validator
 )
 
 target_link_libraries(webcl-validator
-  clv
+  clv_standalone
 )
 
 install(

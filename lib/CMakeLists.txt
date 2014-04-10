@@ -52,7 +52,12 @@ if(MSVC_IDE OR XCODE)
   set(clv_srcs ${clv_srcs} ${clv_headers})
 endif(MSVC_IDE OR XCODE)
 
-# Build a static library until our ABI is somewhat stable
+####################################################
+#
+# Build libclv library 
+# (shared or static according to buildsetup)
+#
+
 add_library(clv ${clv_srcs})
 
 # The usual LLVM build system properties
@@ -74,3 +79,32 @@ target_link_libraries(clv
   clangTooling
   clangRewriteFrontend
 )
+
+####################################################
+#
+# Build a dynamic library, which contains all deps
+# llvm,clang and validator linked statically
+#
+
+add_library(clv_standalone SHARED ${clv_srcs})
+
+# The usual LLVM build system properties (copy-paste from above)
+if( LLVM_COMMON_DEPENDS )
+  add_dependencies(clv_standalone ${LLVM_COMMON_DEPENDS} )
+endif( LLVM_COMMON_DEPENDS )
+
+llvm_config(clv_standalone ${LLVM_LINK_COMPONENTS})
+target_link_libraries(clv_standalone ${LLVM_COMMON_LIBS} )
+link_system_libs(clv_standalone)
+
+install(TARGETS clv_standalone
+  LIBRARY DESTINATION lib${LLVM_LIBDIR_SUFFIX}
+  ARCHIVE DESTINATION lib${LLVM_LIBDIR_SUFFIX}
+  RUNTIME DESTINATION bin)
+set_target_properties(clv_standalone PROPERTIES FOLDER "Clang libraries")
+
+target_link_libraries(clv_standalone 
+  clangTooling
+  clangRewriteFrontend
+)
+
