@@ -53,7 +53,7 @@ if(MSVC_IDE OR XCODE)
 endif(MSVC_IDE OR XCODE)
 
 # Build a static library until our ABI is somewhat stable
-add_library(clv STATIC ${clv_srcs})
+add_library(clv ${clv_srcs})
 
 # The usual LLVM build system properties
 if( LLVM_COMMON_DEPENDS )
