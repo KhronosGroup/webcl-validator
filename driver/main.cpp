@@ -44,7 +44,8 @@ namespace {
         from.seekg(0, std::ios::end);
         to.resize(from.tellg());
         from.seekg(0, std::ios::beg);
-        return from.read(&to[0], to.size());
+		// did fail without eval ? true : false notation on Visual Studio 2012
+		return from.read(&to[0], to.size()) ? true: false;
     }
 
     // apparently wclStrDup isn't in C standard, only in POSIX. Also we get to use 'delete[]' on these strings.
