@@ -1,4 +1,7 @@
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories(
+  ${CMAKE_CURRENT_BINARY_DIR}
+  ${OPENCL_INCLUDE_DIRS}
+)
 
 macro(generate_hex_header name)
   add_custom_command(
