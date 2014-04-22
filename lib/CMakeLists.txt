@@ -11,9 +11,8 @@ macro(generate_hex_header name)
               ${CMAKE_CURRENT_SOURCE_DIR}/stripcr.py
 			  ${CMAKE_CURRENT_SOURCE_DIR}/${name}.cl
 			  ${name}-endlfix.cl
-    COMMAND xxd
-              -i ${name}-endlfix.cl
-			  ${name}.h
+    COMMAND ${PYTHON_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/xxd.py ${name}-endlfix.cl ${name}.h
   )
 endmacro(generate_hex_header name)
 
@@ -76,7 +75,10 @@ install(TARGETS clv
   LIBRARY DESTINATION lib${LLVM_LIBDIR_SUFFIX}
   ARCHIVE DESTINATION lib${LLVM_LIBDIR_SUFFIX}
   RUNTIME DESTINATION bin)
-set_target_properties(clv PROPERTIES FOLDER "Clang libraries")
+
+set_target_properties(clv PROPERTIES 
+	FOLDER "Clang libraries"
+	COMPILE_DEFINITIONS "CREATE_CLV_STATIC")
 
 target_link_libraries(clv
   clangTooling
@@ -104,7 +106,10 @@ install(TARGETS clv_standalone
   LIBRARY DESTINATION lib${LLVM_LIBDIR_SUFFIX}
   ARCHIVE DESTINATION lib${LLVM_LIBDIR_SUFFIX}
   RUNTIME DESTINATION bin)
-set_target_properties(clv_standalone PROPERTIES FOLDER "Clang libraries")
+
+set_target_properties(clv_standalone PROPERTIES 
+	FOLDER "Clang libraries"
+	COMPILE_DEFINITIONS "CREATE_CLV_DLL_EXPORTS")
 
 target_link_libraries(clv_standalone 
   clangTooling

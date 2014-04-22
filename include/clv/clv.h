@@ -42,8 +42,16 @@ extern "C"
 #define CLV_CALL
 #endif
 
-// TODO: dll export / import magic once we go dynamic
+#ifdef CREATE_CLV_STATIC
+#define CLV_API 
+#else
+#ifdef CREATE_CLV_DLL_EXPORTS
+#define CLV_API __declspec(dllexport)
+#else
+// This was not required after all #define CLV_API __declspec(dllimport)
 #define CLV_API
+#endif
+#endif
 
 typedef struct WebCLValidator *clv_program;
 
