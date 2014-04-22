@@ -33,7 +33,12 @@
 #include <iostream>
 #include <set>
 #include <fcntl.h>
+
+#ifdef _MSC_VER
+#include <io.h>
+#else
 #include <unistd.h>
+#endif
 
 // IMPROVEMENT: Maybe we should resolve directory separator and temp directory
 //              in windows runtime, since it depends if we are running from msys / cygwin shell
@@ -45,12 +50,6 @@
 #else
 #define DIR_SEPARATOR "/"
 #define TEMP_DIR P_tmpdir
-#endif
-
-// Windows/MSVC++ doesn't have ssize_t
-#ifdef _MSC_VER
-#include <BaseTsd.h>
-typedef SSIZE_T ssize_t;
 #endif
 
 int mingwcompatible_mkstemp(char* tmplt) {
@@ -288,7 +287,7 @@ bool WebCLArguments::supplyBuiltinDecls(const std::string &decls)
     return ofs.good() && ofs << decls;
 }
 
-bool WebCLArguments::WebCLArguments::supplyExtensionArguments(const std::set<std::string> &extensions)
+bool WebCLArguments::supplyExtensionArguments(const std::set<std::string> &extensions)
 {
     WebCLConfiguration cfg;
     for (std::set<std::string>::const_iterator it = extensions.begin();

@@ -37,14 +37,14 @@ import os
 
 def main():
     input_filename, output_filename = sys.argv[1:]
-    variable_name = input_filename.replace('.','_')
+    variable_name = input_filename.replace('.','_').replace('-','_')
     with open(input_filename) as input_file:
         input_text = input_file.read()
     hex_values = ['0x{0:02x}'.format(ord(char)) for char in input_text]
     const_declaration = 'unsigned char %s[] = {\n%s\n};\n' % (
         variable_name, ', '.join(hex_values))
 
-    const_declaration += '\nunsigned int %s_len = %i;' % (variable_name, len(hex_values))
+    const_declaration += '\nunsigned int %s_len = %i;\n' % (variable_name, len(hex_values))
 
     with open(output_filename, 'w') as output_file:
         output_file.write(const_declaration)
