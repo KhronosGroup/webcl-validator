@@ -57,10 +57,10 @@ To get more verbose output:
 
         make VERBOSE=1 -j4 check-webcl-validator
 
-Linking tests directly with pocl opencl driver (please fix to work without need to recompile the whole thing):
 
-        rm CMakeCache.txt
-        make USE_POCL=1 -j4 check-webcl-validator
+To select which OpenCL library should be used one can give `OpenCL_INCPATH` and `OpenCL_LIBPATH` variables when runnign cmake e.g.
+
+    OpenCL_INCPATH=/usr/local/include OpenCL_LIBPATH=/usr/local/opt/pocl/lib cmake /path/llvm 
 
 Running
 -------
@@ -93,6 +93,33 @@ extensions you may use the --disable=xx switch:
 
         webcl-validator kernel.cl --disable=cl_khr_fp16
 
+Building with Windows / Visual Studio
+-----------------------------
+
+Get Visual Studio 2013 (I used Express for Windows Desktop version)
+
+Get GIT and install it to default path (http://git-scm.com/downloads) (this will provide required tools like bash, grep, sed etc. for running test suite)
+
+Get Python 2.7 (http://www.python.org/download/)
+
+Get CMake 2.8 (http://www.cmake.org/cmake/resources/software.html)
+
+Get Intel OpenCL SDK (http://software.intel.com/en-us/vcsource/tools/opencl-sdk)
+
+NOTE: Nvidia SDK headers didn't work for building all the test runners / clv.h API.
+
+To build 64bit version do:
+
+    cmake -G "Visual Studio 12 Win64" ../llvm-3.4
+
+If you have multiple OpenCL SDKs installed you can select which includes / libraries you like to use with `OpenCL_INCPATH=<path to CL/cl.h>` and `OpenCL_LIBPATH=<directory where opencl.lib is found>` e.g.
+
+    OpenCL_INCPATH="C:\intelsdk\include" OpenCL_LIBPATH="C:\intelsdk\lib\x64" cmake -G "Visual Studio 12 Win64" ../llvm-3.4
+
+Open the generated llvm.sln file. Build by building the "ALL_BUILD" project, don't use Build Solution / F7.
+
+Run tests by building "check-webcl-validator" project, found under "WebCL Validator Tests" in the Solution Explorer.
+
 Building with Windows MinGW + MSYS (not tested recently since we changed to Visual Studio express)
 ----------------------------------
 
@@ -117,45 +144,6 @@ If you want to build also OpenCL programs and possibly run the tests, set
 
         export CPLUS_INCLUDE_PATH=/C/path/to/opencl/include
         export LIBRARY_PATH=/C/path/to/opencl/lib
-
-Building with Windows / Visual Studio
------------------------------
-
-Get Visual Studio 2012 (I used Express for Windows Desktop version)
-
-Get GnuWin32 tools (http://getgnuwin32.sourceforge.net/)
-
-- install all packages to c:\gnuwin32
-- append c:\gnuwin32\bin to path
-
-Get Python 2.7 (http://www.python.org/download/)
-
-Get CMake 2.8 (http://www.cmake.org/cmake/resources/software.html)
-
-Get Intel OpenCL SDK (http://software.intel.com/en-us/vcsource/tools/opencl-sdk)
-
-NOTE: Nvidia SDK headers didn't work for building all the test runners / clv.h API.
-
-Copy these items from a MSysGit installation to somewhere fairly late in PATH (e.g. c:\gnuwin32\bin)
-
-- msys-1.0.dll
-- bash.exe
-- sh.exe
-
-do not put the entire MSYS environment in PATH; for example MSYS grep is incompatible with LLVM/Clang tests.
-
-Replace (overwrite) some old/broken GnuWin32 stuff with:
-
-- Newer libxml2: ftp://ftp.zlatkovic.com/libxml/
-- Non-broken grep(1): https://code.google.com/p/unix-cmd-win32/downloads/detail?name=grep-2.9-w32.zip
-
-Then open VS2012 developer command prompt, go to a suitable build dir and do
-
-    cmake -DCMAKE_BUILD_TYPE=Debug -G "Visual Studio 11"
-
-Open the generated llvm.sln file. Build by building the "ALL_BUILD" project, don't use Build Solution / F7.
-
-Run tests by building "check-webcl-validator" project, found under "WebCL Validator Tests" in the Solution Explorer.
 
 
 Building with Xcode
