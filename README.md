@@ -1,7 +1,7 @@
 webcl-validator
 ===============
 
-This document describes how to build and use WebCL Validator. Some example WebCL programs before and after protection are found here: http://wolfviking0.github.io/webcl-translator/
+This document describes how to build and use WebCL Validator. Some example WebCL programs before and after protection are found here: http://wolfviking0.github.io/webcl-translator/ another test suite for testing plain OpenCL kernels with different vendor drivers is found from http://elhigu.github.io/opencl-testsuite/
 
 Building
 --------
