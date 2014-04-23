@@ -153,10 +153,6 @@ Building with Xcode
         
         cmake -G Xcode /path/llvm
 
-or if want to compile test bench against pocl driver:
-        
-        USE_POCL=1 cmake -G Xcode /path/llvm
-        
 
 2. Open and build in Xcode or from commandline
 
