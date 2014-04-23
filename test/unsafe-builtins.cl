@@ -5,7 +5,7 @@
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 #endif
 
-// RUN: %webcl-validator %s -Dcl_khr_fp16 -Dcl_khr_fp64 2>&1 | grep -v CHECK | %FileCheck %s
+// RUN: %webcl-validator "%s" -Dcl_khr_fp16 -Dcl_khr_fp64 2>&1 | grep -v CHECK | %FileCheck "%s"
 
 // We should be declaring all builtins at the moment
 // CHECK-NOT: warning: implicit declaration of function

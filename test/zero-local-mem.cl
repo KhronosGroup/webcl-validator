@@ -1,6 +1,6 @@
-// RUN: %opencl-validator < %s
-// RUN: %webcl-validator %s | %opencl-validator
-// RUN: %webcl-validator %s | grep -v CHECK | %FileCheck %s
+// RUN: %opencl-validator < "%s"
+// RUN: %webcl-validator "%s" | %opencl-validator
+// RUN: %webcl-validator "%s" | grep -v CHECK | %FileCheck "%s"
 
 void init_local_mem(
     __local int *int_array, int int_value,

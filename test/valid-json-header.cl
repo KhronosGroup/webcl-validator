@@ -1,6 +1,6 @@
-// RUN: %opencl-validator < %s
-// RUN: %webcl-validator %s | %opencl-validator
-// RUN: %webcl-validator %s -DQUALDEFS | grep -v CHECK | %FileCheck %s
+// RUN: %opencl-validator < "%s"
+// RUN: %webcl-validator "%s" | %opencl-validator
+// RUN: %webcl-validator "%s" -DQUALDEFS | grep -v CHECK | %FileCheck "%s"
 
 typedef char wcl_char;
 typedef unsigned char wcl_unsigned_char;

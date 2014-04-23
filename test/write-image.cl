@@ -1,5 +1,5 @@
-// RUN: %webcl-validator %s 2>&1 | grep -v CHECK | %FileCheck %s
-// RUN: %webcl-validator %s | %kernel-runner --webcl --kernel write_image --image 10 10 | grep '9 (0.00, 9.00, 3.00, 4.00), (1.00, 9.00, 3.00, 4.00), (2.00, 9.00, 3.00, 4.00), (3.00, 9.00, 3.00, 4.00), (4.00, 9.00, 3.00, 4.00), (5.00, 9.00, 3.00, 4.00), (6.00, 9.00, 3.00, 4.00), (7.00, 9.00, 3.00, 4.00), (8.00, 9.00, 3.00, 4.00), (9.00, 9.00, 3.00, 4.00)'
+// RUN: %webcl-validator "%s" 2>&1 | grep -v CHECK | %FileCheck "%s"
+// RUN: %webcl-validator "%s" | %kernel-runner --webcl --kernel write_image --image 10 10 | grep '9 (0.00, 9.00, 3.00, 4.00), (1.00, 9.00, 3.00, 4.00), (2.00, 9.00, 3.00, 4.00), (3.00, 9.00, 3.00, 4.00), (4.00, 9.00, 3.00, 4.00), (5.00, 9.00, 3.00, 4.00), (6.00, 9.00, 3.00, 4.00), (7.00, 9.00, 3.00, 4.00), (8.00, 9.00, 3.00, 4.00), (9.00, 9.00, 3.00, 4.00)'
 
 // Instrumentation does not guarantee sequence numbers of functions
 // CHECK-DAG: void _wcl_write_imagei_[[IMAGEI:[0-4]]](write_only image2d_t arg0

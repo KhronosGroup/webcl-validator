@@ -1,5 +1,5 @@
-// RUN: %opencl-validator < %s
-// RUN: %webcl-validator %s 2>&1 | grep -v CHECK | %FileCheck %s
+// RUN: %opencl-validator < "%s"
+// RUN: %webcl-validator "%s" 2>&1 | grep -v CHECK | %FileCheck "%s"
 
 __constant struct { int constant_field; } anonymous_constant = { 0 };
 __constant struct CommonStruct { int constant_field; } first_constant_struct = { 0 };

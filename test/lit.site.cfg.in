@@ -14,17 +14,17 @@ except KeyError,e:
     lit_config.fatal("unable to find %r parameter, use '--param=%s=VALUE'" % (key,key))
 
 config.substitutions.append(
-    ('%webcl-validator', config.llvm_tools_dir + "/webcl-validator"))
+    ('%webcl-validator', '"' + config.llvm_tools_dir + "/webcl-validator" + '"'))
 config.substitutions.append(
-    ('%kernel-runner', config.llvm_tools_dir + "/kernel-runner"))
+    ('%kernel-runner', '"' + config.llvm_tools_dir + "/kernel-runner" + '"'))
 config.substitutions.append(
-    ('%opencl-validator', config.llvm_tools_dir + "/opencl-validator"))
+    ('%opencl-validator', '"' + config.llvm_tools_dir + "/opencl-validator" + '"'))
 config.substitutions.append(
-    ('%radix-sort', config.llvm_tools_dir + "/radix-sort"))
+    ('%radix-sort', '"' + config.llvm_tools_dir + "/radix-sort" + '"'))
 config.substitutions.append(
-    ('%check-empty-memory', config.llvm_tools_dir + "/check-empty-memory"))
+    ('%check-empty-memory', '"' + config.llvm_tools_dir + "/check-empty-memory" + '"'))
 config.substitutions.append(
-    ('%FileCheck', config.llvm_tools_dir + "/FileCheck"))
+    ('%FileCheck', '"' + config.llvm_tools_dir + "/FileCheck" + '"'))
 config.substitutions.append(
     ('%include', "@WEBCL_VALIDATOR_TEST_DIR@/include"))
 lit_config.load_config(config, "@WEBCL_VALIDATOR_TEST_DIR@/lit.cfg")

@@ -1,5 +1,5 @@
-// RUN: %opencl-validator < %s
-// RUN: %webcl-validator %s | %opencl-validator
+// RUN: %opencl-validator < "%s"
+// RUN: %webcl-validator "%s" | %opencl-validator
 
 int get_value(int value);
 

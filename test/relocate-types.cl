@@ -1,5 +1,5 @@
-// RUN: %opencl-validator < %s
-// RUN: %webcl-validator %s | %opencl-validator
+// RUN: %opencl-validator < "%s"
+// RUN: %webcl-validator "%s" | %opencl-validator
 
 __constant struct { int field; } relocated_c1 = { 1 };
 __constant struct { int field; } preserved_c1 = { 1 };

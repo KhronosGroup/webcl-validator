@@ -1,6 +1,6 @@
-// RUN: %opencl-validator < %s
-// RUN: %webcl-validator %s | %opencl-validator
-// RUN: %webcl-validator %s | grep -v CHECK | %FileCheck %s
+// RUN: %opencl-validator < "%s"
+// RUN: %webcl-validator "%s" | %opencl-validator
+// RUN: %webcl-validator "%s" | grep -v CHECK | %FileCheck "%s"
 
 #ifdef __PLATFORM_AMD__
 #error "Avoiding further problems!"

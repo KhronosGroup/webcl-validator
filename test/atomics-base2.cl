@@ -1,4 +1,4 @@
-// RUN: %webcl-validator %s 2>&1 | grep -v CHECK | %FileCheck %s
+// RUN: %webcl-validator "%s" 2>&1 | grep -v CHECK | %FileCheck "%s"
 
 // not enabled:
 //#pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable

@@ -1,4 +1,4 @@
-// RUN: %webcl-validator %s 2>&1 | grep -v CHECK | %FileCheck %s
+// RUN: %webcl-validator "%s" 2>&1 | grep -v CHECK | %FileCheck "%s"
 
 // CHECK: __constant sampler_t global_sampler = /* transformed */ CLK_ADDRESS_MIRRORED_REPEAT | CLK_FILTER_NEAREST | CLK_NORMALIZED_COORDS_FALSE;
 __constant sampler_t global_sampler = 1;

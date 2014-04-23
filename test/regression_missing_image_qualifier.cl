@@ -2,7 +2,7 @@
 // of write / read image has access qualifier. Earlier instrumentation
 // did not add qualifiers to safe builtin wrappers.
 
-// RUN: %webcl-validator %s | %opencl-validator
+// RUN: %webcl-validator "%s" | %opencl-validator
 
 // Gaussian filter of image
 __kernel void gaussian_filter(__read_only image2d_t srcImg,

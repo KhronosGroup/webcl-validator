@@ -1,7 +1,7 @@
-// RUN: %webcl-validator %s | %opencl-validator
-// RUN: %webcl-validator %s | %kernel-runner --webcl --kernel builtin_wrappers --global float 7 | grep '^2,3,4,5,0,0,0,0'
-// RUN: %webcl-validator %s | %kernel-runner --webcl --kernel builtin_wrappers --global float 8 | grep '^2,3,4,5,0,0,0,0'
-// RUN: %webcl-validator %s | %kernel-runner --webcl --kernel builtin_wrappers --global float 9 | grep '^2,3,4,5,6,7,8,9,0'
+// RUN: %webcl-validator "%s" | %opencl-validator
+// RUN: %webcl-validator "%s" | %kernel-runner --webcl --kernel builtin_wrappers --global float 7 | grep '^2,3,4,5,0,0,0,0'
+// RUN: %webcl-validator "%s" | %kernel-runner --webcl --kernel builtin_wrappers --global float 8 | grep '^2,3,4,5,0,0,0,0'
+// RUN: %webcl-validator "%s" | %kernel-runner --webcl --kernel builtin_wrappers --global float 9 | grep '^2,3,4,5,6,7,8,9,0'
 
 __kernel void builtin_wrappers(__global char *output, 
                                __global float *input)

@@ -1,4 +1,4 @@
-// RUN: %webcl-validator %s | %opencl-validator
+// RUN: %webcl-validator "%s" | %opencl-validator
 
 float4 get_pixel(image2d_t img, sampler_t sampler, int2 coords) {
 	return read_imagef(img, sampler, coords);

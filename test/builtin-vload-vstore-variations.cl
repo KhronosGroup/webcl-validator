@@ -7,7 +7,7 @@
 // Check that no calls produce errors in the validator, and there are no implicit decl warnings
 // FIXME: we shouldn't need to -Dcl_khr_fp{16,64} here - they should be defined based on the
 //        corresponding extensions being enabled, as they are in the CLI validator
-// RUN: %webcl-validator %s -Dcl_khr_fp16 -Dcl_khr_fp64 2>&1 | grep -v CHECK | %FileCheck %s
+// RUN: %webcl-validator "%s" -Dcl_khr_fp16 -Dcl_khr_fp64 2>&1 | grep -v CHECK | %FileCheck "%s"
 
 // CHECK-NOT: error:
 

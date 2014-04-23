@@ -1,11 +1,11 @@
-// RUN: sed 's/@SIZE@/4/g' %s | %opencl-validator
-// RUN: sed 's/@SIZE@/4/g' %s | %webcl-validator - | %opencl-validator
-// RUN: sed 's/@SIZE@/4/g' %s | %webcl-validator - | grep -v CHECK | %FileCheck %s
-// RUN: sed 's/@SIZE@/4/g' %s | %webcl-validator - | %kernel-runner --webcl --kernel builtin_wrappers --global float 7 | grep '^1,2,3,4,0,0,0,0,0'
-// RUN: sed 's/@SIZE@/4/g' %s | %webcl-validator - | %kernel-runner --webcl --kernel builtin_wrappers --global float 8 | grep '^1,2,3,4,5,6,7,8,0'
-// RUN: sed 's/@SIZE@/8/g' %s | %webcl-validator - | %kernel-runner --webcl --kernel builtin_wrappers --global float 7 | grep '^0,0,0,0,0,0,0,0,0'
-// RUN: sed 's/@SIZE@/8/g' %s | %webcl-validator - | %kernel-runner --webcl --kernel builtin_wrappers --global float 8 | grep '^1,2,3,4,0,0,0,0,0'
-// RUN: sed 's/@SIZE@/8/g' %s | %webcl-validator - | %kernel-runner --webcl --kernel builtin_wrappers --global float 16 | grep '^1,2,3,4,9,10,11,12'
+// RUN: sed 's/@SIZE@/4/g' "%s" | %opencl-validator
+// RUN: sed 's/@SIZE@/4/g' "%s" | %webcl-validator - | %opencl-validator
+// RUN: sed 's/@SIZE@/4/g' "%s" | %webcl-validator - | grep -v CHECK | %FileCheck "%s"
+// RUN: sed 's/@SIZE@/4/g' "%s" | %webcl-validator - | %kernel-runner --webcl --kernel builtin_wrappers --global float 7 | grep '^1,2,3,4,0,0,0,0,0'
+// RUN: sed 's/@SIZE@/4/g' "%s" | %webcl-validator - | %kernel-runner --webcl --kernel builtin_wrappers --global float 8 | grep '^1,2,3,4,5,6,7,8,0'
+// RUN: sed 's/@SIZE@/8/g' "%s" | %webcl-validator - | %kernel-runner --webcl --kernel builtin_wrappers --global float 7 | grep '^0,0,0,0,0,0,0,0,0'
+// RUN: sed 's/@SIZE@/8/g' "%s" | %webcl-validator - | %kernel-runner --webcl --kernel builtin_wrappers --global float 8 | grep '^1,2,3,4,0,0,0,0,0'
+// RUN: sed 's/@SIZE@/8/g' "%s" | %webcl-validator - | %kernel-runner --webcl --kernel builtin_wrappers --global float 16 | grep '^1,2,3,4,9,10,11,12'
 
 // We should be declaring all builtins at the moment
 // CHECK-NOT: warning: implicit declaration of function
