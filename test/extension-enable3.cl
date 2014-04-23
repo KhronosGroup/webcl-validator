@@ -1,4 +1,4 @@
-// RUN: %webcl-validator %s 2>&1 | grep -v CHECK | %FileCheck %s
+// RUN: %webcl-validator "%s" 2>&1 | grep -v CHECK | %FileCheck "%s"
 
 // CHECK-DAG: error: use of undeclared identifier 'double2'
 // CHECK-DAG: error: use of type 'double' requires cl_khr_fp64 extension to be enabled

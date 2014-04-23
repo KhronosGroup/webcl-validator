@@ -1,4 +1,4 @@
-// RUN: %webcl-validator %s 2>&1 | grep -v CHECK | %FileCheck %s
+// RUN: %webcl-validator "%s" 2>&1 | grep -v CHECK | %FileCheck "%s"
 
 __kernel void unsafe_builtins(
     image2d_t image)

@@ -1,4 +1,4 @@
-// RUN: %webcl-validator %s 2>/dev/null
+// RUN: %webcl-validator "%s" 2>/dev/null
 
 // ok, defined later
 void foo(void);

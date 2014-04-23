@@ -7,6 +7,10 @@ add_clang_executable(webcl-validator
   WebCLHeader.cpp
 )
 
+include_directories(
+  ${OPENCL_INCLUDE_DIRS}
+)
+
 target_link_libraries(webcl-validator
   clv_standalone
 )

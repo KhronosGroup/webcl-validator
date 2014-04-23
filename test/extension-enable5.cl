@@ -1,4 +1,4 @@
-// RUN: %webcl-validator %s 2>&1 | grep -v CHECK | %FileCheck %s
+// RUN: %webcl-validator "%s" 2>&1 | grep -v CHECK | %FileCheck "%s"
 
 // do not enable halfs
 //#pragma OPENCL EXTENSION cl_khr_fp16 : enable

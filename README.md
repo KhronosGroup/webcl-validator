@@ -134,6 +134,8 @@ Get CMake 2.8 (http://www.cmake.org/cmake/resources/software.html)
 
 Get Intel OpenCL SDK (http://software.intel.com/en-us/vcsource/tools/opencl-sdk)
 
+NOTE: Nvidia SDK headers didn't work for building all the test runners / clv.h API.
+
 Copy these items from a MSysGit installation to somewhere fairly late in PATH (e.g. c:\gnuwin32\bin)
 
 - msys-1.0.dll

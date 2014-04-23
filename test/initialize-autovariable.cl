@@ -1,6 +1,6 @@
-// RUN: %opencl-validator < %s
-// RUN: %webcl-validator %s | grep -v CHECK | %FileCheck %s
-// RUN: %webcl-validator %s | sed 's@////@@' | %kernel-runner --webcl --kernel zero_private --gcount 1 | grep "123,0,0,0,0,0,0,0,123"
+// RUN: %opencl-validator < "%s"
+// RUN: %webcl-validator "%s" | grep -v CHECK | %FileCheck "%s"
+// RUN: %webcl-validator "%s" | sed 's@////@@' | %kernel-runner --webcl --kernel zero_private --gcount 1 | grep "123,0,0,0,0,0,0,0,123"
 
 // verify that a and b are actually collected to private address space to make 
 // sure that there is no unintialized variables left in code

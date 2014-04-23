@@ -1,7 +1,7 @@
-// RUN: %webcl-validator %s | %opencl-validator
-// RUN: %webcl-validator %s | grep -v CHECK | %FileCheck %s
-// RUN: %webcl-validator %s | %kernel-runner --webcl --kernel builtin_wrappers --global float 7 | grep '^1,2,3,4,0,0,0,0,0'
-// RUN: %webcl-validator %s | %kernel-runner --webcl --kernel builtin_wrappers --global float 8 | grep '^1,2,3,4,5,6,7,8,0'
+// RUN: %webcl-validator "%s" | %opencl-validator
+// RUN: %webcl-validator "%s" | grep -v CHECK | %FileCheck "%s"
+// RUN: %webcl-validator "%s" | %kernel-runner --webcl --kernel builtin_wrappers --global float 7 | grep '^1,2,3,4,0,0,0,0,0'
+// RUN: %webcl-validator "%s" | %kernel-runner --webcl --kernel builtin_wrappers --global float 8 | grep '^1,2,3,4,5,6,7,8,0'
 
 // We should be declaring all builtins at the moment
 // CHECK-NOT: warning: implicit declaration of function

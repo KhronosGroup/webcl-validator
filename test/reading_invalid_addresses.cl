@@ -1,6 +1,6 @@
-// RUN: %opencl-validator < %s
-// RUN: %webcl-validator %s | %opencl-validator
-// RUN: %webcl-validator %s | sed 's@////@@' | %kernel-runner --webcl --kernel read_memory --constant int 100 --global int 100 --local int 100 | grep "33,33,33,33,33,33,33,33,33,33,33,33,33,33,33,33,1,1,1,1,0,1,1,1,1,0,1,1,1,0,"
+// RUN: %opencl-validator < "%s"
+// RUN: %webcl-validator "%s" | %opencl-validator
+// RUN: %webcl-validator "%s" | sed 's@////@@' | %kernel-runner --webcl --kernel read_memory --constant int 100 --global int 100 --local int 100 | grep "33,33,33,33,33,33,33,33,33,33,33,33,33,33,33,33,1,1,1,1,0,1,1,1,1,0,1,1,1,0,"
 
 __constant uchar16 constant_vec = ((uchar16)(33,33,33,33,33,33,33,33,33,33,33,33,33,33,33,33));
 

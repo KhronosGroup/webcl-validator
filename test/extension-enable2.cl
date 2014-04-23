@@ -1,4 +1,4 @@
-// RUN: %webcl-validator %s >&/dev/null
+// RUN: %webcl-validator "%s" >&/dev/null
 
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 

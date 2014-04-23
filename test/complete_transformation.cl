@@ -1,8 +1,8 @@
-// RUN: %opencl-validator < %s
-// RUN: %webcl-validator %s | %opencl-validator
-// RUN: %webcl-validator %s | grep -v CHECK | %FileCheck %s
-// RUN: %kernel-runner  --kernel awesomize --global float4 50 --global float4 50 --nooutput --constant float4 50 --local float4 1024 --gcount 50 < %s
-// RUN: %webcl-validator %s | %kernel-runner --nooutput --kernel awesomize --global float4 50 --global float4 50 --constant float4 50 --local float4 1024 --gcount 50 --webcl 
+// RUN: %opencl-validator < "%s"
+// RUN: %webcl-validator "%s" | %opencl-validator
+// RUN: %webcl-validator "%s" | grep -v CHECK | %FileCheck "%s"
+// RUN: %kernel-runner  --kernel awesomize --global float4 50 --global float4 50 --nooutput --constant float4 50 --local float4 1024 --gcount 50 < "%s"
+// RUN: %webcl-validator "%s" | %kernel-runner --nooutput --kernel awesomize --global float4 50 --global float4 50 --constant float4 50 --local float4 1024 --gcount 50 --webcl 
 
 // run output is not validated, because the output is not deterministic output depends on driver properties
 // like wgsize

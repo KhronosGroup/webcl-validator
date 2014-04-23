@@ -1,5 +1,5 @@
-// RUN: %opencl-validator < %s
-// RUN: %webcl-validator %s | %check-empty-memory -transformed
+// RUN: %opencl-validator < "%s"
+// RUN: %webcl-validator "%s" | %check-empty-memory -transformed
 
 __kernel void copy_local_mem(
     __global int *int_result,

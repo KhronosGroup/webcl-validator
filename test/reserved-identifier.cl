@@ -1,5 +1,5 @@
-// RUN: %opencl-validator < %s
-// RUN: %webcl-validator %s -ferror-limit=0 2>&1 | grep "error: " | %FileCheck %s
+// RUN: %opencl-validator < "%s"
+// RUN: %webcl-validator "%s" -ferror-limit=0 2>&1 | grep "error: " | %FileCheck "%s"
 
 struct _wcl_struct { int _wcl_field; };
 struct _WclStruct { int _WclField; };

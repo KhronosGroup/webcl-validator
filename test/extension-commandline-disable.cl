@@ -1,4 +1,4 @@
-// RUN: %webcl-validator %s --disable=cl_khr_fp16 2>&1 | grep -v CHECK | %FileCheck %s
+// RUN: %webcl-validator "%s" --disable=cl_khr_fp16 2>&1 | grep -v CHECK | %FileCheck "%s"
 
 // CHECK-DAG: error: WebCL or platform doesn't support enabling 'cl_khr_fp16' extension.
 

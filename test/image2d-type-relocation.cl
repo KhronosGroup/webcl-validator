@@ -1,5 +1,5 @@
 // image2d_t argument should not be relocated
-// RUN: %webcl-validator %s 2>&1 | grep -v CHECK | %FileCheck %s
+// RUN: %webcl-validator "%s" 2>&1 | grep -v CHECK | %FileCheck "%s"
 
 void bar(image2d_t image)
 {
