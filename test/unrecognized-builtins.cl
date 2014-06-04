@@ -1,4 +1,4 @@
-// RUN: cat %include/unsafe.h "%s" | %opencl-validator
+// RUN: cat "%include/unsafe.h" "%s" | %opencl-validator
 // RUN: %webcl-validator "%s" 2>&1 | grep -v CHECK | %FileCheck "%s"
 
 __kernel void unrecognized_builtins(
