@@ -1,5 +1,8 @@
-// RUN: %opencl-validator -I"\"%include/..\"" < "%s"
+// RUN: %opencl-validator -I"%include/.." < "%s"
 // RUN: %webcl-validator "%s" 2>&1 | grep -v CHECK | %FileCheck "%s"
+
+// NOTE: these tests are failing in some drivers if there is spaces in include directory name
+//       some drivers require escaped " signs and some will fail if those are used.
 
 // We don't allow include directives in main source files.
 // CHECK: error: WebCL doesn't support the include directive.
